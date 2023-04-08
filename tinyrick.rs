@@ -50,7 +50,6 @@ fn test() {
 
 /// Build: Doc, lint, test, and compile
 fn build() {
-    tinyrick::deps(doc);
     tinyrick::deps(lint);
     tinyrick::deps(test);
     tinyrick_extras::build();
