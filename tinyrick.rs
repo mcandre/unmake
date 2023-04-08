@@ -43,15 +43,15 @@ fn uninstall() {
     tinyrick::exec!("cargo", &["uninstall"]);
 }
 
-/// Doc, lint, and run tests
+/// Run tests
 fn test() {
-    tinyrick::deps(lint);
-    tinyrick::deps(install);
     tinyrick_extras::unit_test();
 }
 
 /// Build: Doc, lint, test, and compile
 fn build() {
+    tinyrick::deps(doc);
+    tinyrick::deps(lint);
     tinyrick::deps(test);
     tinyrick_extras::build();
 }
