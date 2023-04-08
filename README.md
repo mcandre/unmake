@@ -26,6 +26,10 @@ error at 1:16: expected one of " ", "$(", "${", ":", "\t", [^ (' ' | '\t' | ':' 
 
 See `unmake -h` for more options.
 
+# CRATE
+
+https://crates.io/crates/unmake
+
 # INSTALL FROM SOURCE
 
 ```console
