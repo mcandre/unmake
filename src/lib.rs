@@ -48,14 +48,11 @@ parser! {
     grammar parser() for str {
         rule _ = (" " / "\t")*
 
+        rule eof() = ![_]
+
         rule line_ending() -> String =
             s:$("\r\n" / "\n") {
                 s.to_string()
-            }
-
-        rule line_ending_or_eof() -> String =
-            (line_ending() / ![_]) {
-                String::new()
             }
 
         rule simple_value() -> String =
@@ -64,7 +61,7 @@ parser! {
             }
 
         rule comment() -> String =
-            ("#" ([^ ('\r' | '\n')]*) line_ending_or_eof()) {
+            ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
                 String::new()
             }
 
@@ -94,12 +91,12 @@ parser! {
             }
 
         rule indented_command() -> String =
-            (comment() / line_ending())* "\t" s:make_command() ((comment() / line_ending())+ / ![_]) {
+            (comment() / line_ending())* "\t" s:make_command() ((comment() / line_ending())+ / eof()) {
                 s.to_string()
             }
 
         rule make_rule() -> Directive =
-            (comment() / line_ending())* targets:(make_prerequisite() ++ " ") (" "*) ":" (" "*) prerequisites:(make_prerequisite() ** " ") inline_commands:(inline_command()*<0, 1>) (comment()+ / line_ending_or_eof()) indented_commands:(indented_command()*) {
+            (comment() / line_ending())* targets:(make_prerequisite() ++ " ") (" "*) ":" (" "*) prerequisites:(make_prerequisite() ** " ") inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
                 Directive::Rule(targets, prerequisites, [inline_commands, indented_commands].concat())
             }
 
@@ -119,7 +116,7 @@ parser! {
             }
 
         rule macro_value() -> String =
-            strings:((simple_value() / macro_escaped_newline())*) (comment()* / line_ending_or_eof()) {
+            strings:((simple_value() / macro_escaped_newline())*) ((comment() / line_ending())+ / eof()) {
                 strings.join("")
             }
 
@@ -129,7 +126,7 @@ parser! {
             }
 
         rule include_value() -> String =
-            s:simple_path() (comment()* / line_ending_or_eof()) {
+            s:simple_path() ((comment() / line_ending())+ / eof()) {
                 s.trim_end().to_string()
             }
 
