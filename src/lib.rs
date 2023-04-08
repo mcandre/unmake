@@ -104,7 +104,7 @@ parser! {
             }
 
         rule macro_definition() -> Directive =
-            n:macro_name() _ "=" v:macro_value() {
+            n:macro_name() _ "=" _ v:macro_value() {
                 Directive::Macro(n, v)
             }
 
@@ -237,12 +237,28 @@ fn test_parse_macros() {
         parse_posix("A = 1"),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
-            " 1".to_string()
+            "1".to_string()
         )]))
     );
 
     assert_eq!(
         parse_posix("A=1 "),
+        Ok(Makefile::new(vec![Directive::Macro(
+            "A".to_string(),
+            "1 ".to_string()
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("A= 1 "),
+        Ok(Makefile::new(vec![Directive::Macro(
+            "A".to_string(),
+            "1 ".to_string()
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("A = 1 "),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
             "1 ".to_string()
@@ -259,14 +275,6 @@ fn test_parse_macros() {
 
     assert_eq!(
         parse_posix("A\t=1"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1\n"),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
             "1".to_string()
@@ -333,7 +341,7 @@ fn test_parse_macros() {
         parse_posix("A= "),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
-            " ".to_string(),
+            "".to_string(),
         )]))
     );
 
@@ -341,7 +349,7 @@ fn test_parse_macros() {
         parse_posix("A= \n"),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
-            " ".to_string(),
+            "".to_string(),
         )]))
     );
 
@@ -506,7 +514,7 @@ fn test_parse_macros() {
         parse_posix("A= =apple"),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
-            " =apple".to_string()
+            "=apple".to_string()
         )]))
     );
 
@@ -514,7 +522,7 @@ fn test_parse_macros() {
         parse_posix("A = =apple"),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
-            " =apple".to_string()
+            "=apple".to_string()
         )]))
     );
 
