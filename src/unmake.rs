@@ -13,7 +13,11 @@ fn main() {
     let brief: String = format!("Usage: {} <OPTIONS> <makefile>", env!("CARGO_PKG_NAME"));
 
     let mut opts: getopts::Options = getopts::Options::new();
-    opts.optflag("n", "dry-run", "validate POSIX make syntax (does not execute `+command`s)");
+    opts.optflag(
+        "n",
+        "dry-run",
+        "validate POSIX make syntax (does not execute `+command`s)",
+    );
     opts.optflag("h", "help", "print usage info");
     opts.optflag("v", "version", "print version info");
 
