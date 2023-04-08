@@ -88,8 +88,13 @@ parser! {
                 strings.join("")
             }
 
+        rule simple_path() -> String =
+            s:$([^ ('"' | '\r' | '\n' | '\\' | '#')]+) {
+                s.to_string()
+            }
+
         rule include_value() -> String =
-            s:simple_value() (comment() / line_ending()+ / ![_]) {
+            s:simple_path() (comment() / line_ending()+ / ![_]) {
                 s
             }
 
@@ -595,6 +600,8 @@ fn test_parse_includes() {
         parse_posix("include a.mk"),
         Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
     );
+
+    assert!(parse_posix("include \"a.mk\"\n").is_err());
 
     assert_eq!(
         parse_posix("include\ta.mk"),
