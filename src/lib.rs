@@ -1021,16 +1021,14 @@ fn test_rules() {
 
     assert_eq!(
         parse_posix("test:\n\techo \"Hello World!\"\n\n\techo \"Hi World!\""),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test".to_string()],
-                Vec::new(),
-                vec![
-                    "echo \"Hello World!\"".to_string(),
-                    "echo \"Hi World!\"".to_string(),
-                ]
-            )
-        ]))
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["test".to_string()],
+            Vec::new(),
+            vec![
+                "echo \"Hello World!\"".to_string(),
+                "echo \"Hi World!\"".to_string(),
+            ]
+        )]))
     );
 
     assert_eq!(
