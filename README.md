@@ -30,6 +30,10 @@ See `unmake -h` for more options.
 
 https://crates.io/crates/unmake
 
+# API DOCUMENTATION
+
+https://docs.rs/unmake/latest/unmake/
+
 # INSTALL FROM SOURCE
 
 ```console
