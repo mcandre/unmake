@@ -13,11 +13,6 @@ fn main() {
     let brief: String = format!("Usage: {} <OPTIONS> <makefile>", env!("CARGO_PKG_NAME"));
 
     let mut opts: getopts::Options = getopts::Options::new();
-    opts.optflag(
-        "n",
-        "dry-run",
-        "validate POSIX make syntax (does not execute `+command`s)",
-    );
     opts.optflag("h", "help", "print usage info");
     opts.optflag("v", "version", "print version info");
 
@@ -33,27 +28,18 @@ fn main() {
         die!(0; format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")));
     }
 
-    let dry_run: bool = optmatches.opt_present("n");
     let path_strings: Vec<String> = optmatches.free;
+    let path_string: &String = path_strings.get(0).die(&usage);
+    let p: &path::Path = path::Path::new(path_string);
+    let md: fs::Metadata = fs::metadata(p).die("unable to access file path");
 
-    if dry_run {
-        let path_string: &String = path_strings.get(0).die(&usage);
-
-        let p: &path::Path = path::Path::new(path_string);
-        let md: fs::Metadata = fs::metadata(p).die("unable to access file path");
-
-        if md.is_dir() {
-            die!(1; usage);
-        }
-
-        let makefile: &str = &fs::read_to_string(p).die("unable to read makefile");
-
-        if let Err(err) = unmake::parse_posix(makefile) {
-            die!(err.to_string());
-        };
-
-        die!(0);
+    if md.is_dir() {
+        die!(1; usage);
     }
 
-    die!(1; usage);
+    let makefile: &str = &fs::read_to_string(p).die("unable to read makefile");
+
+    if let Err(err) = unmake::parse_posix(makefile) {
+        die!(err.to_string());
+    };
 }

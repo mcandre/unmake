@@ -16,10 +16,10 @@ Work in progress
 ```console
 $ cd examples
 
-$ unmake -n Makefile; echo "$?"
+$ unmake Makefile; echo "$?"
 0
 
-$ unmake -n bsd/makefile; echo "$?"
+$ unmake bsd/makefile; echo "$?"
 error at 1:16: expected one of " ", "$(", "${", ":", "\t", [^ (' ' | '\t' | ':' | ';' | '#' | '\r' | '\n')]
 1
 ```
