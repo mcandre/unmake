@@ -667,6 +667,16 @@ fn test_rules() {
         )]))
     );
 
+    assert!(parse_posix("all:\n        echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n       echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n      echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n     echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n    echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n   echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n  echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\n echo \"Hello World!\"\n").is_err());
+    assert!(parse_posix("all:\necho \"Hello World!\"\n").is_err());
+
     assert_eq!(
         parse_posix("all:\n\techo \\\n\t\"Hello World!\"\n"),
         Ok(Makefile::new(vec![Directive::Rule(
