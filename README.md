@@ -46,6 +46,7 @@ We do our best to catch POSIX make violations, but some may slip by. For example
 
 * POSIX violations hiding inside macro expansions
 * POSIX violations hiding inside command output
+* Misuse of reserved target names
 * Behavior during live `make` script execution
 * An ever-growing list of GNU/BSD/etc. extensions to POSIX make
 
