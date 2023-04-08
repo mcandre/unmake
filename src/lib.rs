@@ -96,7 +96,7 @@ parser! {
             }
 
         rule make_rule() -> Directive =
-            (comment() / line_ending())* targets:(make_prerequisite() ++ " ") (" "*) ":" (" "*) prerequisites:(make_prerequisite() ** " ") inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
+            (comment() / line_ending())* targets:(make_prerequisite() ++ " ") _ ":" _ prerequisites:(make_prerequisite() ** _) inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
                 Directive::Rule(targets, prerequisites, [inline_commands, indented_commands].concat())
             }
 
