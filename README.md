@@ -40,6 +40,14 @@ The `unmake` linter serves several purposes.
 
 `make` is a natural candidate for working around limitations in provisioning scripts. For example, `go mod` / `cargo` do not track linters or other dev dependencies, and `sh` defaults to ignoring errors during provisioning. `make`'s default semantics prepare it well for provisioning and other activities. `make` can do many things! `unmake` helps it do them better.
 
+# CAVEATS
+
+We do our best to catch POSIX make violations, but some may slip by. For example:
+
+* POSIX violations hiding inside macro expansions
+* POSIX violations hiding inside command output
+* An ever-growing list of GNU/BSD/etc. extensions to POSIX make
+
 # RUNTIME REQUIREMENTS
 
 (None)
