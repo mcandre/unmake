@@ -53,59 +53,19 @@ parser! {
                 s.to_string()
             }
 
-        rule simple_value() -> String =
-            s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
-                s.to_string()
-            }
-
-        rule macro_escaped_newline() -> String =
-            ("\\" line_ending()) {
-                " ".to_string()
-            }
-
-        rule comment() -> String =
-            ("#" [^ ('\r' | '\n')]*) {
-                String::new()
-            }
-
-        rule simple_macro_name() -> String =
-            s:$(['.' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z']+) {
-                s.to_string()
-            }
-
-        rule macro_name() -> String =
-            comment()* s:$(simple_macro_name() / "$(" simple_macro_name() ")" / "${" simple_macro_name() "}") {
-                s.to_string()
-            }
-
         rule line_ending_or_eof() -> String =
             (line_ending() / ![_]) {
                 String::new()
             }
 
-        rule macro_value() -> String =
-            strings:((simple_value() / macro_escaped_newline())*) (comment() / line_ending()+ / ![_]) {
-                strings.join("")
-            }
-
-        rule simple_path() -> String =
-            s:$([^ ('"' | '\r' | '\n' | '\\' | '#')]+) {
+        rule simple_value() -> String =
+            s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
                 s.to_string()
             }
 
-        rule include_value() -> String =
-            s:simple_path() (comment() / line_ending()+ / ![_]) {
-                s.trim_end().to_string()
-            }
-
-        rule include() -> Directive =
-            "include" _ s:include_value() {
-                Directive::Include(s.to_string())
-            }
-
-        rule macro_definition() -> Directive =
-            n:macro_name() _ "=" _ v:macro_value() {
-                Directive::Macro(n, v)
+        rule comment() -> String =
+            ("#" ([^ ('\r' | '\n')]*) line_ending_or_eof()) {
+                String::new()
             }
 
         rule simple_prerequisite() -> String =
@@ -124,13 +84,8 @@ parser! {
             }
 
         rule make_command() -> String =
-            strings:((simple_value() / command_escaped_newline())*) {
+            strings:((simple_value() / command_escaped_newline())+) {
                 strings.join("")
-            }
-
-        rule indented_command() -> String =
-            (comment() / line_ending())* "\t" s:make_command() (comment() / line_ending_or_eof()) {
-                s.to_string()
             }
 
         rule inline_command() -> String =
@@ -138,13 +93,58 @@ parser! {
                 s.to_string()
             }
 
+        rule indented_command() -> String =
+            (comment() / line_ending())* "\t" s:make_command() ((comment() / line_ending())+ / ![_]) {
+                s.to_string()
+            }
+
         rule make_rule() -> Directive =
-            targets:(make_prerequisite() ++ _) _ ":" _ prerequisites:(make_prerequisite() ** _) inline_commands:(inline_command()*<0, 1>) (comment() / line_ending_or_eof()) indented_commands:(indented_command()*) ((comment() / line_ending())* / ![_]) {
+            (comment() / line_ending())* targets:(make_prerequisite() ++ " ") (" "*) ":" (" "*) prerequisites:(make_prerequisite() ** " ") inline_commands:(inline_command()*<0, 1>) (comment()+ / line_ending_or_eof()) indented_commands:(indented_command()*) {
                 Directive::Rule(targets, prerequisites, [inline_commands, indented_commands].concat())
             }
 
+        rule simple_macro_name() -> String =
+            s:$(['.' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z']+) {
+                s.to_string()
+            }
+
+        rule macro_name() -> String =
+            comment()* s:$(simple_macro_name() / "$(" simple_macro_name() ")" / "${" simple_macro_name() "}") {
+                s.to_string()
+            }
+
+        rule macro_escaped_newline() -> String =
+            ("\\" line_ending()) {
+                " ".to_string()
+            }
+
+        rule macro_value() -> String =
+            strings:((simple_value() / macro_escaped_newline())*) (comment()* / line_ending_or_eof()) {
+                strings.join("")
+            }
+
+        rule simple_path() -> String =
+            s:$([^ ('"' | '\r' | '\n' | '\\' | '#')]+) {
+                s.to_string()
+            }
+
+        rule include_value() -> String =
+            s:simple_path() (comment()* / line_ending_or_eof()) {
+                s.trim_end().to_string()
+            }
+
+        rule include() -> Directive =
+            (comment() / line_ending())* "include" _ s:include_value() {
+                Directive::Include(s.to_string())
+            }
+
+        rule macro_definition() -> Directive =
+            (comment() / line_ending())* n:macro_name() _ "=" _ v:macro_value() {
+                Directive::Macro(n, v)
+            }
+
         rule general_expression() -> Directive =
-            command:$("$(" _ simple_macro_name() _ ")" / "${" _ simple_macro_name() _ "}") args:(macro_value()?) {
+            (comment() / line_ending())* command:$("$(" _ simple_macro_name() _ ")" / "${" _ simple_macro_name() _ "}") args:(macro_value()?) {
                 Directive::GeneralExp(format!("{}{}", command, args.unwrap_or(String::new())))
             }
 
@@ -813,7 +813,34 @@ fn test_rules() {
     );
 
     assert_eq!(
-        parse_posix("all:\n# emit a console message\n\techo \"Hello World!\""),
+        parse_posix("all:# emit a console message\n\techo \"Hello World!\"\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec!["echo \"Hello World!\"".to_string()],
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all: # emit a console message\n\techo \"Hello World!\"\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec!["echo \"Hello World!\"".to_string()],
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all:\n# emit a console message\n\techo \"Hello World!\"\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec!["echo \"Hello World!\"".to_string()],
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\techo \"Hello World!\"# emit a console message\n"),
         Ok(Makefile::new(vec![Directive::Rule(
             vec!["all".to_string()],
             Vec::new(),
@@ -992,6 +1019,20 @@ fn test_rules() {
                 Vec::new(),
                 vec!["echo \"Hi World!\"".to_string()],
             ),
+        ]))
+    );
+
+    assert_eq!(
+        parse_posix("test:\n\techo \"Hello World!\"\n\n\techo \"Hi World!\""),
+        Ok(Makefile::new(vec![
+            Directive::Rule(
+                vec!["test".to_string()],
+                Vec::new(),
+                vec![
+                    "echo \"Hello World!\"".to_string(),
+                    "echo \"Hi World!\"".to_string(),
+                ]
+            )
         ]))
     );
 
