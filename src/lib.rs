@@ -95,7 +95,7 @@ parser! {
 
         rule include_value() -> String =
             s:simple_path() (comment() / line_ending()+ / ![_]) {
-                s
+                s.trim_end().to_string()
             }
 
         rule include() -> Directive =
@@ -615,7 +615,7 @@ fn test_parse_includes() {
 
     assert_eq!(
         parse_posix("include a.mk "),
-        Ok(Makefile::new(vec![Directive::Include("a.mk ".to_string())]))
+        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
     );
 
     assert_eq!(
@@ -633,7 +633,7 @@ fn test_parse_includes() {
 
     assert_eq!(
         parse_posix("include a.mk # task definitions"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk ".to_string())]))
+        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
     );
 
     assert_eq!(
