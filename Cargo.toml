@@ -1,0 +1,30 @@
+[package]
+name = "unmake"
+description = "a makefile linter"
+version = "0.0.1"
+authors = ["Andrew Pennebaker <andrew.pennebaker@gmail.com>"]
+license = "BSD-2-Clause"
+homepage = "https://github.com/mcandre/unmake"
+
+[dependencies]
+die = "0.2.0"
+getopts = "0.2.21"
+lazy_static = "1.4.0"
+peg = "0.8.1"
+tinyrick = { version = "^0.0.9", optional = true }
+tinyrick_extras = { version = "^0.0.6", optional = true }
+
+[features]
+letmeout = ["tinyrick", "tinyrick_extras"]
+
+[lib]
+name = "unmake"
+
+[[bin]]
+name = "unmake"
+path = "src/unmake.rs"
+
+[[bin]]
+name = "tinyrick"
+path = "tinyrick.rs"
+required-features = ["letmeout"]
