@@ -34,6 +34,10 @@ https://crates.io/crates/unmake
 
 https://docs.rs/unmake/latest/unmake/
 
+# DOWNLOAD
+
+https://github.com/mcandre/unmake/releases
+
 # INSTALL FROM SOURCE
 
 ```console
