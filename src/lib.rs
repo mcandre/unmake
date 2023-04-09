@@ -55,11 +55,6 @@ parser! {
                 s.to_string()
             }
 
-        rule simple_value() -> String =
-            s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
-                s.to_string()
-            }
-
         rule comment() -> String =
             ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
                 String::new()
@@ -75,13 +70,18 @@ parser! {
                 s.to_string()
             }
 
+        rule simple_command_value() -> String =
+            s:$([^ ('\r' | '\n' | '\\')]+) {
+                s.to_string()
+            }
+
         rule command_escaped_newline() -> String =
             s:$("\\" line_ending()) "\t"*<0,1> {
                 s.to_string()
             }
 
         rule make_command() -> String =
-            strings:((simple_value() / command_escaped_newline())+) {
+            strings:((simple_command_value() / command_escaped_newline())+) {
                 strings.join("")
             }
 
@@ -91,7 +91,7 @@ parser! {
             }
 
         rule indented_command() -> String =
-            (comment() / line_ending())* "\t" s:make_command() ((comment() / line_ending())+ / eof()) {
+            (comment() / line_ending())* "\t" s:make_command() (line_ending()+ / eof()) {
                 s.to_string()
             }
 
@@ -115,8 +115,13 @@ parser! {
                 " ".to_string()
             }
 
+        rule simple_macro_value() -> String =
+            s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
+                s.to_string()
+            }
+
         rule macro_value() -> String =
-            strings:((simple_value() / macro_escaped_newline())*) ((comment() / line_ending())+ / eof()) {
+            strings:((simple_macro_value() / macro_escaped_newline())*) ((comment() / line_ending())+ / eof()) {
                 strings.join("")
             }
 
@@ -145,8 +150,6 @@ parser! {
                 Directive::GeneralExp(format!("{}{}", command, args.unwrap_or(String::new())))
             }
 
-        /// parse generates a Makefile AST from a valid POSIX makefile content string,
-        /// or else returns a parse error.
         pub rule parse() -> Makefile =
             (comment() / line_ending())* v:(make_rule() / include() / macro_definition() / general_expression())* (comment() / line_ending())* {
                 Makefile{ directives: v }
@@ -160,7 +163,7 @@ pub fn parse_posix(s: &str) -> Result<Makefile, peg::error::ParseError<peg::str:
 }
 
 #[test]
-fn test_comments() {
+fn test_isolated_comment_lines() {
     assert_eq!(parse_posix(""), Ok(Makefile::new(Vec::new())));
     assert_eq!(parse_posix("\n"), Ok(Makefile::new(Vec::new())));
     assert_eq!(parse_posix("\r\n"), Ok(Makefile::new(Vec::new())));
@@ -672,6 +675,48 @@ fn test_rules() {
         )]))
     );
 
+    assert_eq!(
+        parse_posix("all:\n\n\n# emit console message\n\n\n\techo \"Hello World!\"\n# emitted hello world\n\techo \"Hi World!\"\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec![
+                "echo \"Hello World!\"".to_string(),
+                "echo \"Hi World!\"".to_string(),
+            ],
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\techo \"Hello World!\"# emit console message\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec!["echo \"Hello World!\"# emit console message".to_string()],
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\techo \"Hello World!\" # emit console message\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec!["echo \"Hello World!\" # emit console message".to_string()],
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\t# echo \"Hello World!\"\n\techo \"Hi World!\"\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec![
+                "# echo \"Hello World!\"".to_string(),
+                "echo \"Hi World!\"".to_string(),
+            ],
+        )]))
+    );
+
     assert!(parse_posix("all:\n        echo \"Hello World!\"\n").is_err());
     assert!(parse_posix("all:\n       echo \"Hello World!\"\n").is_err());
     assert!(parse_posix("all:\n      echo \"Hello World!\"\n").is_err());
@@ -772,12 +817,12 @@ fn test_rules() {
             Directive::Rule(
                 vec!["test-1".to_string()],
                 Vec::new(),
-                vec!["echo \"Hello World!\" ".to_string()],
+                vec!["echo \"Hello World!\" # some tests".to_string()],
             ),
             Directive::Rule(
                 vec!["test-2".to_string()],
                 Vec::new(),
-                vec!["echo \"Hi World!\" ".to_string()],
+                vec!["echo \"Hi World!\" # even more tests".to_string()],
             ),
         ]))
     );
@@ -841,7 +886,7 @@ fn test_rules() {
         Ok(Makefile::new(vec![Directive::Rule(
             vec!["all".to_string()],
             Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
+            vec!["echo \"Hello World!\"# emit a console message".to_string()],
         )]))
     );
 
@@ -850,7 +895,7 @@ fn test_rules() {
         Ok(Makefile::new(vec![Directive::Rule(
             vec!["all".to_string()],
             Vec::new(),
-            vec!["echo \"Hello World!\" ".to_string()],
+            vec!["echo \"Hello World!\" # emit a console message".to_string()],
         )]))
     );
 
@@ -859,7 +904,7 @@ fn test_rules() {
         Ok(Makefile::new(vec![Directive::Rule(
             vec!["all".to_string()],
             Vec::new(),
-            vec!["echo \"Hello World!\" ".to_string()],
+            vec!["echo \"Hello World!\" # emit a console message".to_string()],
         )]))
     );
 
@@ -966,7 +1011,7 @@ fn test_rules() {
         Ok(Makefile::new(vec![Directive::Rule(
             vec!["test".to_string()],
             Vec::new(),
-            vec!["echo \"Hello World!\" ".to_string()],
+            vec!["echo \"Hello World!\" # emit message".to_string()],
         )]))
     );
 
@@ -975,7 +1020,7 @@ fn test_rules() {
         Ok(Makefile::new(vec![Directive::Rule(
             vec!["test".to_string()],
             Vec::new(),
-            vec!["echo \"Hello World!\" ".to_string()],
+            vec!["echo \"Hello World!\" # emit message".to_string()],
         )]))
     );
 
