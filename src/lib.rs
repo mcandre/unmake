@@ -91,8 +91,8 @@ parser! {
             }
 
         rule inline_command() -> String =
-            ";" _ s:make_command() {
-                s.to_string()
+            ";" _ strings:make_command()*<0,1> {
+                strings.join("")
             }
 
         rule indented_command() -> String =
@@ -102,7 +102,12 @@ parser! {
 
         rule make_rule() -> Directive =
             (comment() / line_ending())* targets:(make_prerequisite() ++ " ") _ ":" _ prerequisites:(make_prerequisite() ** _) inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
-                Directive::Rule(targets, prerequisites, [inline_commands, indented_commands].concat())
+                let non_empty_inline_commands: Vec<String> = inline_commands
+                    .into_iter()
+                    .filter(|e| !e.is_empty())
+                    .collect();
+
+                Directive::Rule(targets, prerequisites, [non_empty_inline_commands, indented_commands].concat())
             }
 
         rule simple_macro_name() -> String =
@@ -1075,6 +1080,24 @@ fn test_rules() {
                 vec!["echo \"Hi World!\"".to_string()],
             ),
         ]))
+    );
+
+    assert_eq!(
+        parse_posix("rule: ;\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["rule".to_string()],
+            Vec::new(),
+            Vec::new(),
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("rule: ;"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["rule".to_string()],
+            Vec::new(),
+            Vec::new(),
+        )]))
     );
 
     assert_eq!(
