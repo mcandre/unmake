@@ -55,6 +55,11 @@ parser! {
                 s.to_string()
             }
 
+        rule escaped_non_line_ending() -> String =
+            s:$("\\" [^ ('\r' | '\n')]) {
+                s.to_string()
+            }
+
         rule comment() -> String =
             ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
                 String::new()
@@ -81,7 +86,7 @@ parser! {
             }
 
         rule make_command() -> String =
-            strings:((simple_command_value() / command_escaped_newline())+) {
+            strings:((simple_command_value() / command_escaped_newline() / escaped_non_line_ending())+) {
                 strings.join("")
             }
 
@@ -121,7 +126,7 @@ parser! {
             }
 
         rule macro_value() -> String =
-            strings:((simple_macro_value() / macro_escaped_newline())*) ((comment() / line_ending())+ / eof()) {
+            strings:((simple_macro_value() / macro_escaped_newline() / escaped_non_line_ending())*) ((comment() / line_ending())+ / eof()) {
                 strings.join("")
             }
 
@@ -548,6 +553,14 @@ fn test_parse_macros() {
             Directive::Macro("A".to_string(), "B".to_string()),
             Directive::Macro("${B}".to_string(), "C".to_string()),
         ]))
+    );
+
+    assert_eq!(
+        parse_posix("LF=\"\\n\"\n"),
+        Ok(Makefile::new(vec![Directive::Macro(
+            "LF".to_string(),
+            "\"\\n\"".to_string()
+        )]))
     );
 }
 
@@ -1073,6 +1086,15 @@ fn test_rules() {
                 "echo \"Hello World!\"".to_string(),
                 "echo \"Hi World!\"".to_string(),
             ]
+        )]))
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\techo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"\n"),
+        Ok(Makefile::new(vec![Directive::Rule(
+            vec!["all".to_string()],
+            Vec::new(),
+            vec!["echo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"".to_string()],
         )]))
     );
 
