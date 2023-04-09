@@ -66,7 +66,7 @@ parser! {
             }
 
         rule simple_prerequisite() -> String =
-            s:$([^ (' ' | '\t' | ':' | ';' | '#' | '\r' | '\n')]+) {
+            s:$([^ (' ' | '\t' | ':' | ';' | '#' | '\r' | '\n' | '\\')]+) {
                 s.to_string()
             }
 
@@ -85,8 +85,18 @@ parser! {
                 s.to_string()
             }
 
+        rule multiline_command() -> String =
+            a:command_escaped_newline() b:compound_make_command() {
+                format!("{}{}", a, b)
+            }
+
+        rule compound_make_command() -> String =
+            s:(simple_command_value() / multiline_command() / escaped_non_line_ending()) {
+                s.to_string()
+            }
+
         rule make_command() -> String =
-            strings:((simple_command_value() / command_escaped_newline() / escaped_non_line_ending())+) {
+            strings:(compound_make_command()+) {
                 strings.join("")
             }
 
@@ -130,8 +140,18 @@ parser! {
                 s.to_string()
             }
 
+        rule multiline_macro_value() -> String =
+            a:macro_escaped_newline() b:compound_macro_value() {
+                format!("{}{}", a, b)
+            }
+
+        rule compound_macro_value() -> String =
+            s:(simple_macro_value() / multiline_macro_value() / escaped_non_line_ending()) {
+                s.to_string()
+            }
+
         rule macro_value() -> String =
-            strings:((simple_macro_value() / macro_escaped_newline() / escaped_non_line_ending())*) ((comment() / line_ending())+ / eof()) {
+            strings:(compound_macro_value()*) ((comment() / line_ending())+ / eof()) {
                 strings.join("")
             }
 
@@ -444,14 +464,6 @@ fn test_parse_macros() {
     );
 
     assert_eq!(
-        parse_posix("A=x\\\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "x ".to_string()
-        )]))
-    );
-
-    assert_eq!(
         parse_posix("A=x\\\ny"),
         Ok(Makefile::new(vec![Directive::Macro(
             "A".to_string(),
@@ -567,6 +579,9 @@ fn test_parse_macros() {
             "\"\\n\"".to_string()
         )]))
     );
+
+    assert!(parse_posix("A=\\\n").is_err());
+    assert!(parse_posix("A=\\").is_err());
 }
 
 #[test]
@@ -1120,6 +1135,9 @@ fn test_rules() {
             vec!["echo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"".to_string()],
         )]))
     );
+
+    assert!(parse_posix("all:\\\n").is_err());
+    assert!(parse_posix("all:\\").is_err());
 
     assert_eq!(
         parse_posix("BIN=hello\n$(BIN): hello.c\n\tcc -o $(BIN) hello.c\n"),
