@@ -2,6 +2,7 @@
 
 extern crate die;
 extern crate getopts;
+extern crate unmake;
 
 use die::{die, Die};
 use std::env;
@@ -37,9 +38,9 @@ fn main() {
         die!(1; usage);
     }
 
-    let makefile: &str = &fs::read_to_string(p).die("unable to read makefile");
+    let makefile_str: &str = &fs::read_to_string(p).die("unable to read makefile");
 
-    if let Err(err) = unmake::parse_posix(makefile) {
-        die!(err.to_string());
+    if let Err(err) = unmake::parse_posix(makefile_str) {
+        die!(err);
     };
 }

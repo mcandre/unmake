@@ -1,7 +1,7 @@
 # BUILDTIME REQUIREMENTS
 
 * [rustup](https://rustup.rs/) 1.25.2+
-* [Rust](https://www.rust-lang.org/en-US/) 1.68.2+ with `rustup component add clippy rustfmt` and `cargo install cargo-audit@0.17.5 crit@0.0.6 tinyrick@0.0.9`
+* [Rust](https://www.rust-lang.org/en-US/) 1.68.2+ with `rustup component add clippy rustfmt` and `cargo install cargo-audit@0.17.5 crit@0.0.6 tinyrick@0.0.11`
 * [Docker](https://www.docker.com/) 20.10.12+
 * [zip](https://en.wikipedia.org/wiki/ZIP_(file_format))
 

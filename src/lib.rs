@@ -4,43 +4,149 @@ extern crate lazy_static;
 extern crate peg;
 
 use peg::parser;
+use std::collections::HashMap;
+use std::fmt::Debug;
 
-/// Directive models assorted Makefile token types.
-/// Comments may be elided during persing.
-#[derive(Debug, PartialEq)]
-pub enum Directive {
-    /// Rule denotes a rule token with a sequence of target names, a sequence of prerequisites, and a sequence of commands.
-    Rule(Vec<String>, Vec<String>, Vec<String>),
+/// Traceable prepares an AST entry to receive updates
+/// about parsing location details.
+pub trait Traceable {
+    /// set_offset applies the given offset.
+    fn set_offset(&mut self, offset: usize);
 
-    /// Macro denotes a macro token with a name and an expression value.
-    Macro(String, String),
+    /// get_offset queries the current offset.
+    fn get_offset(&self) -> usize;
 
-    /// Include denotes an include token.
-    Include(String),
+    /// set_line applies the given line.
+    fn set_line(&mut self, line: usize);
 
-    /// GeneralExp denotes a general expression,
-    /// which is expected to expand to another directive type.
-    GeneralExp(String),
-}
+    /// get_line queries the current line.
+    fn get_line(&self) -> usize;
 
-/// Makefile models a makefile AST.
-#[derive(Debug, PartialEq)]
-pub struct Makefile {
-    /// directives denotes assorted Makefile data types.
-    pub directives: Vec<Directive>,
-}
-
-impl Makefile {
-    /// new constructs a Makefile AST.
-    pub fn new(directives: Vec<Directive>) -> Makefile {
-        Makefile { directives }
+    /// update corrects line details.
+    fn update(&mut self, index: &HashMap<usize, usize>) {
+        let offset = &self.get_offset();
+        self.set_line(index[offset]);
     }
 }
 
-impl Default for Makefile {
-    /// default generates a basic Makefile AST.
+/// Node provides convenient behaviors for unit testing.
+pub trait Node: Traceable + Debug + PartialEq {}
+
+/// Ore provides raw token information.
+#[derive(Debug, PartialEq)]
+pub enum Ore {
+    Ru {
+        ts: Vec<String>,
+        ps: Vec<String>,
+        cs: Vec<String>,
+    },
+    Mc {
+        n: String,
+        v: String,
+    },
+    In {
+        p: String,
+    },
+    Ex {
+        e: String,
+    },
+}
+
+/// Gem provides tokens enriched
+/// with parsing location information.
+#[derive(Debug, PartialEq)]
+pub struct Gem {
+    /// o denotes the offset
+    /// of the opening byte
+    /// of this AST node from some stream source.
+    pub o: usize,
+
+    /// l denotes the opening line
+    /// of this AST node from some stream source.
+    pub l: usize,
+
+    /// n denotes a content node.
+    pub n: Ore,
+}
+
+impl Traceable for Gem {
+    /// set_offset applies the given offset.
+    fn set_offset(&mut self, offset: usize) {
+        self.o = offset;
+    }
+
+    /// get_offset queries the current offset.
+    fn get_offset(&self) -> usize {
+        self.o
+    }
+
+    /// set_line applies the given line.
+    fn set_line(&mut self, line: usize) {
+        self.l = line;
+    }
+
+    /// get_line queries the current line.
+    fn get_line(&self) -> usize {
+        self.l
+    }
+}
+
+/// Mk models a makefile AST.
+#[derive(Debug, PartialEq)]
+pub struct Mk {
+    /// offset denotes the offset
+    /// of the opening byte
+    /// of this AST node from some stream source.
+    pub o: usize,
+
+    /// line denotes the opening line
+    /// of this AST node from some stream source.
+    pub l: usize,
+
+    /// ns denotes child nodes.
+    pub ns: Vec<Gem>,
+}
+
+impl Mk {
+    /// new constructs a makefile AST.
+    pub fn new(ns: Vec<Gem>) -> Mk {
+        Mk { o: 0, l: 1, ns }
+    }
+}
+
+impl Default for Mk {
+    /// default generates a basic makefile AST.
     fn default() -> Self {
-        Makefile::new(Vec::new())
+        Mk::new(Vec::new())
+    }
+}
+
+impl Traceable for Mk {
+    /// set_offset applies the given offset.
+    fn set_offset(&mut self, offset: usize) {
+        self.o = offset;
+    }
+
+    /// get_offset queries the current offset.
+    fn get_offset(&self) -> usize {
+        self.o
+    }
+
+    /// set_line applies the given line.
+    fn set_line(&mut self, line: usize) {
+        self.l = line;
+    }
+
+    /// get_line queries the current line.
+    fn get_line(&self) -> usize {
+        self.l
+    }
+
+    /// update corrects line details.
+    fn update(&mut self, index: &HashMap<usize, usize>) {
+        for n in &mut self.ns {
+            n.update(index);
+        }
     }
 }
 
@@ -110,14 +216,22 @@ parser! {
                 s.to_string()
             }
 
-        rule make_rule() -> Directive =
-            (comment() / line_ending())* targets:(make_prerequisite() ++ " ") _ ":" _ prerequisites:(make_prerequisite() ** _) inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
+        rule make_rule() -> Gem =
+            (comment() / line_ending())* p:position!() ts:(make_prerequisite() ++ " ") _ ":" _ ps:(make_prerequisite() ** _) inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
                 let non_empty_inline_commands: Vec<String> = inline_commands
                     .into_iter()
                     .filter(|e| !e.is_empty())
                     .collect();
 
-                Directive::Rule(targets, prerequisites, [non_empty_inline_commands, indented_commands].concat())
+                Gem {
+                    o: p,
+                    l: 0,
+                    n: Ore::Ru {
+                        ts,
+                        ps,
+                        cs: [non_empty_inline_commands, indented_commands].concat(),
+                    },
+                }
             }
 
         rule simple_macro_name() -> String =
@@ -155,6 +269,18 @@ parser! {
                 strings.join("")
             }
 
+        rule macro_definition() -> Gem =
+            (comment() / line_ending())* p:position!() n:macro_name() _ "=" _ v:macro_value() {
+                Gem {
+                    o: p,
+                    l: 0,
+                    n: Ore::Mc {
+                        n,
+                        v,
+                    },
+                }
+            }
+
         rule simple_path() -> String =
             s:$([^ ('"' | '\r' | '\n' | '\\' | '#')]+) {
                 s.to_string()
@@ -165,419 +291,742 @@ parser! {
                 s.trim_end().to_string()
             }
 
-        rule include() -> Directive =
-            (comment() / line_ending())* "include" _ s:include_value() {
-                Directive::Include(s.to_string())
+        rule include() -> Gem =
+            (comment() / line_ending())* p:position!() "include" _ s:include_value() {
+                Gem {
+                    o: p,
+                    l: 0,
+                    n: Ore::In {
+                        p: s.to_string(),
+                    },
+                }
             }
 
-        rule macro_definition() -> Directive =
-            (comment() / line_ending())* n:macro_name() _ "=" _ v:macro_value() {
-                Directive::Macro(n, v)
+        rule general_expression() -> Gem =
+            (comment() / line_ending())* p:position!() command:$("$(" _ simple_macro_name() _ ")" / "${" _ simple_macro_name() _ "}") args:(macro_value()?) {
+                Gem {
+                    o: p,
+                    l: 0,
+                    n: Ore::Ex {
+                        e: format!("{}{}", command, args.unwrap_or(String::new())),
+                    },
+                }
             }
 
-        rule general_expression() -> Directive =
-            (comment() / line_ending())* command:$("$(" _ simple_macro_name() _ ")" / "${" _ simple_macro_name() _ "}") args:(macro_value()?) {
-                Directive::GeneralExp(format!("{}{}", command, args.unwrap_or(String::new())))
+        rule node() -> Gem =
+            n:(make_rule() / include() / macro_definition() / general_expression()) {
+                n
             }
 
-        pub rule parse() -> Makefile =
-            (comment() / line_ending())* v:(make_rule() / include() / macro_definition() / general_expression())* (comment() / line_ending())* {
-                Makefile{ directives: v }
+        pub rule parse() -> Mk =
+            (comment() / line_ending())* ns:(node()*) (comment() / line_ending())* {
+                Mk::new(ns)
             }
     }
 }
 
-/// parse_posix generates a Makefile AST from a string.
-pub fn parse_posix(s: &str) -> Result<Makefile, peg::error::ParseError<peg::str::LineCol>> {
-    parser::parse(s)
+/// parse_posix generates a makefile AST from a string.
+pub fn parse_posix(s: &str) -> Result<Mk, String> {
+    let mut ast: Mk = parser::parse(s).map_err(|err| err.to_string())?;
+
+    let mut index: HashMap<usize, usize> = HashMap::new();
+    let mut line: usize = 1;
+
+    for (i, c) in s.chars().enumerate() {
+        index.insert(i, line);
+
+        if c == '\n' {
+            line += 1;
+        }
+    }
+
+    ast.update(&index);
+    Ok(ast)
 }
 
 #[test]
 fn test_isolated_comment_lines() {
-    assert_eq!(parse_posix(""), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("\n"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("\r\n"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("\n\n"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("\r\n\r\n"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("#\n"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("#"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("# alphabet\n"), Ok(Makefile::new(Vec::new())));
-    assert_eq!(parse_posix("# alphabet"), Ok(Makefile::new(Vec::new())));
     assert_eq!(
-        parse_posix("# alphabet\n# a, b, c, ... z\n"),
-        Ok(Makefile::new(Vec::new()))
+        parse_posix(""),
+        Ok(Mk {
+            o: 0,
+            l: 1,
+            ns: Vec::new()
+        })
     );
     assert_eq!(
-        parse_posix("# alphabet\n# a, b, c, ... z"),
-        Ok(Makefile::new(Vec::new()))
+        parse_posix("\n"),
+        Ok(Mk {
+            o: 0,
+            l: 1,
+            ns: Vec::new()
+        })
+    );
+    assert_eq!(
+        parse_posix("\r\n"),
+        Ok(Mk {
+            o: 0,
+            l: 1,
+            ns: Vec::new()
+        })
+    );
+
+    assert_eq!(parse_posix("\n\n").unwrap().ns, Vec::new());
+    assert_eq!(parse_posix("\r\n\r\n").unwrap().ns, Vec::new());
+    assert_eq!(parse_posix("#\n").unwrap().ns, Vec::new());
+    assert_eq!(parse_posix("#").unwrap().ns, Vec::new());
+    assert_eq!(parse_posix("# alphabet\n").unwrap().ns, Vec::new());
+    assert_eq!(parse_posix("# alphabet").unwrap().ns, Vec::new());
+
+    assert_eq!(
+        parse_posix("# alphabet\n# a, b, c, ... z\n").unwrap().ns,
+        Vec::new(),
+    );
+    assert_eq!(
+        parse_posix("# alphabet\n# a, b, c, ... z").unwrap().ns,
+        Vec::new(),
     );
 }
 
 #[test]
 fn test_parse_macros() {
     assert_eq!(
-        parse_posix("A=1\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
+        parse_posix("A=1\n").unwrap().ns,
+        vec![Gem {
+            o: 0,
+            l: 1,
+            n: Ore::Mc {
+                n: "A".to_string(),
+                v: "1".to_string(),
+            },
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=1\n\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1\n\n\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A =1"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A  =1"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A = 1"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1 "),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1 ".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A= 1 "),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1 ".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A = 1 "),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1 ".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A  =1  "),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1  ".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A\t=1"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1 \n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1 ".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1\r\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=1\n\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "1".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=\"Alice\""),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "\"Alice\"".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A='Alice'"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "'Alice'".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A="),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            String::new(),
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            String::new(),
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A= "),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "".to_string(),
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A= \n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "".to_string(),
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("BLANK=\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "BLANK".to_string(),
-            String::new()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=apple# alphabet"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "apple".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=apple # alphabet"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "apple ".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("# alphabet\nA=apple"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "apple".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=apple\n# alphabet"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "apple".to_string()
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("A=apple\n# alphabet\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "apple".to_string()
-        )]))
+        parse_posix("# alphabet\nA=apple").unwrap().ns,
+        vec![Gem {
+            o: 11,
+            l: 2,
+            n: Ore::Mc {
+                n: "A".to_string(),
+                v: "apple".to_string(),
+            }
+        }]
     );
 
     assert_eq!(
         parse_posix("A=1\nB=2\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "1".to_string()),
-            Directive::Macro("B".to_string(), "2".to_string()),
+        Ok(Mk::new(vec![
+            Gem {
+                o: 0,
+                l: 1,
+                n: Ore::Mc {
+                    n: "A".to_string(),
+                    v: "1".to_string(),
+                },
+            },
+            Gem {
+                o: 4,
+                l: 2,
+                n: Ore::Mc {
+                    n: "B".to_string(),
+                    v: "2".to_string(),
+                },
+            }
         ]))
     );
 
     assert_eq!(
-        parse_posix("A=1\nB=2"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "1".to_string()),
-            Directive::Macro("B".to_string(), "2".to_string()),
-        ]))
+        parse_posix("A=1\n\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=1\n\nB=2\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "1".to_string()),
-            Directive::Macro("B".to_string(), "2".to_string()),
-        ]))
+        parse_posix("A=1\n\n\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=1\n\n\nB=2\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "1".to_string()),
-            Directive::Macro("B".to_string(), "2".to_string()),
-        ]))
+        parse_posix("A=1")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=x\\\ny"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "x y".to_string()
-        )]))
+        parse_posix("A =1")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=x\\\n y"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "x  y".to_string()
-        )]))
+        parse_posix("A  =1")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=x\\\n  y"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "x   y".to_string()
-        )]))
+        parse_posix("A = 1")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=x\\\n\ty"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "x \ty".to_string()
-        )]))
+        parse_posix("A=1 ")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1 ".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A= 1 ")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1 ".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A = 1 ")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1 ".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A  =1  ")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1  ".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A\t=1")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=1 \n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1 ".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=1\r\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=1\n\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "1".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=\"Alice\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "\"Alice\"".to_string()
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A='Alice'")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "'Alice'".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: String::new(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: String::new(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A= ")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A= \n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("BLANK=\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "BLANK".to_string(),
+            v: String::new(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=apple# alphabet")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=apple # alphabet")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple ".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=apple\n# alphabet")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=apple\n# alphabet\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=1\nB=2")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "1".to_string(),
+            },
+            Ore::Mc {
+                n: "B".to_string(),
+                v: "2".to_string(),
+            },
+        ]
+    );
+
+    assert_eq!(
+        parse_posix("A=1\n\nB=2\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "1".to_string(),
+            },
+            Ore::Mc {
+                n: "B".to_string(),
+                v: "2".to_string(),
+            },
+        ]
+    );
+
+    assert_eq!(
+        parse_posix("A=1\n\n\nB=2\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "1".to_string(),
+            },
+            Ore::Mc {
+                n: "B".to_string(),
+                v: "2".to_string(),
+            },
+        ]
+    );
+
+    assert_eq!(
+        parse_posix("A=x\\\ny")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "x y".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=x\\\n y")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "x  y".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=x\\\n  y")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "x   y".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A=x\\\n\ty")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "x \ty".to_string(),
+        }]
     );
 
     assert!(parse_posix("A=x\\ \ny").is_err());
 
     assert_eq!(
-        parse_posix("A=x\\\ny\nB=z"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "x y".to_string()),
-            Directive::Macro("B".to_string(), "z".to_string()),
-        ]))
+        parse_posix("A=x\\\ny\nB=z")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "x y".to_string(),
+            },
+            Ore::Mc {
+                n: "B".to_string(),
+                v: "z".to_string(),
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("B=Hello\\\nWorld!"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "B".to_string(),
-            "Hello World!".to_string()
-        )]))
+        parse_posix("B=Hello\\\nWorld!")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "B".to_string(),
+            v: "Hello World!".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("C="),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "C".to_string(),
-            "".to_string()
-        )]))
+        parse_posix("C=")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "C".to_string(),
+            v: "".to_string(),
+        }]
     );
 
     assert!(parse_posix("A").is_err());
     assert!(parse_posix("=1").is_err());
 
     assert_eq!(
-        parse_posix("A==apple"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "=apple".to_string()
-        )]))
+        parse_posix("A==apple")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "=apple".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A= =apple"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "=apple".to_string()
-        )]))
+        parse_posix("A= =apple")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "=apple".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A = =apple"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "A".to_string(),
-            "=apple".to_string()
-        )]))
+        parse_posix("A = =apple")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "=apple".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("A=B\n$(B)=C\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "B".to_string()),
-            Directive::Macro("$(B)".to_string(), "C".to_string()),
-        ]))
+        parse_posix("A=B\n$(B)=C\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "B".to_string(),
+            },
+            Ore::Mc {
+                n: "$(B)".to_string(),
+                v: "C".to_string(),
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("A=B\n$(B)=C"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "B".to_string()),
-            Directive::Macro("$(B)".to_string(), "C".to_string()),
-        ]))
+        parse_posix("A=B\n$(B)=C")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "B".to_string(),
+            },
+            Ore::Mc {
+                n: "$(B)".to_string(),
+                v: "C".to_string(),
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("A=B\n${B}=C\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("A".to_string(), "B".to_string()),
-            Directive::Macro("${B}".to_string(), "C".to_string()),
-        ]))
+        parse_posix("A=B\n${B}=C\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "A".to_string(),
+                v: "B".to_string(),
+            },
+            Ore::Mc {
+                n: "${B}".to_string(),
+                v: "C".to_string(),
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("LF=\"\\n\"\n"),
-        Ok(Makefile::new(vec![Directive::Macro(
-            "LF".to_string(),
-            "\"\\n\"".to_string()
-        )]))
+        parse_posix("LF=\"\\n\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "LF".to_string(),
+            v: "\"\\n\"".to_string(),
+        }]
     );
 
     assert!(parse_posix("A=\\\n").is_err());
@@ -587,102 +1036,240 @@ fn test_parse_macros() {
 #[test]
 fn test_parse_general_expressions() {
     assert_eq!(
-        parse_posix("I=include\n$(I) a.mk\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("I".to_string(), "include".to_string()),
-            Directive::GeneralExp("$(I) a.mk".to_string()),
-        ]))
+        parse_posix("I=include\n$(I) a.mk\n").unwrap().ns,
+        vec![
+            Gem {
+                o: 0,
+                l: 1,
+                n: Ore::Mc {
+                    n: "I".to_string(),
+                    v: "include".to_string(),
+                },
+            },
+            Gem {
+                o: 10,
+                l: 2,
+                n: Ore::Ex {
+                    e: "$(I) a.mk".to_string(),
+                },
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("I=include\n$(I) a.mk"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("I".to_string(), "include".to_string()),
-            Directive::GeneralExp("$(I) a.mk".to_string()),
-        ]))
+        parse_posix("I=include\nM=a.mk\n$(I)\\\n$(M)").unwrap().ns,
+        vec![
+            Gem {
+                o: 0,
+                l: 1,
+                n: Ore::Mc {
+                    n: "I".to_string(),
+                    v: "include".to_string(),
+                },
+            },
+            Gem {
+                o: 10,
+                l: 2,
+                n: Ore::Mc {
+                    n: "M".to_string(),
+                    v: "a.mk".to_string(),
+                },
+            },
+            Gem {
+                o: 17,
+                l: 3,
+                n: Ore::Ex {
+                    e: "$(I) $(M)".to_string(),
+                },
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("I=include\n\n\n$(I) a.mk\n\n\n$(I) b.mk\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("I".to_string(), "include".to_string()),
-            Directive::GeneralExp("$(I) a.mk".to_string()),
-            Directive::GeneralExp("$(I) b.mk".to_string()),
-        ]))
+        parse_posix("I=include\n$(I) a.mk")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "I".to_string(),
+                v: "include".to_string(),
+            },
+            Ore::Ex {
+                e: "$(I) a.mk".to_string(),
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("I=include\nM=a.mk\n$(I) $(M)"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("I".to_string(), "include".to_string()),
-            Directive::Macro("M".to_string(), "a.mk".to_string()),
-            Directive::GeneralExp("$(I) $(M)".to_string()),
-        ]))
+        parse_posix("I=include\n\n\n$(I) a.mk\n\n\n$(I) b.mk\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "I".to_string(),
+                v: "include".to_string(),
+            },
+            Ore::Ex {
+                e: "$(I) a.mk".to_string(),
+            },
+            Ore::Ex {
+                e: "$(I) b.mk".to_string(),
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("I=include\nM=a.mk\n$(I)\\\n$(M)"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("I".to_string(), "include".to_string()),
-            Directive::Macro("M".to_string(), "a.mk".to_string()),
-            Directive::GeneralExp("$(I) $(M)".to_string()),
-        ]))
+        parse_posix("I=include\nM=a.mk\n$(I) $(M)")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "I".to_string(),
+                v: "include".to_string(),
+            },
+            Ore::Mc {
+                n: "M".to_string(),
+                v: "a.mk".to_string(),
+            },
+            Ore::Ex {
+                e: "$(I) $(M)".to_string(),
+            },
+        ]
     );
 }
 
 #[test]
 fn test_parse_includes() {
     assert_eq!(
-        parse_posix("include a.mk\n"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
+        parse_posix("include a.mk\n").unwrap().ns,
+        vec![Gem {
+            o: 0,
+            l: 1,
+            n: Ore::In {
+                p: "a.mk".to_string(),
+            },
+        },]
     );
 
     assert_eq!(
-        parse_posix("include a.mk"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
+        parse_posix("include a.mk\n\n\ninclude b.mk").unwrap().ns,
+        vec![
+            Gem {
+                o: 0,
+                l: 1,
+                n: Ore::In {
+                    p: "a.mk".to_string(),
+                },
+            },
+            Gem {
+                o: 15,
+                l: 4,
+                n: Ore::In {
+                    p: "b.mk".to_string(),
+                },
+            },
+        ]
+    );
+
+    assert_eq!(
+        parse_posix("include a.mk")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            p: "a.mk".to_string(),
+        }]
     );
 
     assert!(parse_posix("include \"a.mk\"\n").is_err());
 
     assert_eq!(
-        parse_posix("include\ta.mk"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
+        parse_posix("include\ta.mk")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            p: "a.mk".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("include  a.mk"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
+        parse_posix("include  a.mk")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            p: "a.mk".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("include a.mk "),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
+        parse_posix("include a.mk ")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            p: "a.mk".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("include a.mk\n\n\ninclude b.mk"),
-        Ok(Makefile::new(vec![
-            Directive::Include("a.mk".to_string()),
-            Directive::Include("b.mk".to_string()),
-        ]))
+        parse_posix("include a.mk# task definitions")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            p: "a.mk".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("include a.mk# task definitions"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
+        parse_posix("include a.mk # task definitions")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            p: "a.mk".to_string(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("include a.mk # task definitions"),
-        Ok(Makefile::new(vec![Directive::Include("a.mk".to_string())]))
-    );
-
-    assert_eq!(
-        parse_posix("PTH=a.mk\ninclude $(PTH)"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("PTH".to_string(), "a.mk".to_string()),
-            Directive::Include("$(PTH)".to_string()),
-        ]))
+        parse_posix("PTH=a.mk\ninclude $(PTH)")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "PTH".to_string(),
+                v: "a.mk".to_string(),
+            },
+            Ore::In {
+                p: "$(PTH)".to_string(),
+            },
+        ]
     );
 
     assert!(parse_posix("include a\\\n.mk").is_err());
@@ -691,63 +1278,119 @@ fn test_parse_includes() {
 #[test]
 fn test_rules() {
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\"\n").unwrap().ns,
+        vec![Gem {
+            o: 0,
+            l: 1,
+            n: Ore::Ru {
+                ts: vec!["all".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hello World!\"".to_string()],
+            },
+        },]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\""),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\n\n# emit console message\n\n\n\techo \"Hello World!\"\n# emitted hello world\n\techo \"Hi World!\"\n").unwrap().ns,
+        vec![
+            Gem {
+                o: 0,
+                l: 1,
+                n: Ore::Ru{
+                    ts: vec!["all".to_string()],
+                    ps: Vec::new(),
+                    cs: vec![
+                        "echo \"Hello World!\"".to_string(),
+                        "echo \"Hi World!\"".to_string(),
+                    ],
+                },
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("all:\n\n\n# emit console message\n\n\n\techo \"Hello World!\"\n# emitted hello world\n\techo \"Hi World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec![
-                "echo \"Hello World!\"".to_string(),
-                "echo \"Hi World!\"".to_string(),
-            ],
-        )]))
+        parse_posix("test-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .ns,
+        vec![
+            Gem {
+                o: 0,
+                l: 1,
+                n: Ore::Ru {
+                    ts: vec!["test-1".to_string()],
+                    ps: Vec::new(),
+                    cs: vec!["echo \"Hello World!\"".to_string()],
+                },
+            },
+            Gem {
+                o: 29,
+                l: 3,
+                n: Ore::Ru {
+                    ts: vec!["test-2".to_string()],
+                    ps: Vec::new(),
+                    cs: vec!["echo \"Hi World!\"".to_string()],
+                },
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\"# emit console message\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"# emit console message".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\" # emit console message\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\" # emit console message".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\"# emit console message\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"# emit console message".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\t# echo \"Hello World!\"\n\techo \"Hi World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec![
+        parse_posix("all:\n\techo \"Hello World!\" # emit console message\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\" # emit console message".to_string()],
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\t# echo \"Hello World!\"\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec![
                 "# echo \"Hello World!\"".to_string(),
                 "echo \"Hi World!\"".to_string(),
             ],
-        )]))
+        }]
     );
 
     assert!(parse_posix("all:\n        echo \"Hello World!\"\n").is_err());
@@ -761,441 +1404,630 @@ fn test_rules() {
     assert!(parse_posix("all:\necho \"Hello World!\"\n").is_err());
 
     assert_eq!(
-        parse_posix("all:\n\techo \\\n\t\"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \\\n\"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \\\n\t\"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \\\n\"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \\\n\"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \\\n\"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \\\n\"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \\\n\"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \\\n\t\t\"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \\\n\t\"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \\\n\t\t\"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \\\n\t\"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \\\n\t\t\"Hello World!\"\\\n\t\t\"Hi World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \\\n\t\"Hello World!\"\\\n\t\"Hi World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \\\n\t\t\"Hello World!\"\\\n\t\t\"Hi World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \\\n\t\"Hello World!\"\\\n\t\"Hi World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n"),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test-1".to_string()],
-                Vec::new(),
-                vec!["echo \"Hello World!\"".to_string()],
-            ),
-            Directive::Rule(
-                vec!["test-2".to_string()],
-                Vec::new(),
-                vec!["echo \"Hi World!\"".to_string()],
-            ),
-        ]))
+        parse_posix("test-1:\n\techo \"Hello World!\"\n\n\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Ru {
+                ts: vec!["test-1".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hello World!\"".to_string()],
+            },
+            Ore::Ru {
+                ts: vec!["test-2".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hi World!\"".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("test-1:\n\techo \"Hello World!\"\n\n\ntest-2:\n\techo \"Hi World!\"\n"),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test-1".to_string()],
-                Vec::new(),
-                vec!["echo \"Hello World!\"".to_string()],
-            ),
-            Directive::Rule(
-                vec!["test-2".to_string()],
-                Vec::new(),
-                vec!["echo \"Hi World!\"".to_string()],
-            ),
-        ]))
+        parse_posix("# some tests\ntest-1:\n\techo \"Hello World!\"\n# even more tests\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Ru{
+                ts: vec!["test-1".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hello World!\"".to_string()],
+            },
+            Ore::Ru{
+                ts: vec!["test-2".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hi World!\"".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("# some tests\ntest-1:\n\techo \"Hello World!\"\n# even more tests\ntest-2:\n\techo \"Hi World!\"\n"),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test-1".to_string()],
-                Vec::new(),
-                vec!["echo \"Hello World!\"".to_string()],
-            ),
-            Directive::Rule(
-                vec!["test-2".to_string()],
-                Vec::new(),
-                vec!["echo \"Hi World!\"".to_string()],
-            ),
-        ]))
+        parse_posix("test-1:\n\techo \"Hello World!\" # some tests\ntest-2:\n\techo \"Hi World!\" # even more tests\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Ru{
+                ts: vec!["test-1".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hello World!\" # some tests".to_string()],
+            },
+            Ore::Ru{
+                ts: vec!["test-2".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hi World!\" # even more tests".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("test-1:\n\techo \"Hello World!\" # some tests\ntest-2:\n\techo \"Hi World!\" # even more tests\n"),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test-1".to_string()],
-                Vec::new(),
-                vec!["echo \"Hello World!\" # some tests".to_string()],
-            ),
-            Directive::Rule(
-                vec!["test-2".to_string()],
-                Vec::new(),
-                vec!["echo \"Hi World!\" # even more tests".to_string()],
-            ),
-        ]))
+        parse_posix("all:\n\techo \"Hello World!\"\n# End\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\"\n# End\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\"\n# End")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\"\n# End"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("# default task\nall:\n\techo \"Hello World!\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("# default task\nall:\n\techo \"Hello World!\""),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:# emit a console message\n\techo \"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:# emit a console message\n\techo \"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all: # emit a console message\n\techo \"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all: # emit a console message\n\techo \"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n# emit a console message\n\techo \"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n# emit a console message\n\techo \"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\"# emit a console message\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"# emit a console message".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\"# emit a console message\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"# emit a console message".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\" # emit a console message\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\" # emit a console message".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\" # emit a console message\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\" # emit a console message".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Hello World!\" # emit a console message")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\" # emit a console message".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Hello World!\" # emit a console message"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\" # emit a console message".to_string()],
-        )]))
-    );
-
-    assert_eq!(
-        parse_posix("all: test\ntest: hello\n\t./hello\nhello: hello.c\n\tcc -o hello hello.c"),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["all".to_string()],
-                vec!["test".to_string()],
-                Vec::new()
-            ),
-            Directive::Rule(
-                vec!["test".to_string()],
-                vec!["hello".to_string()],
-                vec!["./hello".to_string()],
-            ),
-            Directive::Rule(
-                vec!["hello".to_string()],
-                vec!["hello.c".to_string()],
-                vec!["cc -o hello hello.c".to_string()],
-            ),
-        ]))
+        parse_posix("all: test\ntest: hello\n\t./hello\nhello: hello.c\n\tcc -o hello hello.c")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Ru {
+                ts: vec!["all".to_string()],
+                ps: vec!["test".to_string()],
+                cs: Vec::new(),
+            },
+            Ore::Ru {
+                ts: vec!["test".to_string()],
+                ps: vec!["hello".to_string()],
+                cs: vec!["./hello".to_string()],
+            },
+            Ore::Ru {
+                ts: vec!["hello".to_string()],
+                ps: vec!["hello.c".to_string()],
+                cs: vec!["cc -o hello hello.c".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
         parse_posix(
             "test: test-hi test-howdy\n\ntest-hi:\n\techo hi\n\ntest-howdy:\n\techo howdy\n"
-        ),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test".to_string()],
-                vec!["test-hi".to_string(), "test-howdy".to_string()],
-                Vec::new(),
-            ),
-            Directive::Rule(
-                vec!["test-hi".to_string()],
-                Vec::new(),
-                vec!["echo hi".to_string()],
-            ),
-            Directive::Rule(
-                vec!["test-howdy".to_string()],
-                Vec::new(),
-                vec!["echo howdy".to_string()],
-            ),
-        ]))
+        )
+        .unwrap()
+        .ns
+        .into_iter()
+        .map(|e| e.n)
+        .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Ru {
+                ts: vec!["test".to_string()],
+                ps: vec!["test-hi".to_string(), "test-howdy".to_string()],
+                cs: Vec::new(),
+            },
+            Ore::Ru {
+                ts: vec!["test-hi".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo hi".to_string()],
+            },
+            Ore::Ru {
+                ts: vec!["test-howdy".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo howdy".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("coverage.html coverage.xml:\n\tcover"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["coverage.html".to_string(), "coverage.xml".to_string()],
-            Vec::new(),
-            vec!["cover".to_string()],
-        )]))
+        parse_posix("coverage.html coverage.xml:\n\tcover")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["coverage.html".to_string(), "coverage.xml".to_string()],
+            ps: Vec::new(),
+            cs: vec!["cover".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("test:; echo \"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\""),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("test:; echo \"Hello World!\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\"\n# End\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("test:; echo \"Hello World!\"\n# End\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\"\n# End"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("test:; echo \"Hello World!\"\n# End")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("# integration test\ntest:; echo \"Hello World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\"".to_string()],
-        )]))
+        parse_posix("# integration test\ntest:; echo \"Hello World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\"".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\" # emit message\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\" # emit message".to_string()],
-        )]))
+        parse_posix("test:; echo \"Hello World!\" # emit message\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\" # emit message".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\" # emit message"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec!["echo \"Hello World!\" # emit message".to_string()],
-        )]))
+        parse_posix("test:; echo \"Hello World!\" # emit message")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Hello World!\" # emit message".to_string()],
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\"\n\techo \"Hi World!\""),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec![
+        parse_posix("test:; echo \"Hello World!\"\n\techo \"Hi World!\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec![
                 "echo \"Hello World!\"".to_string(),
                 "echo \"Hi World!\"".to_string(),
             ],
-        )]))
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:; echo \"Hello World!\"\n\techo \"Hi World!\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec![
+        parse_posix("test:; echo \"Hello World!\"\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec![
                 "echo \"Hello World!\"".to_string(),
                 "echo \"Hi World!\"".to_string(),
             ],
-        )]))
+        }]
     );
 
     assert_eq!(
-        parse_posix("test1:; echo \"Hello World!\"\ntest2:\n\techo \"Hi World!\""),
-        Ok(Makefile::new(vec![
-            Directive::Rule(
-                vec!["test1".to_string()],
-                Vec::new(),
-                vec!["echo \"Hello World!\"".to_string()],
-            ),
-            Directive::Rule(
-                vec!["test2".to_string()],
-                Vec::new(),
-                vec!["echo \"Hi World!\"".to_string()],
-            ),
-        ]))
+        parse_posix("test1:; echo \"Hello World!\"\ntest2:\n\techo \"Hi World!\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Ru {
+                ts: vec!["test1".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hello World!\"".to_string()],
+            },
+            Ore::Ru {
+                ts: vec!["test2".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hi World!\"".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("rule: ;\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["rule".to_string()],
-            Vec::new(),
-            Vec::new(),
-        )]))
+        parse_posix("rule: ;\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["rule".to_string()],
+            ps: Vec::new(),
+            cs: Vec::new(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("rule: ;"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["rule".to_string()],
-            Vec::new(),
-            Vec::new(),
-        )]))
+        parse_posix("rule: ;")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["rule".to_string()],
+            ps: Vec::new(),
+            cs: Vec::new(),
+        }]
     );
 
     assert_eq!(
-        parse_posix("test:\n\techo \"Hello World!\"\n\n\techo \"Hi World!\""),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["test".to_string()],
-            Vec::new(),
-            vec![
+        parse_posix("test:\n\techo \"Hello World!\"\n\n\techo \"Hi World!\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["test".to_string()],
+            ps: Vec::new(),
+            cs: vec![
                 "echo \"Hello World!\"".to_string(),
                 "echo \"Hi World!\"".to_string(),
-            ]
-        )]))
+            ],
+        }]
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"\n"),
-        Ok(Makefile::new(vec![Directive::Rule(
-            vec!["all".to_string()],
-            Vec::new(),
-            vec!["echo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"".to_string()],
-        )]))
+        parse_posix("all:\n\techo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"Welcome:\\n - Alice\\n - Bob\\n - Carol\"".to_string()],
+        }]
     );
 
     assert!(parse_posix("all:\\\n").is_err());
     assert!(parse_posix("all:\\").is_err());
 
     assert_eq!(
-        parse_posix("BIN=hello\n$(BIN): hello.c\n\tcc -o $(BIN) hello.c\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("BIN".to_string(), "hello".to_string()),
-            Directive::Rule(
-                vec!["$(BIN)".to_string()],
-                vec!["hello.c".to_string()],
-                vec!["cc -o $(BIN) hello.c".to_string()],
-            ),
-        ]))
+        parse_posix("BIN=hello\n$(BIN): hello.c\n\tcc -o $(BIN) hello.c\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "BIN".to_string(),
+                v: "hello".to_string(),
+            },
+            Ore::Ru {
+                ts: vec!["$(BIN)".to_string()],
+                ps: vec!["hello.c".to_string()],
+                cs: vec!["cc -o $(BIN) hello.c".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("BIN=hello\n$(BIN): hello.c\n\tcc -o $(BIN) hello.c"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("BIN".to_string(), "hello".to_string()),
-            Directive::Rule(
-                vec!["$(BIN)".to_string()],
-                vec!["hello.c".to_string()],
-                vec!["cc -o $(BIN) hello.c".to_string()],
-            ),
-        ]))
+        parse_posix("BIN=hello\n$(BIN): hello.c\n\tcc -o $(BIN) hello.c")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "BIN".to_string(),
+                v: "hello".to_string(),
+            },
+            Ore::Ru {
+                ts: vec!["$(BIN)".to_string()],
+                ps: vec!["hello.c".to_string()],
+                cs: vec!["cc -o $(BIN) hello.c".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("BIN=hello\n${BIN}: hello.c\n\tcc -o ${BIN} hello.c\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("BIN".to_string(), "hello".to_string()),
-            Directive::Rule(
-                vec!["${BIN}".to_string()],
-                vec!["hello.c".to_string()],
-                vec!["cc -o ${BIN} hello.c".to_string()],
-            ),
-        ]))
+        parse_posix("BIN=hello\n${BIN}: hello.c\n\tcc -o ${BIN} hello.c\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "BIN".to_string(),
+                v: "hello".to_string(),
+            },
+            Ore::Ru {
+                ts: vec!["${BIN}".to_string()],
+                ps: vec!["hello.c".to_string()],
+                cs: vec!["cc -o ${BIN} hello.c".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("BANNER=hello-v0.0.1\n$(BANNER).zip:\n\tzip -r $(BANNER).zip $(BANNER)\n"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("BANNER".to_string(), "hello-v0.0.1".to_string()),
-            Directive::Rule(
-                vec!["$(BANNER).zip".to_string()],
-                Vec::new(),
-                vec!["zip -r $(BANNER).zip $(BANNER)".to_string()],
-            ),
-        ]))
+        parse_posix("BANNER=hello-v0.0.1\n$(BANNER).zip:\n\tzip -r $(BANNER).zip $(BANNER)\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "BANNER".to_string(),
+                v: "hello-v0.0.1".to_string(),
+            },
+            Ore::Ru {
+                ts: vec!["$(BANNER).zip".to_string()],
+                ps: Vec::new(),
+                cs: vec!["zip -r $(BANNER).zip $(BANNER)".to_string()],
+            },
+        ]
     );
 
     assert_eq!(
-        parse_posix("BANNER=hello-v0.0.1\n$(BANNER).zip:\n\tzip -r $(BANNER).zip $(BANNER)"),
-        Ok(Makefile::new(vec![
-            Directive::Macro("BANNER".to_string(), "hello-v0.0.1".to_string()),
-            Directive::Rule(
-                vec!["$(BANNER).zip".to_string()],
-                Vec::new(),
-                vec!["zip -r $(BANNER).zip $(BANNER)".to_string()],
-            ),
-        ]))
+        parse_posix("BANNER=hello-v0.0.1\n$(BANNER).zip:\n\tzip -r $(BANNER).zip $(BANNER)")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![
+            Ore::Mc {
+                n: "BANNER".to_string(),
+                v: "hello-v0.0.1".to_string(),
+            },
+            Ore::Ru {
+                ts: vec!["$(BANNER).zip".to_string()],
+                ps: Vec::new(),
+                cs: vec!["zip -r $(BANNER).zip $(BANNER)".to_string()],
+            },
+        ]
     );
 }
