@@ -30,6 +30,7 @@ pub trait Traceable {
         for (r, line) in index {
             if r.contains(offset) {
                 self.set_line(*line);
+                break;
             }
         }
     }
