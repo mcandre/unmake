@@ -89,7 +89,9 @@ Common examples of `makefile` syntax that
 * Include paths with double-quotes (`"`) are out of spec.
 * Backslash escaped line feed sequences in include lines (`include`...`\\\n`) are out of spec.
 
-Certain extensions beyond the POSIX `make` subset, such as GNU-isms, or BSD-isms, etc., may also trigger parse errors. Repeat: This is a linter focusing on
+Certain extensions beyond the POSIX `make` subset, such as GNU-isms, or BSD-isms, etc., may also trigger parse errors.
+
+Repeat: This is a linter focusing on extreme portability. We break things in testing, so that your software breaks less often in production.
 
 # LINTER WARNINGS
 
