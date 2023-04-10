@@ -1,8 +1,8 @@
 all:
 	@rustup component add clippy
 	@rustup component add rustfmt
-	@cargo install cargo-audit@0.17.5
-	@cargo install tinyrick@0.0.9
+	@cargo install --force cargo-audit@0.17.5
+	@cargo install --force tinyrick@0.0.11
 
 	@go install github.com/alexkohler/nakedret@v1.0.1
 	@go install github.com/kisielk/errcheck@v1.6.3
