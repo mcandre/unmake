@@ -6,6 +6,7 @@ extern crate peg;
 use peg::parser;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Range;
 
 /// Traceable prepares an AST entry to receive updates
 /// about parsing location details.
@@ -23,9 +24,14 @@ pub trait Traceable {
     fn get_line(&self) -> usize;
 
     /// update corrects line details.
-    fn update(&mut self, index: &HashMap<usize, usize>) {
+    fn update(&mut self, index: &HashMap<Range<usize>, usize>) {
         let offset = &self.get_offset();
-        self.set_line(index[offset]);
+
+        for (r, line) in index {
+            if r.contains(offset) {
+                self.set_line(*line);
+            }
+        }
     }
 }
 
@@ -143,7 +149,7 @@ impl Traceable for Mk {
     }
 
     /// update corrects line details.
-    fn update(&mut self, index: &HashMap<usize, usize>) {
+    fn update(&mut self, index: &HashMap<Range<usize>, usize>) {
         for n in &mut self.ns {
             n.update(index);
         }
@@ -329,16 +335,28 @@ parser! {
 pub fn parse_posix(s: &str) -> Result<Mk, String> {
     let mut ast: Mk = parser::parse(s).map_err(|err| err.to_string())?;
 
-    let mut index: HashMap<usize, usize> = HashMap::new();
-    let mut line: usize = 1;
+    let mut newline_offsets: Vec<usize> = s.match_indices('\n').map(|(offset, _)| offset).collect();
 
-    for (i, c) in s.chars().enumerate() {
-        index.insert(i, line);
+    newline_offsets.insert(0, 0);
+    newline_offsets.push(s.len());
 
-        if c == '\n' {
-            line += 1;
-        }
+    if newline_offsets.len() % 2 != 0 {
+        newline_offsets.push(1 + s.len());
     }
+
+    let index: HashMap<Range<usize>, usize> = newline_offsets
+        .windows(2)
+        .enumerate()
+        .map(|(i, window)| {
+            (
+                Range {
+                    start: window[0],
+                    end: window[1],
+                },
+                1 + i,
+            )
+        })
+        .collect();
 
     ast.update(&index);
     Ok(ast)
@@ -1162,6 +1180,17 @@ fn test_parse_includes() {
                 },
             },
         ]
+    );
+
+    assert_eq!(
+        parse_posix("\ninclude a.mk\n").unwrap().ns,
+        vec![Gem {
+            o: 1,
+            l: 2,
+            n: Ore::In {
+                p: "a.mk".to_string(),
+            },
+        },]
     );
 
     assert_eq!(

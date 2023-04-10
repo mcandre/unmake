@@ -30,6 +30,11 @@ fn main() {
     }
 
     let path_strings: Vec<String> = optmatches.free;
+
+    if path_strings.len() != 1 {
+        die!(1; usage);
+    }
+
     let path_string: &String = path_strings.get(0).die(&usage);
     let p: &path::Path = path::Path::new(path_string);
     let md: fs::Metadata = fs::metadata(p).die("unable to access file path");
