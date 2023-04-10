@@ -11,6 +11,20 @@
 
 Work in progress
 
+# ABOUT
+
+`unmake` is a makefile linter that promotes extreme portability.
+
+Too many makefiles online are restricted to building only as Works On My Machine^TM.
+
+`unmake` bucks this trend, encouraging the makefile author to think more critically about what level of platform support they want for their software builds.
+
+Do you want to be able to build your software on macOS? On Linux? On FreeBSD? On Windows (Command Prompt, PowerShell, *and/or* WSL)? On `fish` terminals?
+
+All of the above?
+
+`unmake` can help to catch vendor-lock issues earlier in the SDLC process. So that your apps can build more reliably, for more contributors to enjoy.
+
 # EXAMPLES
 
 ```console
@@ -55,6 +69,31 @@ The `unmake` linter serves several purposes.
 `unmake` discourages vendor locking in makefile scripts. Numerous makefiles online assume a highly specific development environment. For example, assuming that (GNU) findutils, (GNU) sed, (GNU) awk, (non-PowerShell) curl are installed, with a GNU bash or zsh user interpreter, on a GNU/Linux operating system. So the typical makefile is likely to fail for (non-WSL) Windows users, or macOS users, or FreeBSD users, and so on. Ideally, our makefiles strive for portability, so that our projects can be enjoyed on a wider variety of computers.
 
 `make` is a natural candidate for working around limitations in provisioning scripts. For example, `go mod` / `cargo` do not track linters or other dev dependencies, and `sh` defaults to ignoring errors during provisioning. `make`'s default semantics prepare it well for provisioning and other activities. `make` can do many things! `unmake` helps it do them better.
+
+# PARSING
+
+`unmake` follows a stiff reading of the POSIX `make` standard:
+
+https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html
+
+Briefly, characters in `makefiles` that are explicitly rejected by the standard, may be treated as parse errors. Implementation-defined behavior, undefined behavior, and certain ill-advised syntax, may be treated as parse errors.
+
+Common examples of `makefile` syntax that
+
+* Vintage macOS CR (`\r`) and Windows CRLF (`\r\n`) line endings are out of spec. If you have a need to contribute to projects with makefiles from a Windows machine, configure your text editor to use LF (`\n`) line endings (and a final LF as well).
+* Spaces (` `) en lieu of hard tabs (`\t`) at the beginning of rule commands, are out of spec.
+* Whitespace in the middle of a backslash escaped line feed sequence (`\\ \n`) is out of spec.
+* makefiles that end on a cliffhanger backslash escaped line feed sequence with no accompanying followup line in the same file (`\\\n<eof>`), are out of spec.
+* Macro assignments with no identifier (e.g., `=1`) are out of spec.
+* Plain leftover macro identifiers with no assignment (e.g., `A`) are out of spec.
+* Include paths with double-quotes (`"`) are out of spec.
+* Backslash escaped line feed sequences in include lines (`include`...`\\\n`) are out of spec.
+
+Certain extensions beyond the POSIX `make` subset, such as GNU-isms, or BSD-isms, etc., may also trigger parse errors. Repeat: This is a linter focusing on
+
+# LINTER WARNINGS
+
+Coming soon.
 
 # CAVEATS
 

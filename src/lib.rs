@@ -157,7 +157,7 @@ parser! {
         rule eof() = ![_]
 
         rule line_ending() -> String =
-            s:$("\r\n" / "\n") {
+            s:$("\n") {
                 s.to_string()
             }
 
@@ -362,17 +362,12 @@ fn test_isolated_comment_lines() {
             ns: Vec::new()
         })
     );
-    assert_eq!(
-        parse_posix("\r\n"),
-        Ok(Mk {
-            o: 0,
-            l: 1,
-            ns: Vec::new()
-        })
-    );
+
+    assert!(parse_posix("\r").is_err());
+    assert!(parse_posix("\r\n").is_err());
+    assert!(parse_posix("\r\n\r\n").is_err());
 
     assert_eq!(parse_posix("\n\n").unwrap().ns, Vec::new());
-    assert_eq!(parse_posix("\r\n\r\n").unwrap().ns, Vec::new());
     assert_eq!(parse_posix("#\n").unwrap().ns, Vec::new());
     assert_eq!(parse_posix("#").unwrap().ns, Vec::new());
     assert_eq!(parse_posix("# alphabet\n").unwrap().ns, Vec::new());
@@ -592,18 +587,7 @@ fn test_parse_macros() {
         }]
     );
 
-    assert_eq!(
-        parse_posix("A=1\r\n")
-            .unwrap()
-            .ns
-            .into_iter()
-            .map(|e| e.n)
-            .collect::<Vec<Ore>>(),
-        vec![Ore::Mc {
-            n: "A".to_string(),
-            v: "1".to_string(),
-        }]
-    );
+    assert!(parse_posix("A=1\r\n").is_err());
 
     assert_eq!(
         parse_posix("A=1\n\n")

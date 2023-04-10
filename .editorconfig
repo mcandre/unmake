@@ -1,0 +1,63 @@
+# Most text files
+[*]
+charset = utf-8
+max_line_length = none
+trim_trailing_whitespace = true
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4 # bash8
+
+# Machine-generated files
+[*.{scpt,plist,dot,db}]
+trim_trailing_whitespace = false
+insert_final_newline = none
+indent_size = none
+
+# Freeform text
+[*.{txt,md,cob,emacs,el,lisp,lsp,scm,setup,meta,clj,rkt,ecl,sbcl,abcl,eclrc,sbclrc,asd,snusp}]
+indent_size = none
+
+# Fix cmake
+[CMakeLists.txt]
+indent_size = 4 # bash8
+
+# Align keys
+[*.{yaml,yml,reek,.yamllint}]
+indent_size = 2
+
+# Placeholder files
+[*.{gitkeep,__init__.py}]
+insert_final_newline = none
+
+#
+# Windows junk
+#
+[*.{cmd,bat,reg,ps1,vbs,cs,fs,fsx,ahk,psenvrc}]
+end_of_line = crlf
+insert_final_newline = false
+[settings.json]
+end_of_line = crlf
+insert_final_newline = false
+
+# Lexer restrictions
+[{makefile,Makefile,GNUmakefile,BSDmakefile}]
+indent_style = tab
+[*.{makefile,Makefile,mk,GNUmakefile,BSDmakefile,go,gitmodules}]
+indent_style = tab
+
+# Natural HTML nesting
+[*.js]
+quote_type = single
+
+# Compressed artifacts
+[*.min.*]
+insert_final_newline = false
+[*-min.*]
+insert_final_newline = false
+
+# Potential mixed indentations
+[*.patch]
+trim_trailing_whitespace = false
+indent_style = none
+indent_size = none
