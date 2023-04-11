@@ -1,0 +1,8 @@
+#!/bin/sh
+unset IFS
+set -euf
+
+rustup component add clippy rustfmt
+cargo install --force cargo-audit@0.17.5
+cargo install --force crit@0.0.6
+cargo install --force tinyrick@0.0.11
