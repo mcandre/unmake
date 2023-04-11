@@ -335,29 +335,24 @@ parser! {
 /// parse_posix generates a makefile AST from a string.
 pub fn parse_posix(s: &str) -> Result<Mk, String> {
     let mut ast: Mk = parser::parse(s).map_err(|err| err.to_string())?;
-
-    let mut newline_offsets: Vec<usize> = s.match_indices('\n').map(|(offset, _)| offset).collect();
-
-    newline_offsets.insert(0, 0);
-    newline_offsets.push(s.len());
-
-    if newline_offsets.len() % 2 != 0 {
-        newline_offsets.push(1 + s.len());
-    }
-
-    let index: HashMap<Range<usize>, usize> = newline_offsets
-        .windows(2)
-        .enumerate()
-        .map(|(i, window)| {
-            (
-                Range {
-                    start: window[0],
-                    end: window[1],
-                },
-                1 + i,
-            )
-        })
-        .collect();
+    let index: HashMap<Range<usize>, usize> = [
+        vec![0],
+        s.match_indices('\n').map(|(offset, _)| offset).collect(),
+        vec![s.len()],
+    ]
+    .concat()
+    .windows(2)
+    .enumerate()
+    .map(|(i, window)| {
+        (
+            Range {
+                start: window[0],
+                end: window[1],
+            },
+            1 + i,
+        )
+    })
+    .collect();
 
     ast.update(&index);
     Ok(ast)
