@@ -73,6 +73,9 @@ The `unmake` linter serves several purposes.
 ## Example projects using unmake
 
 * [buttery](https://github.com/mcandre/buttery), a GIF looper
+* [crit](https://github.com/mcandre/crit), a Rust cross-compiler
+* [factorio](https://github.com/mcandre/factorio), a Go cross-compiler
+* [octane](https://github.com/mcandre/octane), a MIDI forwarder
 
 # PARSING
 
