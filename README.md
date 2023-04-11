@@ -76,6 +76,7 @@ The `unmake` linter serves several purposes.
 * [crit](https://github.com/mcandre/crit), a Rust cross-compiler
 * [factorio](https://github.com/mcandre/factorio), a Go cross-compiler
 * [octane](https://github.com/mcandre/octane), a MIDI forwarder
+* [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
 
 # PARSING
 
@@ -144,5 +145,6 @@ FreeBSD
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
 * [rez](https://github.com/mcandre/rez), a task runner for C/C++ projects
 * [Shake](https://shakebuild.com/), a task runner for Haskell projects
+* [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
 * [tinyrick](https://github.com/mcandre/tinyrick), a task runner for Rust projects
 * [vast](https://github.com/mcandre/vast), a task runner for sh projects
