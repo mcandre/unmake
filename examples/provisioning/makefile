@@ -12,5 +12,6 @@ all:
 	@go install golang.org/x/tools/cmd/goimports@latest
 	@go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
 	@go install honnef.co/go/tools/cmd/staticcheck@2023.1.3
+	@go mod tidy
 
 	@npm install -g snyk@1.1140.0
