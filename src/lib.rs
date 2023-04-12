@@ -1027,6 +1027,19 @@ fn test_parse_macros() {
         }]
     );
 
+    assert_eq!(
+        parse_posix("INTERNALS=$@ $% $? $< $*\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "INTERNALS".to_string(),
+            v: "$@ $% $? $< $*".to_string(),
+        }]
+    );
+
     assert!(parse_posix("A=\\\n").is_err());
     assert!(parse_posix("A=\\").is_err());
 }
@@ -2038,5 +2051,19 @@ fn test_rules() {
                 cs: vec!["zip -r $(BANNER).zip $(BANNER)".to_string()],
             },
         ]
+    );
+
+    assert_eq!(
+        parse_posix("all:\n\techo $@ $% $? $< $*\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo $@ $% $? $< $*".to_string()],
+        }]
     );
 }
