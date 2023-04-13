@@ -2066,4 +2066,18 @@ fn test_rules() {
             cs: vec!["echo $@ $% $? $< $^ $*".to_string()],
         }]
     );
+
+    assert_eq!(
+        parse_posix("all:\n\techo \"PWD: $$PWD\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["echo \"PWD: $$PWD\"".to_string()],
+        }]
+    );
 }
