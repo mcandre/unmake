@@ -1028,7 +1028,7 @@ fn test_parse_macros() {
     );
 
     assert_eq!(
-        parse_posix("INTERNALS=$@ $% $? $< $*\n")
+        parse_posix("INTERNALS=$@ $% $? $< $^ $*\n")
             .unwrap()
             .ns
             .into_iter()
@@ -1036,7 +1036,7 @@ fn test_parse_macros() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "INTERNALS".to_string(),
-            v: "$@ $% $? $< $*".to_string(),
+            v: "$@ $% $? $< $^ $*".to_string(),
         }]
     );
 
@@ -2054,7 +2054,7 @@ fn test_rules() {
     );
 
     assert_eq!(
-        parse_posix("all:\n\techo $@ $% $? $< $*\n")
+        parse_posix("all:\n\techo $@ $% $? $< $^ $*\n")
             .unwrap()
             .ns
             .into_iter()
@@ -2063,7 +2063,7 @@ fn test_rules() {
         vec![Ore::Ru {
             ts: vec!["all".to_string()],
             ps: Vec::new(),
-            cs: vec!["echo $@ $% $? $< $*".to_string()],
+            cs: vec!["echo $@ $% $? $< $^ $*".to_string()],
         }]
     );
 }
