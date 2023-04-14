@@ -119,6 +119,12 @@ We do our best to catch POSIX make violations, but some may slip by. For example
 * Behavior during live `make` script execution
 * An ever-growing list of GNU/BSD/etc. extensions to POSIX make
 
+## POSIX 2008
+
+unmake assumes the 2008 edition of the POSIX standard, and that make implementations fully comply with the standard.
+
+Despite the release name, the POSIX edition is as of this writing still being actively collated in 2023 (!)
+
 # RUNTIME REQUIREMENTS
 
 (None)
