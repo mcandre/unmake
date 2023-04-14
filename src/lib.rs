@@ -40,21 +40,44 @@ pub trait Traceable {
 pub trait Node: Traceable + Debug + PartialEq {}
 
 /// Ore provides raw token information.
+///
+/// Ores produces by [parse_posix] may receive values as string literals,
+/// as originally supplied in the AST. Minimal or no evaluation is performed;
+/// The actual value may vary during makefile processing with a live make implementation.
 #[derive(Debug, PartialEq)]
 pub enum Ore {
+    /// Ru models a makefile rule.
     Ru {
+        /// ts denotes the target(s) produced by this rule.
         ts: Vec<String>,
+
+        /// ps denotes any prerequisite(s) depended on by this rule.
         ps: Vec<String>,
+
+        /// cs denotes any shell command(s) executed by this rule.
         cs: Vec<String>,
     },
+
+    /// Mc models a makefile macro definition.
+    ///
+    /// Values
     Mc {
+        /// n denotes a name for this macro.
         n: String,
+
+        /// v denotes an unexpanded value for this macro.
         v: String,
     },
+
+    /// In models an include line.
     In {
+        /// p denotes the file path of a makefile to include.
         p: String,
     },
+
+    /// Ex models a general macro expression.
     Ex {
+        /// e denotes an unexpanded macro expression.
         e: String,
     },
 }
@@ -294,7 +317,7 @@ parser! {
             }
 
         rule macro_definition() -> Gem =
-            (comment() / line_ending())* p:position!() n:macro_name() _ "=" _ v:macro_value() {
+            (comment() / line_ending())* p:position!() n:macro_name() _ ("+=" / ":=" / "?=" / "=") _ v:macro_value() {
                 Gem {
                     o: p,
                     l: 0,
@@ -338,7 +361,7 @@ parser! {
             }
 
         rule node() -> Gem =
-            n:(make_rule() / include() / macro_definition() / general_expression()) {
+            n:(macro_definition() / make_rule() / include() / general_expression()) {
                 n
             }
 
@@ -1059,6 +1082,45 @@ fn test_parse_macros() {
 
     assert!(parse_posix("A=\\\n").is_err());
     assert!(parse_posix("A=\\").is_err());
+
+    assert_eq!(
+        parse_posix("A:=apple\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A?=apple\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple".to_string(),
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("A+=apple\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "A".to_string(),
+            v: "apple".to_string(),
+        }]
+    );
 }
 
 #[test]
