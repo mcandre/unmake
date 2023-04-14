@@ -2131,4 +2131,22 @@ fn test_rules() {
             cs: vec!["echo \"PWD: $$PWD\"".to_string()],
         }]
     );
+
+    assert_eq!(
+        parse_posix("lib: lib(file1.o) lib(file2.o) lib(file3.o)\n\t@echo lib is now up-to-date\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["lib".to_string()],
+            ps: vec![
+                "lib(file1.o)".to_string(),
+                "lib(file2.o)".to_string(),
+                "lib(file3.o)".to_string(),
+            ],
+            cs: vec!["@echo lib is now up-to-date".to_string()]
+        }]
+    );
 }
