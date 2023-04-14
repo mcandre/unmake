@@ -223,12 +223,29 @@ parser! {
                 s.to_string()
             }
 
+        rule with_prerequisites() -> (Vec<String>, Vec<String>) =
+            ps:(make_prerequisite() ++ _) inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
+                (ps, [inline_commands, indented_commands].concat())
+            }
+
+        rule commands_with_inline() -> Vec<String> =
+            inline_commands:(inline_command()*<1,1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
+                [inline_commands, indented_commands].concat()
+            }
+
+        rule commands_without_inline() -> Vec<String> =
+            ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()+) {
+                indented_commands
+            }
+
+        rule without_prerequisites() -> (Vec<String>, Vec<String>) =
+            cs:(commands_with_inline() / commands_without_inline()) {
+                (Vec::new(), cs)
+            }
+
         rule make_rule() -> Gem =
-            (comment() / line_ending())* p:position!() ts:(make_prerequisite() ++ " ") _ ":" _ ps:(make_prerequisite() ** _) inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
-                let non_empty_inline_commands: Vec<String> = inline_commands
-                    .into_iter()
-                    .filter(|e| !e.is_empty())
-                    .collect();
+            (comment() / line_ending())* p:position!() ts:(make_prerequisite() ++ " ") _ ":" _ pcs:(with_prerequisites() / without_prerequisites()) {
+                let (ps, cs) = pcs;
 
                 Gem {
                     o: p,
@@ -236,7 +253,7 @@ parser! {
                     n: Ore::Ru {
                         ts,
                         ps,
-                        cs: [non_empty_inline_commands, indented_commands].concat(),
+                        cs: cs.into_iter().filter(|e| !e.is_empty()).collect(),
                     },
                 }
             }
@@ -1309,8 +1326,42 @@ fn test_rules() {
                 ps: Vec::new(),
                 cs: vec!["echo \"Hello World!\"".to_string()],
             },
-        },]
+        }]
     );
+
+    assert_eq!(
+        parse_posix("all: ;echo \"Hello World!\"\n").unwrap().ns,
+        vec![Gem {
+            o: 0,
+            l: 1,
+            n: Ore::Ru {
+                ts: vec!["all".to_string()],
+                ps: Vec::new(),
+                cs: vec!["echo \"Hello World!\"".to_string()],
+            },
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("all: ;echo \"Hello World!\"\n\techo \"Hi!\"\n")
+            .unwrap()
+            .ns,
+        vec![Gem {
+            o: 0,
+            l: 1,
+            n: Ore::Ru {
+                ts: vec!["all".to_string()],
+                ps: Vec::new(),
+                cs: vec![
+                    "echo \"Hello World!\"".to_string(),
+                    "echo \"Hi!\"".to_string(),
+                ],
+            },
+        }]
+    );
+
+    assert!(parse_posix("all:\n").is_err());
+    assert!(parse_posix("all:; echo \"Hello World!\"\n; echo \"Hi!\"\n").is_err());
 
     assert_eq!(
         parse_posix("all:\n\n\n# emit console message\n\n\n\techo \"Hello World!\"\n# emitted hello world\n\techo \"Hi World!\"\n").unwrap().ns,

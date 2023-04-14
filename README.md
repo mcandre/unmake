@@ -88,8 +88,9 @@ https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html
 
 Briefly, characters in `makefiles` that are explicitly rejected by the standard, may be treated as parse errors. Implementation-defined behavior, undefined behavior, and certain ill-advised syntax, may be treated as parse errors.
 
-Common examples of `makefile` syntax that
+Common examples of `makefile` syntax that may trigger parse errors;
 
+* Rule declarations with zero prerequisites, zero inline commands, and zero indented commands are out of spec.
 * Vintage macOS CR (`\r`) and Windows CRLF (`\r\n`) line endings are out of spec. If you have a need to contribute to projects with makefiles from a Windows machine, configure your text editor to use LF (`\n`) line endings (and a final LF as well).
 * Spaces (` `) en lieu of hard tabs (`\t`) at the beginning of rule commands, are out of spec.
 * Whitespace in the middle of a backslash escaped line feed sequence (`\\ \n`) is out of spec.
