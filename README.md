@@ -133,6 +133,18 @@ A rule with zero prerequisites, zero inline commands, and zero indented commands
 
 Users are expected to have working knowledge of `make`, including the basic semantics of how `make` resolves task trees.
 
+## Timestamps
+
+`make` caches artifact files using timestamps. In fact, the common `touch` command (UNIX, Windows) provides a useful way to force `make` to rebuild downstream targets. However, the POSIX standard observes that `make` can experience problems when run on platforms that lack sufficient, sub-second timestamp precision.
+
+Neither `make` nor `unmake` are not expected to resolve problems caused by builds running on environments that lack a realtime clock with sufficient timestamp precision, such as when running builds directly on microcontrollers or other embedded devices.
+
+Fortunately, some workarounds are available for problems arising from timestamp precision:
+
+* Run `make` on a machine with a realtime clock. For example, use a conventional workstation to cross-compile. Then copy the resulting artifacts onto the embedded device.
+* Mark the task `.PHONY`, which disables more caching features.
+* Use a build tool other than the POSIX `make` implementation family.
+
 # RUNTIME REQUIREMENTS
 
 (None)
