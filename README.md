@@ -125,6 +125,14 @@ unmake assumes the 2008 edition of the POSIX standard, and that make implementat
 
 Despite the release name, the POSIX edition is as of this writing still being actively collated in 2023 (!)
 
+## Logic Errors
+
+Neither `make`, nor linters, can perfectly read the mind of the `makefile` author. A rule that is syntactically valid, but accidentally neglects to declare a relevant prerequisite, can result in `make` misbehaving.
+
+A rule with zero prerequisites, zero inline commands, and zero indented commands, may trigger a parse error. But a syntactically valid rule that happens to omit relevant prerequisite tasks or files (e.g. C/C++ source files), will run poorly in `make`, and may not be safeguarded by any linter messages.
+
+Users are expected to have working knowledge of `make`, including the basic semantics of how `make` resolves task trees.
+
 # RUNTIME REQUIREMENTS
 
 (None)
