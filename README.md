@@ -119,11 +119,11 @@ We do our best to catch POSIX make violations, but some may slip by. For example
 * Behavior during live `make` script execution
 * An ever-growing list of GNU/BSD/etc. extensions to POSIX make
 
-## POSIX 2008
+## POSIX.1-202x Issue 8, draft 3
 
-unmake assumes the 2008 edition of the POSIX standard, and that make implementations fully comply with the standard.
+POSIX is not a single standard, but a series of versioned standards. unmake targets the upcoming 202x edition of POSIX, specifically Issue 8, draft 3. Also known as The Open Group Issue 8, draft 3. Also known as IEEE P1003.1-202x/D3.
 
-Despite the release name, the POSIX edition is as of this writing still being actively collated in 2023 (!)
+unmake assumes that make implementations already fully comply with the standard, supporting all syntax semantics, and the latest features required by the standard.
 
 ## Logic Errors
 
@@ -157,6 +157,32 @@ For more details on developing crit itself, see [DEVELOPMENT.md](DEVELOPMENT.md)
 
 FreeBSD
 
+# NOTABLE MAKE'S
+
+## GNU make
+
+[GNU make](https://www.gnu.org/software/make/) is a mature make implementation with high market share. In fact, many projects that use makefiles require, either explicitly or implicitly, specifically the GNU implementation of make. This is the default implementation for many (GNU/)Linux distributions. On most Linux distributions, GNU make is often referred to simply as "make." Sometimes, GNU make is referred to as "gmake," especially on BSD distributions.
+
+## BSD make
+
+[BSD make](https://man.freebsd.org/cgi/man.cgi?make(1)) is another mature make implementation. This is the default make implementation for many BSD distributions. On most BSD distributions, BSD make is often referred to simply as "make." Sometimes, BSD make is referred to as "bmake," especially on Linux and macOS distributions.
+
+macOS is an interesting exception. macOS derives from BSD, and tends to omit many components, features, CLI flags, and other aspects of GNU standards. Yet, macOS / Xcode make defaults to GNU make, not BSD make.
+
+Homebrew and other package managers may offer the package and/or binary "bsdmake," which is a more complete port of the related "bmake" package/binary.
+
+## nmake
+
+Microsoft `nmake` is used in the context of some Visual Studio / .NET projects, though nmake's syntax for include lines and macros appears to be break compatibility with POSIX make.
+
+### amake ... zmake
+
+Many `*make` command line tools exist, and vary the gamut. Some are POSIX compliant `make` implementations, able to serve as drop-in replacements for `.POSIX:` strict `makefile`s.
+
+Other `*make` tools generate makefiles.
+
+Still other `*make` tools have nothing to do with `make` or even build systems as a concept. Despite appearances, a project named like `*make` does not necessarily connote a POSIX make implementation. When in doubt, refer to that tool's specific documentation.
+
 # SEE ALSO
 
 * [BSD make](https://man.freebsd.org/cgi/man.cgi?make(1)), a popular make implementation with BSD extensions
@@ -166,10 +192,15 @@ FreeBSD
 * [GNU autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html), a build system for Linux C/C++ projects
 * [GNU make](https://www.gnu.org/software/make/), a popular make implementation with GNU extensions
 * [Gradle](https://gradle.org/), a build system for JVM projects
+* [gyp](https://gyp.gsrc.io/), an obsolete C/C++ build system
 * [invoke](https://pypi.org/project/invoke/), a task runner for Python projects
 * [lake](https://luarocks.org/modules/steved/lake), a task runner for Lua projects
 * [Mage](https://magefile.org/), a task runner for Go projects
+* [Meson](https://mesonbuild.com/), an alternative C/C++ build system
+* [ninja](https://ninja-build.org/), a fast build system without conditionals
+* [nmake](https://learn.microsoft.com/en-us/cpp/build/reference/nmake-reference?view=msvc-170) is not POSIX compliant, but can run some rather limited POSIX makefiles, which avoid include lines and macros.
 * [npm](https://www.npmjs.com/), [Grunt](https://gruntjs.com/), Node.js task runners
+* [nobuild](https://github.com/tsoding/nobuild), a convention for ad-hoc C/C++ build systems
 * the [POSIX make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html) standard
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
 * [rez](https://github.com/mcandre/rez), a task runner for C/C++ projects
