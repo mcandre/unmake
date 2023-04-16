@@ -145,6 +145,18 @@ Fortunately, some workarounds are available for problems arising from timestamp 
 * Mark the task `.PHONY`, which disables more caching features.
 * Use a build tool other than the POSIX `make` implementation family.
 
+### makefiles as prerequisites
+
+`make` is quite dim about updating artifacts as a result of changes to the `makefile`.
+
+For example, changing compiler flags in a `makefile` and then proceeding to build the project with `make`, is likely to result in a bad cache state, where artifacts fail to regenerate with the new compiler flags.
+
+One workaround involves declaring the makefile as a prerequisite for every target artifact, though that may be a tedious exercise.
+
+The more common workaround, is to remain *aware* of this silly quirk of `make`, and habitually `make clean; make; make install`, etc. immediately upon editing the makefile. This achieves an accurate artifact cache state, and helps to validate your makefile change sooner, rather than risking latent problems.
+
+In fact, the build configuration of a software project tends to be modified at a lower frequency than the primary project code. As long as you remember to reset your artifacts and rebuild them anew after each makefile tweak, then you can get along just fine without the `makefile` itself as an explicit rule prerequisite.
+
 # RUNTIME REQUIREMENTS
 
 (None)
