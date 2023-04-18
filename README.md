@@ -200,7 +200,6 @@ Still other `*make` tools have nothing to do with `make` or even build systems a
 * [BSD make](https://man.freebsd.org/cgi/man.cgi?make(1)), a popular make implementation with BSD extensions
 * [checkmake](https://github.com/mrtazz/checkmake), an experimental makefile linter
 * [cmake](https://cmake.org/), a build system for C/C++ projects
-* [dale](https://github.com/mcandre/dale), a task runner for D projects
 * [GNU autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html), a build system for Linux C/C++ projects
 * [GNU make](https://www.gnu.org/software/make/), a popular make implementation with GNU extensions
 * [Gradle](https://gradle.org/), a build system for JVM projects
@@ -215,9 +214,7 @@ Still other `*make` tools have nothing to do with `make` or even build systems a
 * [nobuild](https://github.com/tsoding/nobuild), a convention for ad-hoc C/C++ build systems
 * the [POSIX make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html) standard
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
-* [rez](https://github.com/mcandre/rez), a task runner for C/C++ projects
 * [Shake](https://shakebuild.com/), a task runner for Haskell projects
 * [ShellCheck](https://www.shellcheck.net/), a linter for POSIX sh family shell scripts
 * [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
 * [tinyrick](https://github.com/mcandre/tinyrick), a task runner for Rust projects
-* [vast](https://github.com/mcandre/vast), a task runner for sh projects
