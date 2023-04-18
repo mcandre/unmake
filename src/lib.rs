@@ -2211,4 +2211,18 @@ fn test_rules() {
             cs: vec!["@echo lib is now up-to-date".to_string()]
         }]
     );
+
+    assert_eq!(
+        parse_posix("A: =apple\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["A".to_string()],
+            ps: vec!["=apple".to_string()],
+            cs: Vec::new(),
+        }]
+    );
 }
