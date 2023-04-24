@@ -28,14 +28,12 @@ All of the above?
 # EXAMPLES
 
 ```console
-$ cd examples
+$ cd fixtures
 
-$ unmake Makefile; echo "$?"
-0
+$ unmake valid/makefile
 
-$ unmake bsd/makefile; echo "$?"
+$ unmake invalid/for-loop.BSDmakefile
 error at 1:16: expected one of " ", "$(", "${", ":", "\t", [^ (' ' | '\t' | ':' | ';' | '#' | '\r' | '\n')]
-1
 ```
 
 See `unmake -h` for more options.

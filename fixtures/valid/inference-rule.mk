@@ -1,0 +1,1 @@
+foo.o: foo.h

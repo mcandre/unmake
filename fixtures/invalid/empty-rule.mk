@@ -1,0 +1,4 @@
+DIR: FORCE
+	ls DIR
+
+FORCE:

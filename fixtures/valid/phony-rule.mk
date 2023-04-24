@@ -1,0 +1,4 @@
+.PHONY: DIR
+
+DIR:
+	ls DIR
