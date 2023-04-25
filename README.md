@@ -122,7 +122,9 @@ We do our best to catch POSIX make violations, but some may slip by. For example
 
 ## POSIX.1-202x Issue 8, draft 3
 
-POSIX is not a single standard, but a series of versioned standards. unmake targets the upcoming 202x edition of POSIX, specifically Issue 8, draft 3. Also known as The Open Group Issue 8, draft 3. Also known as IEEE P1003.1-202x/D3.
+https://www.opengroup.org/austin/
+
+POSIX is not a single standard, but a series of versioned standards. unmake targets the upcoming 202x edition of POSIX, specifically Issue 8, draft 3; alias Open Group Issue 8, draft 3; alias IEEE P1003.1-202x/D3.
 
 unmake assumes that make implementations already fully comply with the standard, supporting all syntax semantics, and the latest features required by the standard.
 
