@@ -86,21 +86,24 @@ https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html
 
 Briefly, characters in `makefiles` that are explicitly rejected by the standard, may be treated as parse errors. Implementation-defined behavior, undefined behavior, and certain ill-advised syntax, may be treated as parse errors.
 
-Common examples of `makefile` syntax that may trigger parse errors;
+Common examples of `makefile` syntax that may trigger parse errors:
 
 * Rule declarations with zero prerequisites, zero inline commands, and zero indented commands are out of spec.
 * Vintage macOS CR (`\r`) and Windows CRLF (`\r\n`) line endings are out of spec. If you have a need to contribute to projects with makefiles from a Windows machine, configure your text editor to use LF (`\n`) line endings (and a final LF as well).
 * Spaces (` `) en lieu of hard tabs (`\t`) at the beginning of rule commands, are out of spec.
-* Whitespace in the middle of a backslash escaped line feed sequence (`\\ \n`) is out of spec.
-* makefiles that end on a cliffhanger backslash escaped line feed sequence with no accompanying followup line in the same file (`\\\n<eof>`), are out of spec.
-* Macro assignments with no identifier (e.g., `=1`) are out of spec.
-* Plain leftover macro identifiers with no assignment (e.g., `A`) are out of spec.
-* Include paths with double-quotes (`"`) are out of spec.
-* Backslash escaped line feed sequences in include lines (`include`...`\\\n`) are out of spec.
+* Macro assignments with no identifier (`= 1`) are out of spec.
+* Plain leftover macro identifiers with no assignment (`A`) are out of spec.
+* Include paths with double-quotes (`""`) are out of spec.
+
+Certain escaped line feed sequences may trigger parse errors. For example:
+
+* Include lines featuring escaped newlines (`\\\n`) are rejected as undefined behavior, per the POSIX spec.
+* Escapes that end on an cliffhanger (`\\<EOF>`) are out of spec.
+* Trailing whitespace in the middle of an escaped line feed (`\\ \n`) are out of spec.
+* Escaped line feeds in general expressions (`$X\\\n`...) are out of spec.
+* Escaped line feeds in the middle of macro definition names, target names, and/or prerequisite names, are out of spec.
 
 Certain extensions beyond the POSIX `make` subset, such as GNU-isms, or BSD-isms, etc., may also trigger parse errors.
-
-Repeat: This is a linter focusing on extreme portability. We break things in testing, so that your software breaks less often in production.
 
 # LINTER WARNINGS
 
