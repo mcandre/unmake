@@ -251,6 +251,11 @@ parser! {
                 (ps, [inline_commands, indented_commands].concat())
             }
 
+        rule with_prerequisites_without_commands() -> (Vec<String>, Vec<String>) =
+            ps:(make_prerequisite() ++ _) _ ((comment() / line_ending())+ / eof()) {
+                (ps, Vec::new())
+            }
+
         rule commands_with_inline() -> Vec<String> =
             inline_commands:(inline_command()*<1,1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
                 [inline_commands, indented_commands].concat()
@@ -264,6 +269,41 @@ parser! {
         rule without_prerequisites() -> (Vec<String>, Vec<String>) =
             cs:(commands_with_inline() / commands_without_inline()) {
                 (Vec::new(), cs)
+            }
+
+        rule without_prerequisites_without_commands() -> (Vec<String>, Vec<String>) =
+            ((comment() / line_ending())+ / eof()) {
+                (Vec::new(), Vec::new())
+            }
+
+        rule special_unit_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+            t:$("." ("POSIX" / "NOTPARALLEL" / "WAIT")) _ ":" _ pcs:without_prerequisites_without_commands() {
+                (vec![t.to_string()], pcs)
+            }
+
+        rule special_command_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+            t:$("." ("DEFAULT" / "SCSS_GET")) _ ":" _ pcs:without_prerequisites() {
+                (vec![t.to_string()], pcs)
+            }
+
+        rule special_target_config_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+            t:$("." ("IGNORE" / "PHONY" / "PRECIOUS" / "SILENT" / "SUFFIXES")) _ ":" _ pcs:(with_prerequisites_without_commands() / without_prerequisites_without_commands()) {
+                (vec![t.to_string()], pcs)
+            }
+
+        rule special_target_rule() -> Gem =
+            (comment() / line_ending())* p:position!() tpcs:(special_unit_rule() / special_command_rule() / special_target_config_rule()) {
+                let (ts, (ps, cs)) = tpcs;
+
+                Gem {
+                    o: p,
+                    l: 0,
+                    n: Ore::Ru {
+                        ts,
+                        ps,
+                        cs: cs.into_iter().filter(|e| !e.is_empty()).collect(),
+                    }
+                }
             }
 
         rule make_rule() -> Gem =
@@ -356,7 +396,7 @@ parser! {
             }
 
         rule node() -> Gem =
-            n:(macro_definition() / make_rule() / include() / general_expression()) {
+            n:(macro_definition() / special_target_rule() / make_rule() / include() / general_expression()) {
                 n
             }
 

@@ -94,6 +94,7 @@ Common examples of `makefile` syntax that may trigger parse errors:
 * Macro assignments with no identifier (`= 1`) are out of spec.
 * Plain leftover macro identifiers with no assignment (`A`) are out of spec.
 * Include paths with double-quotes (`""`) are out of spec.
+* Declaring multiple special targets in the same rule is out of spec.
 
 Certain escaped line feed sequences may trigger parse errors. For example:
 
