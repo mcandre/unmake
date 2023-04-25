@@ -71,8 +71,8 @@ pub enum Ore {
 
     /// In models an include line.
     In {
-        /// p denotes the file path of a makefile to include.
-        p: String,
+        /// ps collects the file paths of any further makefile to include.
+        ps: Vec<String>,
     },
 
     /// Ex models a general macro expression.
@@ -328,23 +328,18 @@ parser! {
                 }
             }
 
-        rule simple_path() -> String =
-            s:$([^ ('"' | '\r' | '\n' | '\\' | '#')]+) {
+        rule include_value() -> String =
+            s:$([^ ('"' | ' ' | '\r' | '\n' | '\\' | '#')]+) {
                 s.to_string()
             }
 
-        rule include_value() -> String =
-            s:simple_path() ((comment() / line_ending())+ / eof()) {
-                s.trim_end().to_string()
-            }
-
         rule include() -> Gem =
-            (comment() / line_ending())* p:position!() "include" _ s:include_value() {
+            (comment() / line_ending())* p:position!() "include" _ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 Gem {
                     o: p,
                     l: 0,
                     n: Ore::In {
-                        p: s.to_string(),
+                        ps,
                     },
                 }
             }
@@ -439,14 +434,18 @@ fn test_grammar() {
 #[test]
 fn test_whitespace() {
     assert_eq!(
-        parse_posix("\n\ninclude  \tfoo.mk \t\n\n")
+        parse_posix("\n\ninclude  \tfoo.mk bar.mk \t\tbaz.mk \t\n\n")
             .unwrap()
             .ns
             .into_iter()
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::In {
-            p: "foo.mk".to_string(),
+            ps: vec![
+                "foo.mk".to_string(),
+                "bar.mk".to_string(),
+                "baz.mk".to_string(),
+            ]
         }]
     );
 
@@ -513,7 +512,7 @@ fn test_comments() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::In {
-            p: "foo.mk".to_string(),
+            ps: vec!["foo.mk".to_string()]
         }]
     );
 
