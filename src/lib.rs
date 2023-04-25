@@ -197,7 +197,7 @@ parser! {
             }
 
         rule comment() -> String =
-            ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
+            (("#" / "-include") ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
                 String::new()
             }
 
