@@ -372,9 +372,21 @@ include foo.mk
 ```
 
 ```make
+NAMES = Alice Bob Charlie
+```
+
+```make
 NAMES = Alice\
 Bob\
 Charlie
+```
+
+```make
+provision:
+	apt-get install -y cargo rust
+
+clean:
+	clean cargo
 ```
 
 ```make
