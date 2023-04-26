@@ -206,7 +206,9 @@ M += hello
 
 ## Incomplete macro definition
 
-Macro definitions take the form `<name> <assignment operator> [<value>]`. The first two are required.
+Macro definitions take the form `<name> <assignment operator> [<value>]`.
+
+The first two tokens, `<name>`, and `<assignment operator>` are required. The `<value>` may be omitted, when declaring a blank macro.
 
 ### Fail
 
