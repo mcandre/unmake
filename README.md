@@ -38,7 +38,7 @@ See `unmake -h` for more options.
 
 `unmake` catches many subtle makefile quirks. If your makefile fails to parse with `unmake`, pay close attention to line endings, indentation, and any implementation-specific syntax.
 
-See [PARSING.md](PARSING).md for more information.
+See [PARSING.md](PARSING.md) for more information.
 
 # LINTER WARNINGS
 
