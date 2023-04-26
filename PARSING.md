@@ -425,5 +425,5 @@ test-double-${i}:
 
 ### Mitigation
 
-* Rename GNU-specific makefiles to like `GNUmakefile`, for clarity.
 * Consider moving complex logic to a separate makefile, script, or compiled application.
+* For clarity, consider renaming GNU-specific makefiles to `GNUmakefile`
