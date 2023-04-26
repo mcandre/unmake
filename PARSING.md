@@ -318,9 +318,11 @@ Note that escaped newlines are distinct from newline literals, for example, `\n`
 
 POSIX make presents two distinct semantics for multiline expressions, using escaped newlines (`\\\n`).
 
-When an escaped newline occurs in a macro definition value, then the escaped newline is replaced with a single space.
+The portability risk of multiline *rule commands* is relatively minor. Most make implementations set the `SHELL` macro to a POSIX compatible sh interpreter able to pre-process escaped newlines, even when make itself runs in certain non-POSIX shells.
 
-However, POSIX prohibits escaped newlines in include lines.
+Note that POSIX prohibits escaped newlines in include lines.
+
+When an escaped newline occurs in a macro definition value, then the escaped newline is replaced with a single space.
 
 When an escaped newline occurs in a rule command, then the escaped newline is preserved and forwarded as a part of the final multiline command to be executed.
 
@@ -335,8 +337,6 @@ Escaped newlines featuring whitespace between the backslash and the line feed, m
 Escaped newlines occuring elsewhere in a makefile, may lack a definite parsing behavior. For example, in comments or general macro expressions.
 
 Escaped newlines occuring in the left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments, reduce the readability.
-
-The portability risk of multiline *rule commands* is relatively minor. Most make implementations set the `SHELL` macro to a POSIX compatible sh interpreter able to pre-process escaped newlines, even when make itself runs in certain non-POSIX shells.
 
 ### Fail
 
