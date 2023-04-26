@@ -361,8 +361,8 @@ Charlie
 provision \
 :
 	pip install \
-	bashate \
-	safety
+		bashate \
+		safety
 ```
 
 ### Pass
