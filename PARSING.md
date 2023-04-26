@@ -406,7 +406,7 @@ clean:
 * Handle whitespace carefully.
 * Handle multiline termination carefully.
 * Consider using multilines for complex macro definitions, complex commands, or commands expected to grow longer over time.
-* Move packages installed via [NPM](https://www.npmjs.com/) or [pip](https://pypi.org/project/pip/), to a relevant configuration file.
+* Track build-time packages installed via [NPM](https://www.npmjs.com/) or [pip](https://pypi.org/project/pip/), with a package manager-specific configuration file.
 * Consider moving complex rule logic to a separate makefile, script, or compiled application.
 * For classic Windows environments, acquire make from [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Chocolatey](https://chocolatey.org/), etc., which provide POSIX compatible interpreters.
 * For vintage environments like MS-DOS, FreeDOS, or OS/2 Warp, move complex rule commands to a dedicated script.
