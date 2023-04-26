@@ -184,12 +184,17 @@ parser! {
     grammar parser() for str {
         rule _ = (" " / "\t")*
 
-        rule eof() = ![_]
-
         rule line_ending() -> String =
             s:$("\n") {
                 s.to_string()
             }
+
+        rule macro_escaped_newline() -> String =
+            ("\\" line_ending()) {
+                " ".to_string()
+            }
+
+        rule eof() = ![_]
 
         rule escaped_non_line_ending() -> String =
             s:$("\\" [^ ('\r' | '\n')]) {
@@ -262,7 +267,7 @@ parser! {
             }
 
         rule commands_without_inline() -> Vec<String> =
-            ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()+) {
+            ((comment() / line_ending())+) indented_commands:(indented_command()+) {
                 indented_commands
             }
 
@@ -331,11 +336,6 @@ parser! {
                 s.to_string()
             }
 
-        rule macro_escaped_newline() -> String =
-            ("\\" line_ending()) {
-                " ".to_string()
-            }
-
         rule simple_macro_value() -> String =
             s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
                 s.to_string()
@@ -396,7 +396,7 @@ parser! {
             }
 
         rule node() -> Gem =
-            n:(macro_definition() / special_target_rule() / make_rule() / include() / general_expression()) {
+            n:(special_target_rule() / make_rule() / macro_definition() / include() / general_expression()) {
                 n
             }
 
@@ -595,6 +595,36 @@ fn test_offsets_and_line_numbers() {
                 n: "A".to_string(),
                 v: "apple".to_string(),
             }
+        }]
+    );
+}
+
+#[test]
+fn test_c_family_escape_preservation() {
+    assert_eq!(
+        parse_posix("all:\n\tprintf \"Hello World!\\\n\"\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["printf \"Hello World!\\\n\"".to_string()],
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("MSG=\"Hello World!\\n\"")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "MSG".to_string(),
+            v: "\"Hello World!\\n\"".to_string(),
         }]
     );
 }
