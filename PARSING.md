@@ -320,7 +320,9 @@ POSIX make presents two distinct semantics for multiline expressions, using esca
 
 When an escaped newline occurs in a macro definition value, then the escaped newline is replaced with a single space.
 
-When an escaped newline occurs in a rule command, then the escaped newline is preserved and forwarded as a part of the final multiline command to be executed. The subsequent is allowed to optionally omit the usual tab indentation. The first tab is not preserved in the final multiline command.
+When an escaped newline occurs in a rule command, then the escaped newline is preserved and forwarded as a part of the final multiline command to be executed.
+
+A subsequent rule command lines after a preceding escaped newline, is allowed to optionally omit the usual tab indentation. Regardless, the a tab in the first column is not preserved when make generates the final multiline command.
 
 Note that in both cases of multiline macro definitions and multiline rule commands, whitespace sensitivity may lead to subtle processing errors.
 
