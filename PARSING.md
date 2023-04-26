@@ -62,9 +62,9 @@ all:<LF>
 
 ## Rule command indentation
 
-make generally expects rule commands to be indented with one (hard) tab (`\t`).
+make generally expects rule commands to be indented with a tab (`\t`).
 
-Command lines preceded by an escaped newline (`\\\n`), as in a command line argument continuation, may optionally omit the tab.
+Command lines preceded by an escaped newline (`\\\n`), as in a command line argument continuation, may omit the tab, or indent arguments with additional tabs.
 
 ### Fail
 
