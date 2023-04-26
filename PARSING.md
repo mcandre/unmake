@@ -159,7 +159,7 @@ DIR:
 
 * Give the rule something useful to do: Introduce at least one prerequisite, indented command, and/or inline command.
 * Use `.PHONY` to denote targets that should always be freshly rebuilt.
-* Explicitly mark empty rules, using reset notation (`<target>:;`)
+* Explicitly mark empty rules with reset notation (`<target>:;`)
 * Certain special targets may be allowed to be empty. Other special targets may reject the `<target>:;` reset notation.
 * Comment out temporarily empty rules
 * Remove extraneous rules
