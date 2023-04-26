@@ -336,7 +336,9 @@ Escaped newlines featuring whitespace between the backslash and the line feed, m
 
 Escaped newlines occuring elsewhere in a makefile, may lack a definite parsing behavior. For example, in comments or general macro expressions.
 
-Escaped newlines occuring in the left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments, reduce the readability.
+Some escaped newlines occuring in more fringe areas can impair readability: The left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
+
+We encourage makefile authors to generally limit use of multiline makefile instructions to rule commands, where they can help to tidy up commands with long lists of arguments.
 
 ### Fail
 
