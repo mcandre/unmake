@@ -328,7 +328,7 @@ A subsequent rule command lines after a preceding escaped newline, is allowed to
 
 Note that in both cases of multiline macro definitions and multiline rule commands, whitespace sensitivity may lead to subtle processing errors.
 
-Escaped newlines followed directly by the end of file (`<eof>`), or subsequent lines that don't make sense for the preceding line, may trigger in parse errors.
+Escaped newlines that directly meet the end of the file (`<eof>`), or subsequent lines that don't make sense for the preceding line, may trigger in parse errors.
 
 Escaped newlines featuring trailing whitespace between the backslash and the line feed, may trigger parse errors.
 
