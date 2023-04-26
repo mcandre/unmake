@@ -310,9 +310,9 @@ test: unit-test .WAIT lint
 
 ### Multiline expressions
 
-POSIX make presents two distinct semantics for multiline expressions, using escaped newlines (`\\\n`).
-
 Note that escaped newlines are distinct from newline literals, for example, `\n` in the UNIX command `printf "Hello World!\n"`.
+
+POSIX make presents two distinct semantics for multiline expressions, using escaped newlines (`\\\n`).
 
 When an escaped newline occurs in a macro definition value, then the escaped newline is replaced with a single space.
 
