@@ -94,7 +94,7 @@ all:
 
 * Configure [EditorConfig](https://editorconfig.org/) and your text editor, to use hard tabs for indentation in makefiles. Reindent the rule declarations. Resave the file.
 * Indent `*.go` files with hard tabs as well.
-* Other languages are converging on four spaces for indentation, like C, C++, CSS, HTML, Java, JavaScript, Python, Ruby, shell, ...
+* Other languages are steadily converging on four spaces for indentation, like C, C++, CSS, HTML, Java, JavaScript, Python, Ruby, Rust, shell, ...
 * LISP and free-form text files, may not conform to K&R style C indentation. They use variable width indentation, which EditorConfig can model as essential a form of single space indentation.
 * Consider indenting any multiline command arguments an additional tab column deeper than its parent command, for readability.
 
