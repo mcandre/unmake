@@ -101,14 +101,14 @@ Some projects using `unmake` to safeguard their makefiles:
 # SEE ALSO
 
 * [BSD make](https://man.freebsd.org/cgi/man.cgi?make(1)), a popular make implementation with BSD extensions
-* [cmake](https://cmake.org/), an expressive build system for C/C++ projects that integrates with make and/or ninja
+* [cmake](https://cmake.org/), a make-adjacent build system with its own portability features
 * [GNU make](https://www.gnu.org/software/make/), a popular make implementation with GNU extensions
 * [Grunt](https://gruntjs.com/), Node.js task runners
 * [invoke](https://pypi.org/project/invoke/), a task runner for Python projects
 * [lake](https://luarocks.org/modules/steved/lake), a task runner for Lua projects
 * [mage](https://magefile.org/), a task runner for Go projects
 * [ninja](https://ninja-build.org/), a fast build system without conditionals
-* [nmake](https://learn.microsoft.com/en-us/cpp/build/reference/nmake-reference?view=msvc-170) is not POSIX compliant, but can run some rather limited POSIX makefiles, which avoid include lines and macros.
+* [nmake](https://learn.microsoft.com/en-us/cpp/build/reference/nmake-reference?view=msvc-170), a make-adjacent build system for .NET projects
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
 * [Shake](https://shakebuild.com/), a task runner for Haskell projects
 * [ShellCheck](https://www.shellcheck.net/), a linter for POSIX sh family shell scripts
