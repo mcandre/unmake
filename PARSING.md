@@ -330,7 +330,7 @@ Note that in both cases of multiline macro definitions and multiline rule comman
 
 Escaped newlines that directly meet the end of the file (`<eof>`), or subsequent lines that don't make sense for the preceding line, may trigger parse errors.
 
-Escaped newlines featuring trailing whitespace between the backslash and the line feed, may trigger parse errors.
+Escaped newlines featuring whitespace between the backslash and the line feed, may trigger parse errors.
 
 Escaped newlines occuring elsewhere in a makefile, may lack an official POSIX parsing behavior, and may reduce the makefile's human readability. For example, in comments or general macro expressions.
 
