@@ -1,0 +1,2 @@
+.NOTPARALLEL:
+	echo "Hello World!"

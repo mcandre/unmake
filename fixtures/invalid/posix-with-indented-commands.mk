@@ -1,0 +1,2 @@
+.POSIX:
+	echo "Hello World!"

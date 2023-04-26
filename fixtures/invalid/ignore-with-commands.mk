@@ -1,0 +1,2 @@
+.IGNORE:
+	echo "Hello World!"

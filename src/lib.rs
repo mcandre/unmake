@@ -6,7 +6,39 @@ extern crate peg;
 use peg::parser;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
+use std::str::Chars;
+
+/// UPPERCASE_ALPHABETIC matches ASCII uppercase characters.
+pub static UPPERCASE_ALPHABETIC: RangeInclusive<char> = 'A'..='Z';
+
+/// is_reserved reports whether a name is a reserved special target/prerequisite.
+///
+/// This includes standard POSIX special targets,
+/// targets reserved for future POSIX use,
+/// and targets reserved for implementation extensions.
+pub fn is_reserved(name: &str) -> bool {
+    let mut cs: Chars = name.chars();
+
+    match cs.next() {
+        Some('.') => match cs.next() {
+            Some(c) => c.is_ascii() && c.is_uppercase(),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+#[test]
+fn test_target_reservation_status() {
+    assert!(is_reserved(".POSIX"));
+    assert!(is_reserved(".XYZ"));
+    assert!(!is_reserved(".xyz"));
+    assert!(!is_reserved("XYZ"));
+    assert!(!is_reserved("all"));
+    assert!(!is_reserved("."));
+    assert!(!is_reserved(""));
+}
 
 /// Traceable prepares an AST entry to receive updates
 /// about parsing location details.
@@ -216,6 +248,20 @@ parser! {
                 s.to_string()
             }
 
+        rule simple_target() -> String =
+            s:$([^ (' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {?
+                if is_reserved(s) {
+                    Err("reserved target or prerequisite")
+                } else {
+                    Ok(s.to_string())
+                }
+            }
+
+        rule make_target() -> String =
+            s:$(simple_target() / "$(" simple_target() ")" / "${" simple_target() "}") {
+                s.to_string()
+            }
+
         rule simple_command_value() -> String =
             s:$([^ ('\r' | '\n' | '\\')]+) {
                 s.to_string()
@@ -287,7 +333,7 @@ parser! {
             }
 
         rule special_command_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
-            t:$("." ("DEFAULT" / "SCSS_GET")) _ ":" _ pcs:without_prerequisites() {
+            t:$("." ("DEFAULT" / "SCCS_GET")) _ ":" _ pcs:without_prerequisites() {
                 (vec![t.to_string()], pcs)
             }
 
@@ -312,7 +358,7 @@ parser! {
             }
 
         rule make_rule() -> Gem =
-            (comment() / line_ending())* p:position!() ts:(make_prerequisite() ++ _) _ ":" _ pcs:(with_prerequisites() / without_prerequisites()) {
+            (comment() / line_ending())* p:position!() ts:(make_target() ++ _) _ ":" _ pcs:(with_prerequisites() / without_prerequisites()) {
                 let (ps, cs) = pcs;
 
                 Gem {

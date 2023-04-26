@@ -1,0 +1,2 @@
+.PRECIOUS:
+	echo "Hello World!"

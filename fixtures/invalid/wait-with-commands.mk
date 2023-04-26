@@ -1,0 +1,2 @@
+.WAIT:
+	echo "Hello World!"

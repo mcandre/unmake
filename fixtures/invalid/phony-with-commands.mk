@@ -1,0 +1,2 @@
+.PHONY:
+	echo "Hello World!"

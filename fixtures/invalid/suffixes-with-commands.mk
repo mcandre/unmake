@@ -1,0 +1,2 @@
+.SUFFIXES:
+	echo "Hello World!"
