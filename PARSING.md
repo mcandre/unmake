@@ -332,9 +332,11 @@ Escaped newlines that directly meet the end of the file (`<eof>`), or subsequent
 
 Escaped newlines featuring whitespace between the backslash and the line feed, may trigger parse errors.
 
-Escaped newlines occuring elsewhere in a makefile, may lack an official POSIX parsing behavior, and may reduce the makefile's human readability. For example, in comments or general macro expressions.
+Escaped newlines occuring elsewhere in a makefile, may lack a definite parsing behavior. For example, in comments or general macro expressions.
 
-The portability risk of multiline rule commands is relatively minor. Most make implementations set the `SHELL` macro to a POSIX compatible `sh` interpreter.
+Escaped newlines occuring in the left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments, reduce the readability.
+
+The portability risk of multiline *rule commands* is relatively minor. Most make implementations set the `SHELL` macro to a POSIX compatible sh interpreter able to pre-process escaped newlines, even when make itself runs in certain non-POSIX shells.
 
 ### Fail
 
