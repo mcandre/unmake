@@ -323,6 +323,8 @@ Escaped newlines featuring trailing whitespace between the backslash and the lin
 
 Escaped newlines occuring elsewhere in a makefile, may lack an official POSIX parsing behavior, and may reduce the makefile's human readability. For example, in comments or general macro expressions.
 
+The portability risk of multiline rule commands is relatively minor. Most make implementations set the `SHELL` macro to a POSIX compatible `sh` interpreter.
+
 ### Fail
 
 ```make
@@ -377,7 +379,10 @@ clean:
 * Handle whitespace carefully.
 * Handle multiline termination carefully.
 * Reserve multilines for complex macro values or rule commands, especially those expected to grow over time.
+* Move packages installed via [NPM](https://www.npmjs.com/) or [pip](https://pypi.org/project/pip/), to a relevant configuration file.
 * Consider moving complex rule logic to a separate makefile, script, or compiled application.
+* For classic Windows environments, acquire make from [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Chocolatey](https://chocolatey.org/), etc., which provide POSIX compatible interpreters.
+* For vintage environments like MS-DOS, FreeDOS, or OS/2 Warp, move complex rule commands to a dedicated script.
 
 ## make implementation extensions
 
