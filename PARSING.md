@@ -412,7 +412,7 @@ provision :
 
 ## make implementation extensions
 
-Popular make implementations like GNU gmake and BSD bmake, support syntax extensions beyond POSIX. Certain implementation-specific syntax may trigger parse errors.
+Implementation-specific syntax may trigger parse errors. For example, syntax specific to GNU make or BSD make.
 
 ### Fail
 
@@ -423,10 +423,7 @@ test-double-${i}:
 .endfor
 ```
 
-(Specifically, the `.for` and `.endfor` lines, though the exact parse error indication may vary.)
-
 ### Mitigation
 
-* Familiarize with make implementation-specific syntax.
 * Rename GNU-specific makefiles to like `GNUmakefile`, for clarity.
 * Consider moving complex logic to a separate makefile, script, or compiled application.
