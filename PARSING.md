@@ -405,7 +405,7 @@ clean:
 * Avoid use of multiline instructions in makefiles in the left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
 * Handle whitespace carefully.
 * Handle multiline termination carefully.
-* Reserve multilines for complex macro values or rule commands, especially those expected to grow over time.
+* Reserve multilines for complex macro values or rule commands, such as those expected to grow even longer over time.
 * Move packages installed via [NPM](https://www.npmjs.com/) or [pip](https://pypi.org/project/pip/), to a relevant configuration file.
 * Consider moving complex rule logic to a separate makefile, script, or compiled application.
 * For classic Windows environments, acquire make from [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Chocolatey](https://chocolatey.org/), etc., which provide POSIX compatible interpreters.
