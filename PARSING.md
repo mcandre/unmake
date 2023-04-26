@@ -1,8 +1,6 @@
 # PARSING
 
-`unmake` follows a stiff reading of the POSIX `make` standard.
-
-Briefly, characters in `makefiles` that are explicitly rejected by the standard, may be treated as parse errors. Implementation-defined behavior, undefined behavior, and certain ill-advised syntax, may be treated as parse errors. Syntactical forms likely to cause problems, may be treated as parse errors.
+`unmake` follows a relatively stiff reading of the POSIX `make` standard. Our aim is to promote more portable, maintainable makefiles.
 
 # POSIX
 
@@ -101,12 +99,23 @@ all:
 
 Rule declarations generally require at least one of the following: A prerequisite, an inline command, and/or an indented command.
 
-Certain special targets are allowed at parse level to be declared with zero prerequisites + zero inline commands + zero indented commands: `.POSIX:`, `.IGNORE:`, `.NOTPARALLEL:`, `.PHONY:`, `.PRECIOUS:`, `.SILENT:`, `.SUFFIXES:`, and `.WAIT:`.
+Rules intentionally reset to empty, should generally feature a trailing semicolon (`test:;`).
+
+Ancient makefiles once used a convention of an empty prerequisite, in order to force make to freshly rebuild other targets. However, modern make enjoys the standard `.PHONY` special target for this.
+
+Note that certain special targets are allowed at parse level to be declared with zero prerequisites + zero inline commands + zero indented commands: `.POSIX:`, `.IGNORE:`, `.NOTPARALLEL:`, `.PHONY:`, `.PRECIOUS:`, `.SILENT:`, `.SUFFIXES:`, and `.WAIT:`. They may or may not accept a semicolon inline command, even a blank one.
 
 ### Fail
 
 ```make
 test:
+```
+
+```make
+DIR: FORCE
+	ls DIR
+
+FORCE:
 ```
 
 ### Pass
@@ -136,9 +145,17 @@ test:;
 <remove extraneous rules>
 ```
 
+```make
+.PHONY: DIR
+
+DIR:
+	ls DIR
+```
+
 ### Mitigation
 
 * Give the rule something useful to do: Introduce at least one prerequisite, indented command, and/or inline command.
+* Use `.PHONY` to denote targets that should always be freshly rebuilt.
 * Explicitly mark when rules should be intentionally reset to empty, using the POSIX syntax (`<target>:;`)
 * Note that certain special targets are allowed to be empty.
 * Comment out the rule
