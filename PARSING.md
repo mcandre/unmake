@@ -357,12 +357,9 @@ Charlie
 ```make
 provision \
 :
-	apt-get install -y \
-		cargo \
-		rust \
-
-clean:
-	clean cargo
+	pip install \
+        bashate \
+        safety
 ```
 
 ### Pass
@@ -382,21 +379,20 @@ Charlie
 ```
 
 ```make
-provision:
-	apt-get install -y cargo rust
-
-clean:
-	clean cargo
+provision :
+	pip install bashate safety
 ```
 
 ```make
-provision:
-	apt-get install -y \
-		cargo \
-		rust
+provision :
+	pip install \
+		bashate \
+		safety
+```
 
-clean:
-	clean cargo
+```make
+provision :
+	pip install -r requirements-dev.txt
 ```
 
 ### Mitigation
@@ -406,7 +402,7 @@ clean:
 * Handle whitespace carefully.
 * Handle multiline termination carefully.
 * Consider using multilines for complex macro definitions, complex commands, or commands expected to grow longer over time.
-* Track build-time packages installed via [NPM](https://www.npmjs.com/) or [pip](https://pypi.org/project/pip/), with a package manager-specific configuration file.
+* When possible, track build-time packages with a package manager-specific configuration file.
 * Consider moving complex rule logic to a separate makefile, script, or compiled application.
 * For classic Windows environments, acquire make from [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Chocolatey](https://chocolatey.org/), etc., which provide POSIX compatible interpreters.
 * For vintage environments like MS-DOS, FreeDOS, or OS/2 Warp, move complex rule commands to a dedicated script.
