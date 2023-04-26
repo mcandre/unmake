@@ -31,7 +31,7 @@ make users are advised to generally familiarize with basic make usage, syntax, a
 
 The legacy line endings CRLF (`\r\n`) and CR (`\r`) are out of spec. make expects LF (`\n`).
 
-In fact, the POSIX standard specifies that text files the LF line ending, as well as a final LF at the end of any non-zero-byte text file.
+In fact, the POSIX standard specifies that text files the LF line ending, as well as a final LF End Of Line (EOL) character at the end of any non-zero-byte text file.
 
 ### Fail
 
@@ -58,10 +58,11 @@ all:<LF>
 
 ### Mitigation
 
-* Configure [EditorConfig](https://editorconfig.org/) and your text editor, to default most any non-Windows-centric text file to LF line endings. If necessary, relaunch your text editor. Resave the file.
+* Note that recent editions of Notepad are LF-aware, but may continue to accidentally default to CRLF when creating new files. Use a more capable text editor, such as [emacs](https://www.gnu.org/software/emacs/), [nano](https://www.nano-editor.org/), [Notepad++](https://notepad-plus-plus.org/), [vim](https://www.vim.org/), [VSCode](https://code.visualstudio.com/), etc.
+* Configure [EditorConfig](https://editorconfig.org/) and your text editor, to default most any non-Windows-centric text files to LF line endings and a final EOL.
+* If necessary, relaunch the text editor and resave the file.
 * Reset [git](https://git-scm.com/)'s configuration (both the git-config and gitattributes systems) to the default behavior, which tends to preserve file endings as written
 * Apply [tofrodos](https://www.thefreecountry.com/tofrodos/index.shtml)'s `fromdos` utility on affected files
-* Note that recent editions of Notepad are LF-aware, but may continue to accidentally default to CRLF when creating new files. When working on technical files, use a more capable text editor such as [emacs](https://www.gnu.org/software/emacs/), [nano](https://www.nano-editor.org/), [Notepad++](https://notepad-plus-plus.org/), [vim](https://www.vim.org/), [VSCode](https://code.visualstudio.com/), etc.
 
 ## Rule command indentation
 
