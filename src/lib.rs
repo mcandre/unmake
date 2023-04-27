@@ -695,6 +695,8 @@ fn test_whitespace() {
             ],
         }]
     );
+
+    assert!(parse_posix(" \n").is_err());
 }
 
 #[test]
