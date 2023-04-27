@@ -28,8 +28,9 @@ $ cd fixtures
 
 $ unmake valid/makefile
 
-$ unmake invalid/for-loop.BSDmakefile
-error: 1:16 found "\n", expected one of: ":", macro expansion, target
+$ unmake invalid/crlf.mk invalid/soft-tabbed-rule.mk
+error: invalid/crlf.mk:1:5 found "\r", expected one of: ".WAIT", LF, comment, inline command, macro expansion, target
+error: invalid/soft-tabbed-rule.mk:2:1 found " ", expected one of: "\t", EOF, LF, comment, include opening, macro expansion, macro name literal, target
 ```
 
 See `unmake -h` for more options.

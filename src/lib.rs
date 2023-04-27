@@ -538,7 +538,7 @@ parser! {
 }
 
 /// parse_posix generates a makefile AST from a string.
-pub fn parse_posix(s: &str) -> Result<Mk, String> {
+pub fn parse_posix(pth: &str, s: &str) -> Result<Mk, String> {
     let mut ast: Mk = parser::parse(s).map_err(|err| {
         let loc: peg::str::LineCol = err.location;
 
@@ -557,7 +557,8 @@ pub fn parse_posix(s: &str) -> Result<Mk, String> {
             .unwrap_or("EOF".to_string());
 
         format!(
-            "error: {}:{} found {}, expected one of: {}",
+            "error: {}:{}:{} found {}, expected one of: {}",
+            pth,
             loc.line,
             loc.column,
             bad_token,
@@ -601,12 +602,11 @@ fn test_grammar() {
 
     for pth in valid_fixture_paths {
         let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
+        let pth_string: String = pth.display().to_string();
         assert_eq!(
-            parse_posix(makefile_str).map(|_| ()).map_err(|err| format!(
-                "unable to parse {}: {}",
-                pth.display(),
-                err
-            )),
+            parse_posix(&pth_string, makefile_str)
+                .map(|_| ())
+                .map_err(|err| format!("unable to parse {}: {}", &pth_string, err)),
             Ok(())
         );
     }
@@ -618,10 +618,11 @@ fn test_grammar() {
 
     for pth in invalid_fixture_paths {
         let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
+        let pth_string: String = pth.display().to_string();
         assert!(
-            parse_posix(makefile_str).is_err(),
+            parse_posix(&pth_string, makefile_str).is_err(),
             "failed to reject {}",
-            pth.display()
+            &pth_string
         );
     }
 }
@@ -629,7 +630,7 @@ fn test_grammar() {
 #[test]
 fn test_whitespace() {
     assert_eq!(
-        parse_posix("\n\ninclude  \tfoo.mk bar.mk \t\tbaz.mk \t\n\n")
+        parse_posix("-", "\n\ninclude  \tfoo.mk bar.mk \t\tbaz.mk \t\n\n")
             .unwrap()
             .ns
             .into_iter()
@@ -645,7 +646,7 @@ fn test_whitespace() {
     );
 
     assert_eq!(
-        parse_posix("BLANK  =  \n")
+        parse_posix("-", "BLANK  =  \n")
             .unwrap()
             .ns
             .into_iter()
@@ -658,7 +659,7 @@ fn test_whitespace() {
     );
 
     assert_eq!(
-        parse_posix("\n\nC  \t=  c \n\n")
+        parse_posix("-", "\n\nC  \t=  c \n\n")
             .unwrap()
             .ns
             .into_iter()
@@ -671,7 +672,7 @@ fn test_whitespace() {
     );
 
     assert_eq!(
-        parse_posix("\n\na-2.txt\tb-2.txt \tc-2.txt \t: \ta-1.txt\tb-1.txt \tc-1.txt \t\n\n\tcp a-1.txt a-2.txt\n\tcp b-1.txt b-2.txt\n\tcp c-1.txt c-2.txt \t\n")
+        parse_posix("-", "\n\na-2.txt\tb-2.txt \tc-2.txt \t: \ta-1.txt\tb-1.txt \tc-1.txt \t\n\n\tcp a-1.txt a-2.txt\n\tcp b-1.txt b-2.txt\n\tcp c-1.txt c-2.txt \t\n")
             .unwrap()
             .ns
             .into_iter()
@@ -696,25 +697,28 @@ fn test_whitespace() {
         }]
     );
 
-    assert!(parse_posix(" \n").is_err());
+    assert!(parse_posix("-", " \n").is_err());
 }
 
 #[test]
 fn test_comments() {
     assert_eq!(
-        parse_posix("\n# place foo.mk contents here\ninclude foo.mk\n# End of file\n")
-            .unwrap()
-            .ns
-            .into_iter()
-            .map(|e| e.n)
-            .collect::<Vec<Ore>>(),
+        parse_posix(
+            "-",
+            "\n# place foo.mk contents here\ninclude foo.mk\n# End of file\n"
+        )
+        .unwrap()
+        .ns
+        .into_iter()
+        .map(|e| e.n)
+        .collect::<Vec<Ore>>(),
         vec![Ore::In {
             ps: vec!["foo.mk".to_string()]
         }]
     );
 
     assert_eq!(
-        parse_posix("\n# C references a character\nC=c\n# End of file\n")
+        parse_posix("-", "\n# C references a character\nC=c\n# End of file\n")
             .unwrap()
             .ns
             .into_iter()
@@ -727,7 +731,7 @@ fn test_comments() {
     );
 
     assert_eq!(
-        parse_posix("\n# foo is an application binary\nfoo:foo.c\n\n# gcc is a common Linux compiler\n\tgcc -o foo foo.c\n# End of file\n")
+        parse_posix("-", "\n# foo is an application binary\nfoo:foo.c\n\n# gcc is a common Linux compiler\n\tgcc -o foo foo.c\n# End of file\n")
             .unwrap()
             .ns
             .into_iter()
@@ -744,7 +748,7 @@ fn test_comments() {
 #[test]
 fn test_offsets_and_line_numbers() {
     assert_eq!(
-        parse_posix("# alphabet\nA=apple").unwrap().ns,
+        parse_posix("-", "# alphabet\nA=apple").unwrap().ns,
         vec![Gem {
             o: 11,
             l: 2,
@@ -759,7 +763,7 @@ fn test_offsets_and_line_numbers() {
 #[test]
 fn test_c_family_escape_preservation() {
     assert_eq!(
-        parse_posix("all:\n\tprintf \"Hello World!\\\n\"\n")
+        parse_posix("-", "all:\n\tprintf \"Hello World!\\\n\"\n")
             .unwrap()
             .ns
             .into_iter()
@@ -773,7 +777,7 @@ fn test_c_family_escape_preservation() {
     );
 
     assert_eq!(
-        parse_posix("MSG=\"Hello World!\\n\"")
+        parse_posix("-", "MSG=\"Hello World!\\n\"")
             .unwrap()
             .ns
             .into_iter()
@@ -789,7 +793,7 @@ fn test_c_family_escape_preservation() {
 #[test]
 fn test_multiline_expressions() {
     assert_eq!(
-        parse_posix("FULL_NAME=Alice\\\nLiddell\n")
+        parse_posix("-", "FULL_NAME=Alice\\\nLiddell\n")
             .unwrap()
             .ns
             .into_iter()
@@ -802,7 +806,7 @@ fn test_multiline_expressions() {
     );
 
     assert_eq!(
-        parse_posix("foo: foo.c\n\tgcc\\\n-o foo\\\n\tfoo.c\n")
+        parse_posix("-", "foo: foo.c\n\tgcc\\\n-o foo\\\n\tfoo.c\n")
             .unwrap()
             .ns
             .into_iter()

@@ -11,7 +11,10 @@ use std::path;
 
 /// CLI entrypoint
 fn main() {
-    let brief: String = format!("Usage: {} <OPTIONS> <makefile>", env!("CARGO_PKG_NAME"));
+    let brief: String = format!(
+        "Usage: {} <OPTIONS> <makefile> [<makefile> ...]",
+        env!("CARGO_PKG_NAME")
+    );
 
     let mut opts: getopts::Options = getopts::Options::new();
     opts.optflag("h", "help", "print usage info");
@@ -29,23 +32,31 @@ fn main() {
         die!(0; format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")));
     }
 
-    let path_strings: Vec<String> = optmatches.free;
+    let pth_strings: Vec<String> = optmatches.free;
 
-    if path_strings.len() != 1 {
+    if pth_strings.is_empty() {
         die!(1; usage);
     }
 
-    let path_string: &String = path_strings.get(0).die(&usage);
-    let p: &path::Path = path::Path::new(path_string);
-    let md: fs::Metadata = fs::metadata(p).die("unable to access file path");
+    let mut found_quirk = false;
 
-    if md.is_dir() {
-        die!(1; usage);
+    for pth_string in pth_strings {
+        let pth: &path::Path = path::Path::new(&pth_string);
+        let md: fs::Metadata = fs::metadata(pth).die("unable to access file path");
+
+        if md.is_dir() {
+            die!(1; usage);
+        }
+
+        let makefile_str: &str = &fs::read_to_string(pth).die("unable to read makefile");
+
+        if let Err(err) = unmake::parse_posix(&pth_string, makefile_str) {
+            found_quirk = true;
+            eprintln!("{}", err);
+        };
     }
 
-    let makefile_str: &str = &fs::read_to_string(p).die("unable to read makefile");
-
-    if let Err(err) = unmake::parse_posix(makefile_str) {
-        die!(err);
-    };
+    if found_quirk {
+        die!(1);
+    }
 }
