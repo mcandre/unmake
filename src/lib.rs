@@ -4,7 +4,7 @@ extern crate lazy_static;
 extern crate peg;
 
 use peg::parser;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::ops::{Range, RangeInclusive};
 use std::str::Chars;
@@ -12,29 +12,51 @@ use std::str::Chars;
 /// UPPERCASE_ALPHABETIC matches ASCII uppercase characters.
 pub static UPPERCASE_ALPHABETIC: RangeInclusive<char> = 'A'..='Z';
 
-/// is_reserved reports whether a name is a reserved special target/prerequisite.
-///
-/// This includes standard POSIX special targets,
-/// targets reserved for future POSIX use,
-/// and targets reserved for implementation extensions.
-pub fn is_reserved(name: &str) -> bool {
-    let mut cs: Chars = name.chars();
+lazy_static::lazy_static! {
+    /// SPECIAL_TARGETS collects POSIX special target names.
+    pub static ref SPECIAL_TARGETS: BTreeSet<String> = vec![
+            ".POSIX".to_string(),
+            ".DEFAULT".to_string(),
+            ".IGNORE".to_string(),
+            ".NOTPARALLEL".to_string(),
+            ".PHONY".to_string(),
+            ".PRECIOUS".to_string(),
+            ".SCCS_GET".to_string(),
+            ".SILENT".to_string(),
+            ".SUFFIXES".to_string(),
+            ".WAIT".to_string(),
+        ]
+        .into_iter()
+        .collect::<BTreeSet<String>>();
+}
 
-    match cs.next() {
-        Some('.') => match cs.next() {
-            Some(c) => c.is_ascii() && c.is_uppercase(),
+/// is_reserved reports non-special, reserved target names.
+pub fn is_reserved(name: &str) -> bool {
+    if SPECIAL_TARGETS.contains(name) {
+        false
+    } else {
+        let mut cs: Chars = name.chars();
+
+        match cs.next() {
+            Some('.') => match cs.next() {
+                Some(c) => c.is_ascii() && c.is_uppercase(),
+                _ => false,
+            },
             _ => false,
-        },
-        _ => false,
+        }
     }
 }
 
 #[test]
 fn test_target_reservation_status() {
-    assert!(is_reserved(".POSIX"));
+    assert!(is_reserved(".POSIX1"));
+    assert!(!is_reserved(".POSIX"));
+    assert!(!is_reserved(".WAIT"));
+
     assert!(is_reserved(".XYZ"));
     assert!(!is_reserved(".xyz"));
     assert!(!is_reserved("XYZ"));
+
     assert!(!is_reserved("all"));
     assert!(!is_reserved("."));
     assert!(!is_reserved(""));
@@ -214,58 +236,72 @@ impl Traceable for Mk {
 
 parser! {
     grammar parser() for str {
-        rule _ = (" " / "\t")*
+        rule _ = quiet!{(" " / "\t")*} / expected!("whitespace")
 
         rule line_ending() -> String =
-            s:$("\n") {
-                s.to_string()
-            }
+            quiet!{
+                s:$"\n" {
+                    s.to_string()
+                }
+            } / expected!("LF")
 
         rule macro_escaped_newline() -> String =
-            ("\\" line_ending()) {
-                " ".to_string()
-            }
+            quiet!{
+                ("\\" line_ending()) {
+                    " ".to_string()
+                }
+            } / expected!("escaped LF")
 
-        rule eof() = ![_]
+        rule eof() = quiet!{![_]} / expected!("EOF")
 
         rule escaped_non_line_ending() -> String =
-            s:$("\\" [^ ('\r' | '\n')]) {
-                s.to_string()
-            }
+            quiet!{
+                s:$("\\" [^ (' ' | '\t' | '\r' | '\n')]) {
+                    s.to_string()
+                }
+            } / expected!("c-style escape")
 
         rule comment() -> String =
-            (("#" / "-include") ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
-                String::new()
-            }
-
-        rule simple_prerequisite() -> String =
-            s:$([^ (' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {
-                s.to_string()
-            }
-
-        rule make_prerequisite() -> String =
-            s:$(simple_prerequisite() / "$(" simple_prerequisite() ")" / "${" simple_prerequisite() "}") {
-                s.to_string()
-            }
-
-        rule simple_target() -> String =
-            s:$([^ (' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {?
-                if is_reserved(s) {
-                    Err("reserved target or prerequisite")
-                } else {
-                    Ok(s.to_string())
+            quiet!{
+                ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
+                    String::new()
                 }
-            }
+            } / expected!("comment")
 
-        rule make_target() -> String =
-            s:$(simple_target() / "$(" simple_target() ")" / "${" simple_target() "}") {
+        rule macro_expansion() -> String =
+            quiet!{
+                s:$(("$(" macro_name() ")") / ("${" macro_name() "}")) {
+                    s.to_string()
+                }
+            } / expected!("macro expansion")
+
+        rule non_special_target_literal() -> String =
+            quiet!{
+                s:$([^ ('"' | ' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {?
+                    if SPECIAL_TARGETS.contains(s) {
+                        Err("special target")
+                    } else {
+                        Ok(s.to_string())
+                    }
+                }
+            } / expected!("target")
+
+        rule target() -> String =
+            s:$(non_special_target_literal() / macro_expansion()) {
                 s.to_string()
             }
 
-        rule simple_command_value() -> String =
-            s:$([^ ('\r' | '\n' | '\\')]+) {
+        rule prerequisite() -> String =
+            s:$(non_special_target_literal() / ".WAIT" / macro_expansion()) {
                 s.to_string()
             }
+
+        rule simple_command() -> String =
+            quiet!{
+                s:$([^ ('\r' | '\n' | '\\')]+ escaped_non_line_ending()* [^ ('\r' | '\n' | '\\')]*) {
+                    s.to_string()
+                }
+            } / expected!("command")
 
         rule command_escaped_newline() -> String =
             s:$("\\" line_ending()) "\t"*<0,1> {
@@ -278,7 +314,7 @@ parser! {
             }
 
         rule compound_make_command() -> String =
-            s:(simple_command_value() / multiline_command() / escaped_non_line_ending()) {
+            s:(simple_command() / multiline_command()) {
                 s.to_string()
             }
 
@@ -288,9 +324,11 @@ parser! {
             }
 
         rule inline_command() -> String =
-            ";" _ strings:make_command()*<0,1> {
-                strings.join("")
-            }
+            quiet!{
+                ";" _ strings:make_command()*<0,1> {
+                    strings.join("")
+                }
+            } / expected!("inline command")
 
         rule indented_command() -> String =
             (comment() / line_ending())* "\t" s:make_command() (line_ending()+ / eof()) {
@@ -298,12 +336,12 @@ parser! {
             }
 
         rule with_prerequisites() -> (Vec<String>, Vec<String>) =
-            ps:(make_prerequisite() ++ _) _ inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
+            ps:(prerequisite() ++ _) _ inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
                 (ps, [inline_commands, indented_commands].concat())
             }
 
         rule with_prerequisites_without_commands() -> (Vec<String>, Vec<String>) =
-            ps:(make_prerequisite() ++ _) _ ((comment() / line_ending())+ / eof()) {
+            ps:(prerequisite() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 (ps, Vec::new())
             }
 
@@ -327,23 +365,44 @@ parser! {
                 (Vec::new(), Vec::new())
             }
 
+        rule special_unit_target() -> String =
+            quiet!{
+                s:$("." ("POSIX" / "NOTPARALLEL" / "WAIT")) {
+                    s.to_string()
+                }
+            } / expected!("target")
+
         rule special_unit_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
-            t:$("." ("POSIX" / "NOTPARALLEL" / "WAIT")) _ ":" _ pcs:without_prerequisites_without_commands() {
+            t:special_unit_target() _ ":" _ pcs:without_prerequisites_without_commands() {
                 (vec![t.to_string()], pcs)
             }
 
-        rule special_command_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
-            t:$("." ("DEFAULT" / "SCCS_GET")) _ ":" _ pcs:without_prerequisites() {
+        rule special_commands_target() -> String =
+            quiet!{
+                s:$("." ("DEFAULT" / "SCCS_GET")) {
+                    s.to_string()
+                }
+            } / expected!("target")
+
+        rule special_commands_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+            t:special_commands_target() _ ":" _ pcs:without_prerequisites() {
                 (vec![t.to_string()], pcs)
             }
+
+        rule special_config_target() -> String =
+            quiet!{
+                s:$("." ("IGNORE" / "PHONY" / "PRECIOUS" / "SILENT" / "SUFFIXES")) {
+                    s.to_string()
+                }
+            } / expected!("target")
 
         rule special_target_config_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
-            t:$("." ("IGNORE" / "PHONY" / "PRECIOUS" / "SILENT" / "SUFFIXES")) _ ":" _ pcs:(with_prerequisites_without_commands() / without_prerequisites_without_commands()) {
+            t:special_config_target() _ ":" _ pcs:(with_prerequisites_without_commands() / without_prerequisites_without_commands()) {
                 (vec![t.to_string()], pcs)
             }
 
         rule special_target_rule() -> Gem =
-            (comment() / line_ending())* p:position!() tpcs:(special_unit_rule() / special_command_rule() / special_target_config_rule()) {
+            (comment() / line_ending())* p:position!() tpcs:(special_unit_rule() / special_commands_rule() / special_target_config_rule()) {
                 let (ts, (ps, cs)) = tpcs;
 
                 Gem {
@@ -358,7 +417,7 @@ parser! {
             }
 
         rule make_rule() -> Gem =
-            (comment() / line_ending())* p:position!() ts:(make_target() ++ _) _ ":" _ pcs:(with_prerequisites() / without_prerequisites()) {
+            (comment() / line_ending())* p:position!() ts:(target() ++ _) _ ":" _ pcs:(with_prerequisites() / without_prerequisites()) {
                 let (ps, cs) = pcs;
 
                 Gem {
@@ -372,20 +431,24 @@ parser! {
                 }
             }
 
-        rule simple_macro_name() -> String =
-            s:$(['.' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z']+) {
-                s.to_string()
-            }
+        rule macro_name_literal() -> String =
+            quiet!{
+                s:$(['.' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z']+) {
+                    s.to_string()
+                }
+            } / expected!("macro name literal")
 
         rule macro_name() -> String =
-            comment()* s:$(simple_macro_name() / "$(" simple_macro_name() ")" / "${" simple_macro_name() "}") {
+            comment()* s:$(macro_name_literal() / macro_expansion()) {
                 s.to_string()
             }
 
-        rule simple_macro_value() -> String =
-            s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
-                s.to_string()
-            }
+        rule macro_value_literal() -> String =
+            quiet!{
+                s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
+                    s.to_string()
+                }
+            } / expected!("macro value literal")
 
         rule multiline_macro_value() -> String =
             a:macro_escaped_newline() b:compound_macro_value() {
@@ -393,7 +456,7 @@ parser! {
             }
 
         rule compound_macro_value() -> String =
-            s:(simple_macro_value() / multiline_macro_value() / escaped_non_line_ending()) {
+            s:(macro_value_literal() / multiline_macro_value() / escaped_non_line_ending()) {
                 s.to_string()
             }
 
@@ -402,8 +465,15 @@ parser! {
                 strings.join("")
             }
 
+        rule assignment_operator() -> String =
+            quiet!{
+                s:$(("+" / "!" / "?" / ":::" / "::")*<0,1> "=") {
+                    s.to_string()
+                }
+            } / expected!("assignment operator")
+
         rule macro_definition() -> Gem =
-            (comment() / line_ending())* p:position!() n:macro_name() _ ("+=" / "!=" / "?=" / ":::=" / "::=" / "=") _ v:macro_value() {
+            (comment() / line_ending())* p:position!() n:macro_name() _ assignment_operator() _ v:macro_value() {
                 Gem {
                     o: p,
                     l: 0,
@@ -414,13 +484,27 @@ parser! {
                 }
             }
 
+        rule include_value_literal() -> String =
+            quiet!{
+                s:$([^ ('"' | ' ' | '\r' | '\n' | '\\' | '#')]+) {
+                    s.to_string()
+                }
+            } / expected!("include value literal")
+
         rule include_value() -> String =
-            s:$([^ ('"' | ' ' | '\r' | '\n' | '\\' | '#')]+) {
+            s:$(include_value_literal() / macro_expansion()) {
                 s.to_string()
             }
 
+        rule include_opening() -> String =
+            quiet!{
+                s:$("-include" / "include") {
+                    s.to_string()
+                }
+            } / expected!("include opening")
+
         rule include() -> Gem =
-            (comment() / line_ending())* p:position!() "include" _ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
+            (comment() / line_ending())* p:position!() include_opening() _ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 Gem {
                     o: p,
                     l: 0,
@@ -431,12 +515,12 @@ parser! {
             }
 
         rule general_expression() -> Gem =
-            (comment() / line_ending())* p:position!() command:$("$(" _ simple_macro_name() _ ")" / "${" _ simple_macro_name() _ "}") args:(macro_value()?) {
+            (comment() / line_ending())* p:position!() expression:macro_expansion() args:(macro_value()?) {
                 Gem {
                     o: p,
                     l: 0,
                     n: Ore::Ex {
-                        e: format!("{}{}", command, args.unwrap_or(String::new())),
+                        e: format!("{}{}", expression, args.unwrap_or(String::new())),
                     },
                 }
             }
@@ -455,7 +539,32 @@ parser! {
 
 /// parse_posix generates a makefile AST from a string.
 pub fn parse_posix(s: &str) -> Result<Mk, String> {
-    let mut ast: Mk = parser::parse(s).map_err(|err| err.to_string())?;
+    let mut ast: Mk = parser::parse(s).map_err(|err| {
+        let loc: peg::str::LineCol = err.location;
+
+        let mut valid_tokens: Vec<&str> = err
+            .expected
+            .tokens()
+            .collect::<BTreeSet<&str>>()
+            .into_iter()
+            .collect();
+        valid_tokens.sort();
+
+        let bad_token: String = s
+            .chars()
+            .nth(loc.offset)
+            .map(|e| format!("\"{}\"", e.to_string().escape_debug()))
+            .unwrap_or("EOF".to_string());
+
+        format!(
+            "error: {}:{} found {}, expected one of: {}",
+            loc.line,
+            loc.column,
+            bad_token,
+            valid_tokens.join(", ")
+        )
+    })?;
+
     let index: HashMap<Range<usize>, usize> = [
         vec![0],
         s.match_indices('\n').map(|(offset, _)| offset).collect(),

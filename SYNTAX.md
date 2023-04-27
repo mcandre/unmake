@@ -89,11 +89,17 @@ all:<LF>
 * Reset [git](https://git-scm.com/)'s configuration (both the git-config and gitattributes systems) to the default behavior, which tends to preserve file endings as written
 * Apply [tofrodos](https://www.thefreecountry.com/tofrodos/index.shtml)'s `fromdos` utility on affected files
 
-## Rule command indentation
+## Whitespace sensitivity
 
 make generally expects rule commands to be indented with a tab (`\t`).
 
 Command lines preceded by an escaped newline (`\\\n`), as in a command line argument continuation, may omit the tab, or indent arguments with additional tabs.
+
+Whitespace may present issues in macro expansions.
+
+Whitespace may present issues in otherwise empty lines.
+
+Whitespace may present issues leading include lines, macro definitions, or rules.
 
 ### Fail
 
@@ -112,11 +118,37 @@ all:
 <mixed spaces and tabs>echo "Hello World!"
 ```
 
+```make
+M = "Hello World!"
+
+all:
+	echo $( M )
+```
+
+```make
+<space>include foo.mk
+
+<space>
+<space><space>
+<tab>
+```
+
 ### Pass
 
 ```make
 all:
 <tab>echo "Hello World!"
+```
+
+```make
+M = "Hello World!"
+
+all:
+	echo $(M)
+```
+
+```make
+include foo.mk
 ```
 
 ### Mitigation
@@ -364,7 +396,7 @@ Escaped newlines featuring whitespace between the backslash and the line feed, m
 
 Escaped newlines occuring elsewhere in a makefile, may lack a definite parsing behavior. For example, in comments or general macro expressions.
 
-Some escaped newlines occuring in more fringe areas can impair readability: The left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
+Some escaped newlines occuring in more fringe areas can impair readability: The left side of macro assignment operators, inside macro expansions, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
 
 We encourage makefile authors to generally limit use of multiline makefile instructions to rule commands, where they can help to tidy up commands with long lists of arguments.
 
@@ -426,7 +458,7 @@ provision :
 ### Mitigation
 
 * Configure [EditorConfig](https://editorconfig.org/) to remove most trailing whitespace.
-* Avoid use of multiline instructions in makefiles in the left side of macro assignment operators, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
+* Avoid use of multiline instructions in makefiles in the left side of macro assignment operators, inside macro expansions, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
 * Handle whitespace carefully.
 * Handle multiline termination carefully.
 * Consider using multilines for complex macro definitions, complex commands, or commands expected to grow longer over time.
