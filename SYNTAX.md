@@ -1,6 +1,33 @@
-# PARSING
+# SYNTAX
 
-`unmake` follows a relatively stiff reading of the POSIX `make` standard. Our aim is to promote more portable, maintainable makefiles.
+`unmake` follows a relatively stiff reading of the POSIX `make` standard. POSIX discipline helps to maintain a higher degree of portability for makefiles, across many different operating environments.
+
+# EXAMPLE
+
+makefile
+
+```make
+.PHONY: all
+
+all:
+	@echo "Hello World!"
+```
+
+Usage:
+
+```console
+$ make
+Hello World!
+```
+
+## Notes
+
+* The lowercase `makefile` filename has faster precedence order than `Makefile`.
+* `.PHONY` marks logical targets like `all`, intended to re-run whenever the task is called for.
+* The first non-special target with no prerequisites is the default target, conventionally named `all`.
+* Minimal UNIX or Windows-specific arguments supplied to the `echo` command.
+* No single quotes (`'`) string arguments, which may break in certain Windows environments.
+* Optionally use `.SILENT:` instead of indivual `@` command markers, to silence all commands.
 
 # POSIX
 
@@ -24,8 +51,6 @@ We do our best to catch many of the more obvious POSIX make mistakes, but some m
 * Logic errors
 
 make users are advised to generally familiarize with basic make usage, syntax, and semantics, in order to resolve problems faster.
-
-# MAKEFILE SYNTAX QUIRKS
 
 ## Line endings
 
