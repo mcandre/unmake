@@ -45,7 +45,8 @@ We do our best to catch many of the more obvious POSIX make mistakes, but some m
 * Misuse of reserved target names
 * Behavior during live `make` script execution
 * GNU/BSD/etc. extensions beyond the POSIX standard
-* Variance in make implementation adherence to the POSIX standard
+* Variance in make implementation adherence to POSIX
+* Older make implementation releases targeting older POSIX standards
 * Clock and file system timestamp variance
 * Files not named like `makefile` or `*.mk`
 * Logic errors
