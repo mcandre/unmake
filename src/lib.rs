@@ -4,7 +4,7 @@ extern crate lazy_static;
 extern crate peg;
 
 use peg::parser;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{Range, RangeInclusive};
 use std::str::Chars;
@@ -14,7 +14,7 @@ pub static UPPERCASE_ALPHABETIC: RangeInclusive<char> = 'A'..='Z';
 
 lazy_static::lazy_static! {
     /// SPECIAL_TARGETS collects POSIX special target names.
-    pub static ref SPECIAL_TARGETS: BTreeSet<String> = vec![
+    pub static ref SPECIAL_TARGETS: HashSet<String> = vec![
             ".POSIX".to_string(),
             ".DEFAULT".to_string(),
             ".IGNORE".to_string(),
@@ -27,7 +27,7 @@ lazy_static::lazy_static! {
             ".WAIT".to_string(),
         ]
         .into_iter()
-        .collect::<BTreeSet<String>>();
+        .collect::<HashSet<String>>();
 }
 
 /// is_reserved reports non-special, reserved target names.
@@ -545,7 +545,7 @@ pub fn parse_posix(s: &str) -> Result<Mk, String> {
         let mut valid_tokens: Vec<&str> = err
             .expected
             .tokens()
-            .collect::<BTreeSet<&str>>()
+            .collect::<HashSet<&str>>()
             .into_iter()
             .collect();
         valid_tokens.sort();
