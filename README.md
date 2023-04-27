@@ -29,7 +29,7 @@ $ cd fixtures
 $ unmake valid/makefile
 
 $ unmake invalid/for-loop.BSDmakefile
-error at 1:16: expected one of " ", "$(", "${", ":", "\t", [^ (' ' | '\t' | ':' | ';' | '#' | '\r' | '\n')]
+error: 1:16 found "\n", expected one of: ":", macro expansion, target
 ```
 
 See `unmake -h` for more options.
