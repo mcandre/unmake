@@ -89,8 +89,12 @@ impl fmt::Display for Metadata {
 /// whether the makefile is likely to use extensions beyond pure POSIX,
 /// and whether the makefile is likely to be machine generated.
 ///
-/// May present false positives for nmake
-/// and other makefiles unrelated to the POSIX family.
+/// May present some false positives for nnmake makefiles,
+/// which are not in the POSIX make family.
+///
+/// May present some false negatives for makefile assets
+/// when manually written makefiles are used
+/// interchangeably with parent build systems.
 pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
     let pth_abs: path::PathBuf = pth
         .canonicalize()
