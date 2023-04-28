@@ -30,23 +30,23 @@ fn unmake() {
     tinyrick::exec!("unmake", &["makefile"]);
 }
 
-/// Validate documentation and run linters
-fn lint() {
-    tinyrick::deps(doc);
-    tinyrick::deps(clippy);
-    tinyrick::deps(rustfmt);
-    tinyrick::deps(unmake);
-}
-
 /// Lint, and then install artifacts
 fn install() {
-    tinyrick::deps(lint);
     tinyrick::exec!("cargo", &["install", "--force", "--path", "."]);
 }
 
 /// Uninstall artifacts
 fn uninstall() {
     tinyrick::exec!("cargo", &["uninstall"]);
+}
+
+/// Validate documentation and run linters
+fn lint() {
+    tinyrick::deps(install);
+    tinyrick::deps(doc);
+    tinyrick::deps(clippy);
+    tinyrick::deps(rustfmt);
+    tinyrick::deps(unmake);
 }
 
 /// Run tests

@@ -4,6 +4,7 @@ extern crate die;
 extern crate getopts;
 extern crate unmake;
 
+use self::unmake::ast;
 use die::{die, Die};
 use std::env;
 use std::fs;
@@ -50,7 +51,7 @@ fn main() {
 
         let makefile_str: &str = &fs::read_to_string(pth).die("unable to read makefile");
 
-        if let Err(err) = unmake::parse_posix(&pth_string, makefile_str) {
+        if let Err(err) = ast::parse_posix(&pth_string, makefile_str) {
             found_quirk = true;
             eprintln!("{}", err);
         };

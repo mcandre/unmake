@@ -22,7 +22,7 @@ name = "unmake"
 
 [[bin]]
 name = "unmake"
-path = "src/unmake.rs"
+path = "src/bin/unmake.rs"
 
 [[bin]]
 name = "tinyrick"
