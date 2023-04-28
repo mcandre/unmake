@@ -19,7 +19,7 @@ $ cd fixtures
 $ unmake valid/makefile
 
 $ unmake invalid/crlf.mk
-error: invalid/crlf.mk:1:5 found "\r", expected one of: ".WAIT", LF, comment, inline command, macro expansion, target
+error: invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
 
 $ unmake -i valid/makefile | jq .
 {

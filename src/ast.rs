@@ -291,8 +291,15 @@ parser! {
                 s.to_string()
             }
 
+        rule wait_prerequisite() -> String =
+            quiet!{
+                s:$(".WAIT") {
+                    s.to_string()
+                }
+            } / expected!("wait prerequisite marker")
+
         rule prerequisite() -> String =
-            s:$(non_special_target_literal() / ".WAIT" / macro_expansion()) {
+            s:$(non_special_target_literal() / wait_prerequisite() / macro_expansion()) {
                 s.to_string()
             }
 
@@ -557,7 +564,7 @@ pub fn parse_posix(pth: &str, s: &str) -> Result<Mk, String> {
             .unwrap_or("EOF".to_string());
 
         format!(
-            "error: {}:{}:{} found {}, expected one of: {}",
+            "error: {}:{}:{} found {}, expected: {}",
             pth,
             loc.line,
             loc.column,
