@@ -9,17 +9,7 @@
 
 # ABOUT
 
-`unmake` is a makefile linter that promotes extreme portability.
-
-Too many makefiles online are restricted to building only as Works On My Machine^TM.
-
-`unmake` bucks this trend, encouraging the makefile author to think more critically about what level of platform support they want for their software builds.
-
-Do you want to be able to build your software on macOS? On Linux? On FreeBSD? On Windows (Command Prompt, PowerShell, *and/or* WSL)? On `fish` terminals?
-
-All of the above?
-
-`unmake` can help to catch vendor-lock issues earlier in the SDLC process. So that your apps can build more reliably, for more contributors to enjoy.
+`unmake` is a POSIX makefile linter emphasizing portability. `unmake` helps your software projects build more reliably on different machines.
 
 # EXAMPLES
 
@@ -28,9 +18,16 @@ $ cd fixtures
 
 $ unmake valid/makefile
 
-$ unmake invalid/crlf.mk invalid/soft-tabbed-rule.mk
+$ unmake invalid/crlf.mk
 error: invalid/crlf.mk:1:5 found "\r", expected one of: ".WAIT", LF, comment, inline command, macro expansion, target
-error: invalid/soft-tabbed-rule.mk:2:1 found " ", expected one of: "\t", EOF, LF, comment, include opening, macro expansion, macro name literal, target
+
+$ unmake -i valid/makefile | jq .
+{
+  "path": "/Users/andrew/go/src/github.com/mcandre/unmake/fixtures/valid/Makefile",
+  "is_makefile": true,
+  "build_system": "make",
+  "is_machine_generated": false
+}
 ```
 
 See `unmake -h` for more options.
@@ -63,7 +60,7 @@ https://github.com/mcandre/unmake/releases
 $ cargo install --force --path .
 ```
 
-# MOTIVATION
+# ABOUT
 
 The `unmake` linter serves several purposes.
 
@@ -77,9 +74,15 @@ The `unmake` linter serves several purposes.
 
 The dream is for every `makefile` to behave as a *polyglot* script, cabable of running well on most any computer platform with a `make` implementation installed.
 
+Note that certain build systems like Microsoft nmake, may not always follow POSIX syntax or semantics, even if their configuration files happened to be named `makefile`.
+
 # RUNTIME REQUIREMENTS
 
 (None)
+
+## Recommended
+
+* [jq](https://stedolan.github.io/jq/)
 
 # CONTRIBUTING
 
