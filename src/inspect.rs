@@ -98,7 +98,7 @@ impl fmt::Display for Metadata {
 pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
     let pth_abs: path::PathBuf = pth
         .canonicalize()
-        .map_err(|_| "error: unable to resolve file path".to_string())?;
+        .map_err(|_| format!("error: unable to resolve {}", pth.display()))?;
 
     let mut metadata: Metadata = Metadata::new();
     metadata.path = pth_abs.display().to_string();
@@ -115,42 +115,81 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         .unwrap_or("")
         .to_lowercase();
 
-    if !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename)
-        && !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension)
-    {
+    if let Some(implementation) = LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension) {
+        metadata.is_makefile = true;
+        metadata.build_system = implementation.to_string();
+    }
+
+    if !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename) {
         return Ok(metadata);
     }
 
+    let implementation: &String = &LOWER_FILENAMES_TO_IMPLEMENTATIONS[&filename];
     metadata.is_makefile = true;
+    metadata.build_system = implementation.to_string();
+    let parent_dir_option: Option<&path::Path> = pth_abs.parent();
 
-    if let Some(implementation) = LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension) {
-        metadata.build_system = implementation.to_string();
+    if parent_dir_option.is_none() {
+        return Ok(metadata);
     }
 
-    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename) {
-        metadata.build_system = implementation.to_string();
+    let parent_dir: &path::Path = parent_dir_option.unwrap();
 
-        if let Some(parent_dir) = pth_abs.parent() {
-            for sibling_entry_result in parent_dir
-                .read_dir()
-                .map_err(|_| "error: unable to read directory".to_string())?
-            {
-                let sibling_entry: fs::DirEntry = sibling_entry_result
-                    .map_err(|_| "error: unable to read directory".to_string())?;
-                let sibling_string: String = sibling_entry
-                    .path()
-                    .file_name()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("")
-                    .to_lowercase();
+    for sibling_entry_result in parent_dir.read_dir().map_err(|_| {
+        format!(
+            "error: unable to locate parent directory of {}",
+            metadata.path
+        )
+    })? {
+        let sibling_entry: fs::DirEntry = sibling_entry_result
+            .map_err(|_| format!("error: unable to read directory {}", parent_dir.display()))?;
+        let sibling_string: String = sibling_entry
+            .path()
+            .file_name()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
 
-                if let Some(parent_build_system) =
-                    LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string)
-                {
-                    metadata.is_machine_generated = true;
-                    metadata.build_system = parent_build_system.to_string();
-                }
-            }
+        if let Some(parent_build_system) =
+            LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string)
+        {
+            metadata.is_machine_generated = true;
+            metadata.build_system = parent_build_system.to_string();
+        }
+    }
+
+    let grandparent_dir_option: Option<&path::Path> = parent_dir.parent();
+
+    if grandparent_dir_option.is_none() {
+        return Ok(metadata);
+    }
+
+    let grandparent_dir: &path::Path = grandparent_dir_option.unwrap();
+
+    for aunt_entry_result in grandparent_dir.read_dir().map_err(|_| {
+        format!(
+            "error: unable to locate parent directory of {}",
+            parent_dir.display()
+        )
+    })? {
+        let aunt_entry: fs::DirEntry = aunt_entry_result.map_err(|_| {
+            format!(
+                "error: unable to read directory {}",
+                grandparent_dir.display()
+            )
+        })?;
+        let aunt_string: String = aunt_entry
+            .path()
+            .file_name()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        if let Some(grandparent_build_system) =
+            LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string)
+        {
+            metadata.is_machine_generated = true;
+            metadata.build_system = grandparent_build_system.to_string();
         }
     }
 

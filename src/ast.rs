@@ -2,6 +2,7 @@
 
 extern crate lazy_static;
 extern crate peg;
+extern crate walkdir;
 
 use self::peg::parser;
 use std::collections::{HashMap, HashSet};
@@ -598,34 +599,43 @@ pub fn parse_posix(pth: &str, s: &str) -> Result<Mk, String> {
 
 #[test]
 fn test_grammar() {
+    use self::walkdir;
     use std::fs;
     use std::path;
 
     let fixtures_path: &path::Path = path::Path::new("fixtures");
-    let valid_fixture_paths: Vec<path::PathBuf> = fs::read_dir(fixtures_path.join("valid"))
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .collect();
+    let valid_walker = walkdir::WalkDir::new(fixtures_path.join("valid")).sort_by_file_name();
 
-    for pth in valid_fixture_paths {
-        let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
+    for entry_result in valid_walker {
+        let entry: walkdir::DirEntry = entry_result.unwrap();
+        let pth: &path::Path = entry.path();
+
+        if pth.is_dir() {
+            continue;
+        }
+
         let pth_string: String = pth.display().to_string();
-        assert_eq!(
-            parse_posix(&pth_string, makefile_str)
-                .map(|_| ())
-                .map_err(|err| format!("unable to parse {}: {}", &pth_string, err)),
-            Ok(())
-        );
+        let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
+        assert!(parse_posix(&pth_string, makefile_str)
+            .map_err(|err| format!("unable to parse {}: {}", &pth_string, err))
+            .is_ok());
     }
 
-    let invalid_fixture_paths: Vec<path::PathBuf> = fs::read_dir(fixtures_path.join("invalid"))
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .collect();
+    let invalid_walker = walkdir::WalkDir::new(fixtures_path.join("invalid"))
+        .sort_by_file_name()
+        .into_iter()
+        .filter_entry(|e| !e.path().is_dir());
 
-    for pth in invalid_fixture_paths {
-        let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
+    for entry_result in invalid_walker {
+        let entry: walkdir::DirEntry = entry_result.unwrap();
+        let pth: &path::Path = entry.path();
+
+        if pth.is_dir() {
+            continue;
+        }
+
         let pth_string: String = pth.display().to_string();
+        let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
         assert!(
             parse_posix(&pth_string, makefile_str).is_err(),
             "failed to reject {}",

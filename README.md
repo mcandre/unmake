@@ -16,21 +16,28 @@
 ```console
 $ cd fixtures
 
-$ unmake valid/makefile
-
-$ unmake invalid/crlf.mk
-error: invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
-
-$ unmake -i valid/makefile | jq .
-{
-  "path": "/Users/andrew/go/src/github.com/mcandre/unmake/fixtures/valid/Makefile",
-  "is_makefile": true,
-  "build_system": "make",
-  "is_machine_generated": false
-}
+$ unmake .
+error: ./invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
+...
 ```
 
 See `unmake -h` for more options.
+
+# NOTABLE FEATURES
+
+## Directory recursion
+
+`unmake` automatically recurses over directories.
+
+When recursing over directories, `unmake` skips symlinks.
+
+`unmake` skips many implementation-specific files named like `GNUmakefile` or `BSDmakefile`.
+
+`unmake` skips many *machine-generated* makefiles. For example, makefiles produced by autotools; Perl; and cmake when using the Unix Makefile generator (both in-source builds and out-of-source builds).
+
+`unmake` skips any third party makefiles house in subdirectories like `.git`, `node_modules`, or `vendor`.
+
+To investigate makefiles in more detail, try the `--debug` or `--inspect` options.
 
 # PARSE ERRORS
 
