@@ -27,7 +27,7 @@ See `unmake -h` for more options.
 
 `unmake` applies a stricter reading of POSIX syntax than `make -n`.
 
-In fact, the two checks complement each other. `unmake` checks for portability issues. `make -n` (which usually resolves to an implementation with extended syntax) checks for additional runtime issues.
+In fact, the two checks complement each other. `unmake` checks for syntactic portability issues. `make -n` checks for dry-run runtime issues.
 
 ## Directory recursion
 
