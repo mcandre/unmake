@@ -46,13 +46,15 @@ To investigate makefiles in more detail, try the `--debug` or `--inspect` option
 
 # PARSE ERRORS
 
-`unmake` can identify subtle makefile quirks.
+`unmake` can identify low level makefile quirks, such as invalid syntax.
 
 See [SYNTAX.md](SYNTAX.md) for more information.
 
-# LINTER WARNINGS
+# WARNINGS
 
-Coming soon.
+`unmake` can identify higher level portability recommendations for makefiles.
+
+See [WARNINGS.md](WARNINGS.md) for more information.
 
 # CRATE
 
