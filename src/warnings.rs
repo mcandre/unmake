@@ -6,7 +6,7 @@ use std::fmt;
 pub static UB_LATE_POSIX_MARKER: &str =
     "UB_LATE_POSIX_MARKER: a .POSIX: special target rule must be either the first non-comment line, or absent";
 
-/// check_ub_late_posix_marker reports UBLatePOSIXMarker violations.
+/// check_ub_late_posix_marker reports UB_LATE_POSIX_MARKER violations.
 fn check_ub_late_posix_marker(pth: &str, gems: Vec<ast::Gem>) -> Vec<Warning> {
     gems.iter()
         .enumerate()
@@ -93,6 +93,15 @@ pub fn test_ub_warnings() {
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
         vec![UB_LATE_POSIX_MARKER,]
+    );
+
+    assert_eq!(
+        lint("-", "PKG=curl\n.POSIX:\n.POSIX:\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![UB_LATE_POSIX_MARKER, UB_LATE_POSIX_MARKER]
     );
 
     assert_eq!(
