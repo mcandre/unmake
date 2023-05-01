@@ -17,8 +17,8 @@
 $ cd fixtures
 
 $ unmake .
-error: parse-invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
-warning: parse-valid/late-posix-marker.mk:2 UB_LATE_POSIX_MARKER: a .POSIX: special target rule must be either the first non-comment line, or absent
+error: ./parse-invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
+warning: ./parse-valid/Makefile:0 MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
 ...
 ```
 

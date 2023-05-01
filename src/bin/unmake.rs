@@ -99,7 +99,7 @@ fn main() {
             &fs::read_to_string(p).die(&format!("error: unable to read {}", pth_string));
 
         let warnings_result: Result<Vec<warnings::Warning>, String> =
-            warnings::lint(&pth_string, makefile_str);
+            warnings::lint(metadata, makefile_str);
 
         if let Err(err) = warnings_result {
             found_quirk = true;

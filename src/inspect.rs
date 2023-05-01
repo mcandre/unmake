@@ -43,6 +43,9 @@ pub struct Metadata {
     /// path denotes some file path.
     pub path: String,
 
+    /// filename denotes the basename.
+    pub filename: String,
+
     /// is_makefile denotes whether the file path appears to be a makefile,
     /// or some other kind of file.
     pub is_makefile: bool,
@@ -63,6 +66,7 @@ impl Metadata {
     pub fn new() -> Metadata {
         Metadata {
             path: String::new(),
+            filename: String::new(),
             is_makefile: false,
             build_system: String::new(),
             is_machine_generated: false,
@@ -102,30 +106,36 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         .map_err(|_| format!("error: unable to resolve {}", pth.display()))?;
 
     let mut metadata: Metadata = Metadata::new();
-    metadata.path = pth_abs.display().to_string();
+    metadata.path = pth.display().to_string();
 
-    let filename: String = pth_abs
+    let filename: String = pth
         .file_name()
         .and_then(|e| e.to_str())
         .unwrap_or("")
-        .to_lowercase();
+        .to_string();
+    metadata.filename = filename;
 
-    let file_extension: String = pth_abs
+    let filename_lower: String = metadata.filename.to_lowercase();
+
+    let file_extension: String = pth
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
-        .to_lowercase();
+        .to_string();
+    let file_extension_lower: String = file_extension.to_lowercase();
 
-    if let Some(implementation) = LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension) {
+    if let Some(implementation) =
+        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower)
+    {
         metadata.is_makefile = true;
         metadata.build_system = implementation.to_string();
     }
 
-    if !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename) {
+    if !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower) {
         return Ok(metadata);
     }
 
-    let implementation: &String = &LOWER_FILENAMES_TO_IMPLEMENTATIONS[&filename];
+    let implementation: &String = &LOWER_FILENAMES_TO_IMPLEMENTATIONS[&filename_lower];
     metadata.is_makefile = true;
     metadata.build_system = implementation.to_string();
     let parent_dir_option: Option<&path::Path> = pth_abs.parent();
