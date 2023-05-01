@@ -31,6 +31,7 @@ lazy_static::lazy_static! {
     pub static ref LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: HashMap<String, String> = vec![
         ("cmakelists.txt".to_string(), "cmake".to_string()),
         ("configure".to_string(), "autotools".to_string()),
+        (".gyp".to_string(), "gyp".to_string()),
         ("makefile.pl".to_string(), "perl".to_string()),
     ].into_iter().collect::<HashMap<String, String>>();
 }
