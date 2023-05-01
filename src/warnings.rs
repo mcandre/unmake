@@ -7,9 +7,8 @@ pub static UB_LATE_POSIX_MARKER: &str =
     "UB_LATE_POSIX_MARKER: a .POSIX: special target rule must be either the first non-comment line, or absent";
 
 /// check_ub_late_posix_marker reports UBLatePOSIXMarker violations.
-fn check_ub_late_posix_marker(pth: &str, mk: ast::Mk) -> Vec<Warning> {
-    mk.ns
-        .iter()
+fn check_ub_late_posix_marker(pth: &str, gems: Vec<ast::Gem>) -> Vec<Warning> {
+    gems.iter()
         .enumerate()
         .filter(|(i, e)| match &e.n {
             ast::Ore::Ru { ps: _, ts, cs: _ } => i > &0 && ts == &vec![".POSIX".to_string()],
@@ -67,9 +66,9 @@ impl fmt::Display for Warning {
 
 /// lint generates warnings for a makefile.
 pub fn lint(pth: &str, makefile: &str) -> Result<Vec<Warning>, String> {
-    let mk: ast::Mk = ast::parse_posix(pth, makefile)?;
+    let gems: Vec<ast::Gem> = ast::parse_posix(pth, makefile)?.ns;
     let mut warnings: Vec<Warning> = Vec::new();
-    warnings.extend(check_ub_late_posix_marker(pth, mk));
+    warnings.extend(check_ub_late_posix_marker(pth, gems));
     Ok(warnings)
 }
 
