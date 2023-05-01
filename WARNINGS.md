@@ -10,6 +10,8 @@ In the case of UB, a makefile may trigger an error message during certain projec
 
 > If it appears as the first non-comment line in the makefile, make shall process the makefile as specified by this section; otherwise, the behavior of make is unspecified.
 
+--POSIX 202x Issue 8/D3
+
 When the `.POSIX:` rule is used in a makefile, it must be the first thing in the makefile, apart from any blank or commented lines.
 
 ### Fail
