@@ -32,6 +32,53 @@ PKG = curl
 
 * Rename `Makefile` to `makefile`
 
+## WAIT_NOP
+
+> When .WAIT appears as a target, it shall have no effect.
+
+`.WAIT` is intended for use as a pseudo-prerequisite marker, in order to customize synchronization logic. `.WAIT` behaves as a useless no operation (NOP) when written as a target.
+
+### Fail
+
+```make
+.WAIT:
+
+test: test-1 test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+### Pass
+
+```make
+test: test-1 .WAIT test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+```make
+test: test-1 test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+### Mitigation
+
+* Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
+* Avoid declaring `.WAIT` as a target.
+
 ## POSIX_MARKER
 
 > To receive exactly the behavior described in this section, the user shall ensure that a portable makefile shall:

@@ -1,4 +1,4 @@
 all: foo bar
-foo: one .WAIT two
+foo: one two
 bar: one two
 foo bar one two: ; @echo $@

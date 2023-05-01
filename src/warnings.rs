@@ -80,12 +80,33 @@ fn check_makefile_precedence(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Ve
     Vec::new()
 }
 
+pub static WAIT_NOP: &str = "WAIT_NOP: .WAIT as a target has no effect";
+
+/// check_makefile_precedence reports WAIT_NOP violations.
+fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs: _ } => ts.contains(&".WAIT".to_string()),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: WAIT_NOP.to_string(),
+        })
+        .collect()
+}
+
 /// lint generates warnings for a makefile.
 pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
     let mut warnings: Vec<Warning> = Vec::new();
 
-    let policies: Vec<Policy> = vec![check_ub_late_posix_marker, check_makefile_precedence];
+    let policies: Vec<Policy> = vec![
+        check_ub_late_posix_marker,
+        check_makefile_precedence,
+        check_wait_nop,
+    ];
 
     for policy in policies {
         warnings.extend(policy(&metadata, &gems));
@@ -223,6 +244,27 @@ pub fn test_makefile_precedence() {
 
     assert_eq!(
         lint(mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_wait_nop() {
+    assert_eq!(
+        lint(mock_md("-"), ".POSIX:\n.WAIT:\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![WAIT_NOP]
+    );
+
+    assert_eq!(
+        lint(mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
