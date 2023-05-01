@@ -170,3 +170,45 @@ PKG = curl
 * Avoid mixing the `.POSIX` target with other targets in a single rule declaration.
 * Avoid declaring `.POSIX:` in makefiles intended for use in include lines.
 * Avoid declaring `.POSIX:` multiple times.
+
+## UB_AMBIGUOUS_INCLUDE
+
+> This standard does not specify precedence between macro definition and include directives. Thus, the behavior of:
+>
+> `include =foo.mk`
+>
+>is unspecified.
+
+Ambiguous include/macro instructions do not have a clear meaning. The instruction may behave as `include` the path `=foo.mk`, or behave as defining a macro with the name `include` and the value `foo.mk`. Parsing destabilizes.
+
+### Fail
+
+```make
+include =foo.mk
+```
+
+### Pass
+
+```make
+include=foo.mk
+```
+
+```make
+include foo.mk
+```
+
+```make
+INCLUDE = include
+$(INCLUDE) =foo.mk
+```
+
+```make
+PTH = =foo.mk
+include $(PTH)
+```
+
+### Mitigation
+
+* Avoid using equals (`=`) in path names.
+* Avoid using lowercase `include` as a macro name.
+* Consider removing whitespace between macro names and assignment operators.

@@ -26,6 +26,24 @@ fn check_ub_late_posix_marker(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
         .collect()
 }
 
+pub static UB_AMBIGUOUS_INCLUDE: &str =
+    "UB_AMBIGUOUS_INCLUDE: unclear whether include line or macro definition";
+
+/// check_ub_ambiguous_include reports UB_AMBIGUOUS_INCLUDE violations.
+fn check_ub_ambiguous_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::In { ps } => ps.iter().any(|e2| e2.starts_with('=')),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: UB_AMBIGUOUS_INCLUDE.to_string(),
+        })
+        .collect()
+}
+
 /// Warning models a linter recommendation.
 #[derive(Debug, PartialEq)]
 pub struct Warning {
@@ -104,6 +122,7 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
 
     let policies: Vec<Policy> = vec![
         check_ub_late_posix_marker,
+        check_ub_ambiguous_include,
         check_makefile_precedence,
         check_wait_nop,
     ];
@@ -196,6 +215,24 @@ pub fn test_ub_warnings() {
 
     assert_eq!(
         lint(mock_md("-"), "")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![UB_AMBIGUOUS_INCLUDE]
+    );
+
+    assert_eq!(
+        lint(mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)

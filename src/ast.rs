@@ -237,7 +237,11 @@ impl Traceable for Mk {
 
 parser! {
     grammar parser() for str {
+        /// _ matches optional whitespace.
         rule _ = quiet!{(" " / "\t")*} / expected!("whitespace")
+
+        /// __ matches required whitespace.
+        rule __ = quiet!{(" " / "\t")+} / expected!("whitespace")
 
         rule line_ending() -> String =
             quiet!{
@@ -512,7 +516,7 @@ parser! {
             } / expected!("include opening")
 
         rule include() -> Gem =
-            (comment() / line_ending())* p:position!() include_opening() _ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
+            (comment() / line_ending())* p:position!() include_opening() __ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 Gem {
                     o: p,
                     l: 0,
@@ -534,7 +538,7 @@ parser! {
             }
 
         rule node() -> Gem =
-            n:(special_target_rule() / make_rule() / macro_definition() / include() / general_expression()) {
+            n:(special_target_rule() / make_rule() / include() / macro_definition() / general_expression()) {
                 n
             }
 
@@ -715,6 +719,20 @@ fn test_whitespace() {
     );
 
     assert!(parse_posix("-", " \n").is_err());
+
+    assert_eq!(
+        parse_posix("-", "include abc\n")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::In {
+            ps: vec!["abc".to_string()]
+        }]
+    );
+
+    assert!(parse_posix("-", "includeabc\n").is_err());
 }
 
 #[test]
