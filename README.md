@@ -36,7 +36,7 @@ In fact, the two checks complement each other. `unmake` checks for syntactic por
 
 When recursing over directories, `unmake` skips symlinks.
 
-`unmake` skips many implementation-specific files named like `GNUmakefile` or `BSDmakefile`.
+`unmake` skips many implementation-specific files such as `GNUmakefile`.
 
 `unmake` skips many *machine-generated* makefiles. For example, makefiles produced by autotools; Perl; and cmake when using the Unix Makefile generator (both in-source builds and out-of-source builds).
 
