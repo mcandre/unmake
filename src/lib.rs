@@ -2,3 +2,4 @@
 
 pub mod ast;
 pub mod inspect;
+pub mod warnings;

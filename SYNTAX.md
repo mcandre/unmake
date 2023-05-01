@@ -20,6 +20,8 @@ $ make
 Hello World!
 ```
 
+See the [fixtures](fixtures) directory for more examples.
+
 ## Notes
 
 * The lowercase `makefile` filename has faster precedence order than `Makefile`.
@@ -34,6 +36,8 @@ Hello World!
 unmake targets POSIX 202x Issue 8, Draft 3.
 
 https://www.opengroup.org/austin/
+
+Note that the standard POSIX make documentation sometimes uses the terms blank lines and comments interchangeably.
 
 # CAVEATS
 

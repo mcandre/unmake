@@ -604,7 +604,7 @@ fn test_grammar() {
     use std::path;
 
     let fixtures_path: &path::Path = path::Path::new("fixtures");
-    let valid_walker = walkdir::WalkDir::new(fixtures_path.join("valid")).sort_by_file_name();
+    let valid_walker = walkdir::WalkDir::new(fixtures_path.join("parse-valid")).sort_by_file_name();
 
     for entry_result in valid_walker {
         let entry: walkdir::DirEntry = entry_result.unwrap();
@@ -621,7 +621,7 @@ fn test_grammar() {
             .is_ok());
     }
 
-    let invalid_walker = walkdir::WalkDir::new(fixtures_path.join("invalid"))
+    let invalid_walker = walkdir::WalkDir::new(fixtures_path.join("parse-invalid"))
         .sort_by_file_name()
         .into_iter()
         .filter_entry(|e| !e.path().is_dir());

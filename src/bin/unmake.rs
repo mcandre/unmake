@@ -5,7 +5,7 @@ extern crate getopts;
 extern crate unmake;
 extern crate walkdir;
 
-use self::unmake::{ast, inspect};
+use self::unmake::{inspect, warnings};
 use die::{die, Die};
 use std::env;
 use std::fs;
@@ -98,10 +98,24 @@ fn main() {
         let makefile_str: &str =
             &fs::read_to_string(p).die(&format!("error: unable to read {}", pth_string));
 
-        if let Err(err) = ast::parse_posix(&pth_string, makefile_str) {
+        let warnings_result: Result<Vec<warnings::Warning>, String> =
+            warnings::lint(&pth_string, makefile_str);
+
+        if let Err(err) = warnings_result {
             found_quirk = true;
             println!("{}", err);
-        };
+            return;
+        }
+
+        let warnings: Vec<warnings::Warning> = warnings_result.unwrap();
+
+        if !warnings.is_empty() {
+            found_quirk = true;
+        }
+
+        for warning in warnings {
+            println!("{}", warning);
+        }
     };
 
     for pth_string in pth_strings {
