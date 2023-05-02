@@ -126,7 +126,13 @@ impl Default for Warning {
 impl fmt::Display for Warning {
     /// fmt renders a Warning for console use.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "warning: {}:{} {}", self.path, self.line, self.policy,)
+        write!(f, "warning: {}:", self.path)?;
+
+        if self.line > 0 {
+            write!(f, "{}", self.line)?;
+        }
+
+        write!(f, " {}", self.policy)
     }
 }
 
