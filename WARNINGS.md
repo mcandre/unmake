@@ -152,12 +152,24 @@ all: "foo"
 
 make has a tendency to forward commands literally to the shell interpreter. When a command has a sharp (`#`) at a tab indented column, then the entire indented comment may be sent for execution by the shell interpreter. In the best case, this increases log noise during builds. In the worst case, the command may be sent to a non-POSIX compliant shell interpreter such as Command Prompt, triggering build failures.
 
+Due to limitations in the present parser logic, commented commands featuring hyphen-minus (`-`) or at (`@`) prefixes may not be implemented as an automatic check.
+
 ### Fail
 
 ```make
 foo: foo.c
 	# build foo
 	gcc -o foo foo.c
+```
+
+```make
+foo: foo.c
+	-#gcc -o foo foo.c
+```
+
+```make
+foo: foo.c
+	@#gcc -o foo foo.c
 ```
 
 ### Pass
