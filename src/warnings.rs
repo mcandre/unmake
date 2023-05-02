@@ -211,19 +211,20 @@ fn check_implementation_defined_target(
         .collect()
 }
 
-pub static INDENTED_COMMAND_COMMENT: &str = "INDENTED_COMMAND_COMMENT: dedent commented commands";
+pub static COMMAND_COMMENT: &str =
+    "COMMAND_COMMENT: comment embedded inside commands will forward to the shell interpreter";
 
-/// check_indented_command_comment reports INDENTED_COMMAND_COMMENT violations.
-fn check_indented_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+/// check_command_comment reports COMMAND_COMMENT violations.
+fn check_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     gems.iter()
         .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| e2.starts_with('#')),
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| e2.contains('#')),
             _ => false,
         })
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: INDENTED_COMMAND_COMMENT.to_string(),
+            policy: COMMAND_COMMENT.to_string(),
         })
         .collect()
 }
@@ -259,7 +260,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_makefile_precedence,
         check_curdir_assignment_nop,
         check_wait_nop,
-        check_indented_command_comment,
+        check_command_comment,
         check_final_eol,
     ];
 
@@ -561,23 +562,62 @@ pub fn test_implementation_defined_target() {
 }
 
 #[test]
-pub fn test_indented_command_comment() {
+pub fn test_command_comment() {
     assert_eq!(
         lint(
             &mock_md("-"),
-            ".POSIX:\nfoo: foo.c\n\t# compile foo\n\tgcc -o foo foo.c\n"
+            ".POSIX:\nfoo: foo.c\n\t#build foo\n\tgcc -o foo foo.c\n"
         )
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
         .collect::<Vec<String>>(),
-        vec![INDENTED_COMMAND_COMMENT]
+        vec![COMMAND_COMMENT]
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t@#gcc -o foo foo.c\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![COMMAND_COMMENT]
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t-#gcc -o foo foo.c\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![COMMAND_COMMENT]
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t+#gcc -o foo foo.c\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![COMMAND_COMMENT]
     );
 
     assert_eq!(
         lint(
             &mock_md("-"),
-            ".POSIX:\nfoo: foo.c\n# compile foo\n\tgcc -o foo foo.c\n"
+            ".POSIX:\nfoo: foo.c\n\tgcc \\\n#output file \\\n\t\t-o foo \\\n\t\tfoo.c\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![COMMAND_COMMENT]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nfoo: foo.c\n#build foo\n\tgcc -o foo foo.c\n"
         )
         .unwrap()
         .into_iter()

@@ -148,18 +148,21 @@ all: "foo"
 
 * Avoid percents (`%`) and double-quotes (`"`), in targets and prerequisites.
 
-## INDENTED_COMMAND_COMMENT
+## COMMAND_COMMENT
 
-make has a tendency to forward commands literally to the shell interpreter. When a command has a sharp (`#`) at a tab indented column, then the entire indented comment may be sent for execution by the shell interpreter. In the best case, this increases log noise during builds. In the worst case, the command may be sent to a non-POSIX compliant shell interpreter such as Command Prompt, triggering build failures.
-
-Due to limitations in the present parser logic, commented commands featuring hyphen-minus (`-`) or at (`@`) prefixes may not be implemented as an automatic check.
+When a rule command contains a sharp (`#`), then make forwards the comment to the shell interpreter. This can cause the command to fail in multiline commands. This can cause the command to fail in certain shell interpreters. This increases log noise.
 
 ### Fail
 
 ```make
 foo: foo.c
-	# build foo
+	#build foo
 	gcc -o foo foo.c
+```
+
+```make
+foo: foo.c
+	@#gcc -o foo foo.c
 ```
 
 ```make
@@ -169,15 +172,37 @@ foo: foo.c
 
 ```make
 foo: foo.c
-	@#gcc -o foo foo.c
+	+#gcc -o foo foo.c
+```
+
+```make
+foo: foo.c
+	gcc \
+#output file \
+		-o foo \
+		foo.c
 ```
 
 ### Pass
 
 ```make
 foo: foo.c
-# build foo
+#build foo
 	gcc -o foo foo.c
+```
+
+```make
+#build foo
+foo: foo.c
+	gcc -o foo foo.c
+```
+
+```make
+#output file
+foo: foo.c
+	gcc \
+		-o foo \
+		foo.c
 ```
 
 ```make
@@ -185,10 +210,20 @@ foo: foo.c
 	gcc -o foo foo.c
 ```
 
+```make
+#foo: foo.c
+#	gcc -o foo foo.c
+```
+
+```make
+<remove rule>
+```
+
 ### Mitigation
 
-* Comment commands at the very start of the line, rather than after a tab.
-* Remove extraneous comments.
+* Move comments up above multiline commands.
+* Move comments to the leftmost column, fully *de*dented.
+* Consider removing extraneous lines.
 
 ## STRICT_POSIX
 
