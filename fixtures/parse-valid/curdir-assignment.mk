@@ -1,0 +1,2 @@
+.POSIX:
+CURDIR = build

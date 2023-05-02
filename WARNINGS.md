@@ -34,6 +34,24 @@ PKG = curl
 
 * Rename `Makefile` to `makefile`
 
+## CURDIR_ASSIGNMENT_NOP
+
+> The CURDIR environment variable shall not affect the value of the CURDIR macro unless the -e option is specified. If the -e option is not specified, there is a CURDIR environment variable set, and its value is different from the CURDIR macro value, the environment variable value shall be set to the macro value. If CURDIR is defined in the makefile, present in the MAKEFLAGS environment variable, or specified on the command line, it shall replace the original value of the CURDIR macro in accordance with the logical order described above, but shall not cause make to change its current working directory.
+
+Assignment to `CURDIR` does not actually change the current working directory of the make execution.
+
+### Fail
+
+```make
+CURDIR = build
+```
+
+### Mitigation
+
+* Avoid assigning the `CURDIR` macro
+* Note that some commands offer a built-in way to adjust the current directory, e.g. `tar -C <dir>`
+* Promote complex logic to a dedicated script
+
 ## WAIT_NOP
 
 > When .WAIT appears as a target, it shall have no effect.

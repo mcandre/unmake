@@ -132,6 +132,24 @@ fn check_makefile_precedence(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Ve
     Vec::new()
 }
 
+pub static CURDIR_ASSIGNMENT_NOP: &str =
+    "CURDIR_ASSIGNMENT_NOP: CURDIR assignment does not change the make working directory";
+
+/// check_curdir_assignment_nop reports CURDIR_ASSIGNMENT_NOP violations.
+fn check_curdir_assignment_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Mc { n, v: _ } => n == &"CURDIR".to_string(),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: CURDIR_ASSIGNMENT_NOP.to_string(),
+        })
+        .collect()
+}
+
 pub static WAIT_NOP: &str = "WAIT_NOP: .WAIT as a target has no effect";
 
 /// check_makefile_precedence reports WAIT_NOP violations.
@@ -222,6 +240,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_strict_posix,
         check_implementation_defined_target,
         check_makefile_precedence,
+        check_curdir_assignment_nop,
         check_wait_nop,
         check_final_eol,
     ];
@@ -440,6 +459,27 @@ pub fn test_makefile_precedence() {
 
     assert_eq!(
         lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_curdir_assignment_nop() {
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nCURDIR = build\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![CURDIR_ASSIGNMENT_NOP]
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
