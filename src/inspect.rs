@@ -132,7 +132,7 @@ impl fmt::Display for Metadata {
 pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
     let pth_abs: path::PathBuf = pth
         .canonicalize()
-        .map_err(|_| format!("error: unable to resolve {}", pth.display()))?;
+        .map_err(|err| format!("error: {}: {}", pth.display(), err))?;
 
     let mut metadata: Metadata = Metadata::new();
     metadata.path = pth.display().to_string();
@@ -183,14 +183,12 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
 
     let parent_dir: &path::Path = parent_dir_option.unwrap();
 
-    for sibling_entry_result in parent_dir.read_dir().map_err(|_| {
-        format!(
-            "error: unable to locate parent directory of {}",
-            metadata.path
-        )
-    })? {
+    for sibling_entry_result in parent_dir
+        .read_dir()
+        .map_err(|err| format!("error: {}: {}", parent_dir.display(), err))?
+    {
         let sibling_entry: fs::DirEntry = sibling_entry_result
-            .map_err(|_| format!("error: unable to read directory {}", parent_dir.display()))?;
+            .map_err(|err| format!("error: {}: {}", parent_dir.display(), err))?;
         let sibling_string: String = sibling_entry
             .path()
             .file_name()
@@ -215,18 +213,12 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
 
     let grandparent_dir: &path::Path = grandparent_dir_option.unwrap();
 
-    for aunt_entry_result in grandparent_dir.read_dir().map_err(|_| {
-        format!(
-            "error: unable to locate parent directory of {}",
-            parent_dir.display()
-        )
-    })? {
-        let aunt_entry: fs::DirEntry = aunt_entry_result.map_err(|_| {
-            format!(
-                "error: unable to read directory {}",
-                grandparent_dir.display()
-            )
-        })?;
+    for aunt_entry_result in grandparent_dir
+        .read_dir()
+        .map_err(|err| format!("error: {}: {}", grandparent_dir.display(), err))?
+    {
+        let aunt_entry: fs::DirEntry = aunt_entry_result
+            .map_err(|err| format!("error: {}: {}", grandparent_dir.display(), err))?;
         let aunt_string: String = aunt_entry
             .path()
             .file_name()
@@ -246,20 +238,14 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
     metadata.is_include_file = INCLUDE_FILENAME_PATTERN.is_match(&metadata.filename);
 
     let byte_len: u64 = fs::metadata(&pth_abs)
-        .map_err(|_| {
-            format!(
-                "error: unable to retrieve file size of path {}",
-                pth_abs.display()
-            )
-        })?
+        .map_err(|err| format!("error: {}: {}", pth_abs.display(), err))?
         .len();
 
     metadata.is_empty = byte_len == 0;
 
     if !metadata.is_empty {
         let makefile_str: &str = &fs::read_to_string(&pth_abs)
-            .map_err(|_| format!("error: unable to read {}", pth_abs.display()))?;
-
+            .map_err(|err| format!("error: {}: {}", pth_abs.display(), err))?;
         metadata.lines = 1 + makefile_str.matches('\n').count();
         let last_char: char = makefile_str.chars().last().unwrap_or(' ');
         metadata.has_final_eol = last_char == '\n';

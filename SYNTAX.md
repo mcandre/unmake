@@ -57,6 +57,30 @@ We do our best to catch many of the more obvious POSIX make mistakes, but some m
 
 make users are advised to generally familiarize with basic make usage, syntax, and semantics, in order to resolve problems faster.
 
+## UTF-8
+
+UNIX text files use UTF-8. Other encodings are likely to cause text processing problems with make and other UNIX components.
+
+### Fail
+
+```make
+<utf-16>
+```
+
+### Pass
+
+```make
+<utf-8>
+```
+
+```make
+<ascii>
+```
+
+### Mitigation
+
+* Configure [EditorConfig](https://editorconfig.org/) and text editors to use UTF-8 for all text files, other than certain Windows-centric files.
+
 ## Line endings
 
 The legacy line endings CRLF (`\r\n`) and CR (`\r`) are out of spec. make expects LF (`\n`).

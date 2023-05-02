@@ -50,8 +50,7 @@ fn main() {
     if optmatches.opt_present("i") {
         let pth_string = optmatches.opt_str("i").die(&usage);
         let pth: &path::Path = path::Path::new(&pth_string);
-        let metadata: inspect::Metadata =
-            inspect::analyze(pth).die(&format!("error: unable to read {}", pth_string));
+        let metadata: inspect::Metadata = inspect::analyze(pth).map_err(|err| die!(err)).unwrap();
         println!("{}", metadata);
         die!(0);
     }
@@ -66,8 +65,9 @@ fn main() {
 
     let mut action = |p: &path::Path| {
         let pth_string: String = p.display().to_string();
-        let metadata: unmake::inspect::Metadata =
-            unmake::inspect::analyze(p).die(&format!("error: unable to read {}", pth_string));
+        let metadata: unmake::inspect::Metadata = unmake::inspect::analyze(p)
+            .map_err(|err| die!(err))
+            .unwrap();
 
         if !metadata.is_makefile {
             return;
@@ -95,8 +95,9 @@ fn main() {
             return;
         }
 
-        let makefile_str: &str =
-            &fs::read_to_string(p).die(&format!("error: unable to read {}", pth_string));
+        let makefile_str: &str = &fs::read_to_string(p)
+            .map_err(|err| die!(format!("error: {}: {}", p.display(), err)))
+            .unwrap();
 
         let warnings_result: Result<Vec<warnings::Warning>, String> =
             warnings::lint(&metadata, makefile_str);
