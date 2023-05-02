@@ -282,7 +282,7 @@ parser! {
 
         rule non_special_target_literal() -> String =
             quiet!{
-                s:$([^ ('"' | ' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {?
+                s:$([^ (' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {?
                     if SPECIAL_TARGETS.contains(s) {
                         Err("special target")
                     } else {

@@ -2,6 +2,8 @@
 
 `unmake` offers various checks to optimize your makefiles.
 
+Note that `unmake` does not evaluate makefiles, and therefore ignores quirks arising from macro expansions.
+
 # General
 
 ## MAKEFILE_PRECEDENCE
@@ -78,6 +80,32 @@ test-2:
 
 * Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
 * Avoid declaring `.WAIT` as a target.
+
+## IMPLEMENTATION_DEFINED_TARGET
+
+> The interpretation of targets containing the characters '%' and '"' is implementation-defined.
+
+POSIX make has no portable semantic for percent signs (`%`) or double-quotes (`"`) in targets or prerequisites. Using these can vendor lock a makefile onto a specific make implementation, and/or trigger build failures.
+
+### Fail
+
+```make
+all: foo%
+
+foo%: foo.c
+	gcc -o foo% foo.c
+```
+
+```make
+all: "foo"
+
+"foo": foo.c
+	gcc -o "foo" foo.c
+```
+
+### Mitigation
+
+* Avoid percents (`%`) and double-quotes (`"`), in targets and prerequisites.
 
 ## POSIX_MARKER
 

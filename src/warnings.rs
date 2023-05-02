@@ -132,6 +132,29 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         .collect()
 }
 
+pub static IMPLEMENTATTION_DEFINED_TARGET: &str = "IMPLEMENTATTION_DEFINED_TARGET: non-portable percent (%) or double-quote (\") in target or prerequisite";
+
+/// check_implementation_defined_target reports WAIT_NOP violations.
+fn check_implementation_defined_target(
+    metadata: &inspect::Metadata,
+    gems: &[ast::Gem],
+) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps, ts, cs: _ } => {
+                ps.iter().any(|e2| e2.contains('%') || e2.contains('\"'))
+                    || ts.iter().any(|e2| e2.contains('%') || e2.contains('\"'))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: IMPLEMENTATTION_DEFINED_TARGET.to_string(),
+        })
+        .collect()
+}
+
 /// lint generates warnings for a makefile.
 pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
@@ -141,6 +164,7 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
         check_ub_late_posix_marker,
         check_ub_ambiguous_include,
         check_ub_shell_macro,
+        check_implementation_defined_target,
         check_makefile_precedence,
         check_wait_nop,
     ];
@@ -341,5 +365,38 @@ pub fn test_wait_nop() {
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
         Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_implementation_defined_target() {
+    assert_eq!(
+        lint(
+            mock_md("-"),
+            ".POSIX:\nall: foo%\nfoo%: foo.c\n\tgcc -o foo% foo.c\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![
+            IMPLEMENTATTION_DEFINED_TARGET,
+            IMPLEMENTATTION_DEFINED_TARGET
+        ]
+    );
+
+    assert_eq!(
+        lint(
+            mock_md("-"),
+            ".POSIX:\nall: \"foo\"\n\"foo\": foo.c\n\tgcc -o \"foo\" foo.c\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![
+            IMPLEMENTATTION_DEFINED_TARGET,
+            IMPLEMENTATTION_DEFINED_TARGET
+        ]
     );
 }
