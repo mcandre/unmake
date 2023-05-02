@@ -249,6 +249,46 @@ test-2:
 * Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
 * Avoid declaring `.WAIT` as a target.
 
+## PHONY_NOP
+
+> A .PHONY special target with no prerequisites shall be ignored.
+
+`.PHONY` with no prerequisites behaves as a useless no operation (NOP). When using the special target `.PHONY` rule, specify at least one prerequisite.
+
+### Fail
+
+```make
+.PHONY:
+
+foo: foo.c
+	gcc -o foo foo.c
+```
+
+### Pass
+
+```make
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	rm -rf bin
+```
+
+```make
+.PHONY: clean
+
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	rm -rf bin
+```
+
+### Mitigation
+
+* Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
+* Avoid declaring `.WAIT` as a target.
+
 ## REDUNDANT_NOTPARALLEL_WAIT
 
 The `.WAIT` pseudo-prerequisite disables asynchronous processing between prerequisites of a specific rule.
@@ -413,7 +453,7 @@ clean:
 
 When the special target rule `.IGNORE:` is declared with no prerequisites, then make ignores exit codes for all make commands, for all rules. This is hazardous, and tends to invite file corruption.
 
-Caution: Avoid using `.IGNORE:` this way. Declare at least one prerequisite for `.IGNORE`, or use hyphen-minus (`-`) to ignore exit codes from individual commands.
+Caution: Avoid using `.IGNORE:` this way. When using the special target `.IGNORE` rule, declare at least one prerequisite.
 
 ### Fail
 

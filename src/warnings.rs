@@ -18,6 +18,28 @@ lazy_static::lazy_static! {
     pub static ref LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN: regex::Regex = regex::Regex::new(
         "^all|lint|install|uninstall|publish|(test.*)|(clean.*)$"
     ).unwrap();
+
+    /// POLICIES collects the set of available high level makefile checks.
+    pub static ref POLICIES: Vec<Policy> = vec![
+        check_ub_late_posix_marker,
+        check_ub_ambiguous_include,
+        check_ub_makeflags_assignment,
+        check_ub_shell_macro,
+        check_strict_posix,
+        check_implementation_defined_target,
+        check_makefile_precedence,
+        check_curdir_assignment_nop,
+        check_wd_nop,
+        check_wait_nop,
+        check_phony_nop,
+        check_redundant_notparallel_wait,
+        check_redundant_silent_at,
+        check_redundant_ignore_minus,
+        check_global_ignore,
+        check_command_comment,
+        check_phony_target,
+        check_final_eol,
+    ];
 }
 
 /// Policy implements a linter check.
@@ -205,6 +227,23 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
             path: metadata.path.clone(),
             line: e.l,
             policy: WAIT_NOP.to_string(),
+        })
+        .collect()
+}
+
+pub static PHONY_NOP: &str = "PHONY_NOP: empty .PHONY has no effect";
+
+/// check_phony_nop reports PHONY_NOP violations.
+fn check_phony_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps, ts, cs: _ } => ts.contains(&".PHONY".to_string()) && ps.is_empty(),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: PHONY_NOP.to_string(),
         })
         .collect()
 }
@@ -446,27 +485,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
     let mut warnings: Vec<Warning> = Vec::new();
 
-    let policies: Vec<Policy> = vec![
-        check_ub_late_posix_marker,
-        check_ub_ambiguous_include,
-        check_ub_makeflags_assignment,
-        check_ub_shell_macro,
-        check_strict_posix,
-        check_implementation_defined_target,
-        check_makefile_precedence,
-        check_curdir_assignment_nop,
-        check_wd_nop,
-        check_wait_nop,
-        check_redundant_notparallel_wait,
-        check_redundant_silent_at,
-        check_redundant_ignore_minus,
-        check_global_ignore,
-        check_command_comment,
-        check_phony_target,
-        check_final_eol,
-    ];
-
-    for policy in policies {
+    for policy in POLICIES.iter() {
         warnings.extend(policy(metadata, &gems));
     }
 
@@ -753,6 +772,33 @@ pub fn test_wait_nop() {
             .into_iter()
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_phony_nop() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY:\nfoo: foo.c\n\tgcc -o foo foo.c\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![PHONY_NOP]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
         Vec::<String>::new()
     );
 }
