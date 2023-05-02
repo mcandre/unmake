@@ -4,7 +4,7 @@
 
 Note that `unmake` does not evaluate makefiles, and therefore ignores quirks arising from macro expansions.
 
-Note that line numbers in warnings are approximate, especially for instructions involving multiple lines, such as rule declarations and multiline commands.
+Most warnings feature line numbers with an approximate location of the issue in the makefile.
 
 # General
 
@@ -308,7 +308,104 @@ test-2:
 ### Mitigation
 
 * Avoid using `.NOTPARALLEL:` with `.WAIT` redundantly.
-* Avoid using `.NOTPARALLEL:` with `.WAIT` redundantly.
+* Redundancy of `.WAIT` with `.NOTPARALLEL` is best avoided.
+
+## REDUNDANT_SILENT_AT
+
+At (`@`) elides an individual command from make output. This is useful for reducing log noise.
+
+The `.SILENT` special target also elides commands from make output. If the special rule `.SILENT:` is declared with no prerequisites, then all make commands globally are silenced. If the special rule `.SILENT:` is declared with prerequisite targets, then all commands for those specific targets are silenced.
+
+Using both of these simultaneously is unnecessary.
+
+### Fail
+
+```make
+.SILENT:
+
+lint:
+	@unmake .
+```
+
+```make
+.SILENT: lint
+
+lint:
+	@unmake .
+```
+
+### Pass
+
+```make
+.SILENT:
+
+lint:
+	unmake .
+```
+
+```make
+lint:
+	@unmake .
+```
+
+```make
+lint:
+	unmake .
+```
+
+### Mitigation
+
+* Avoid using at (`@`) with `.SILENT` redundantly.
+* Redundancy of `.SILENT` with at (`@`) is best avoided.
+
+## REDUNDANT_IGNORE_MINUS
+
+Hyphen-minus (`-`) continues makefile execution past soft failure exit codes of an individual command. This is useful for implementing cleanup tasks and other idempotent tasks.
+
+The `.IGNORE` special target also continues makefile execution past soft failures. If the special rule `.IGNORE:` is declared with no prerequisites, then exit codes of alll make commands globally are ignored. If the special rule `.SILENT:` is declared with prerequisite targets, then exit codes for commands for those specific targets are ignored. However, declaring `.IGNORE:` with no prerequisites is likely to cause subtle build problems.
+
+Using both `-` and `.IGNORE` simultaneously is unnecessary.
+
+### Fail
+
+```make
+.IGNORE:
+
+clean:
+	-rm -rf bin
+```
+
+```make
+.IGNORE: clean
+
+clean:
+	-rm -rf bin
+```
+
+### Pass
+
+```make
+IGNORE: clean
+
+clean:
+	rm -rf bin
+```
+
+```make
+clean:
+	-rm -rf bin
+```
+
+```make
+clean:
+	rm -rf bin
+```
+
+### Mitigation
+
+* Note that `.IGNORE:` declared with no prerequisites is likely to cause subtle build problems.
+* Avoid using hyphen-minus (`-`) with `.IGNORE` redundantly.
+* Redundancy of `.IGNORE` with hyphen-minus (`-`) is best avoided.
 
 ## IMPLEMENTATION_DEFINED_TARGET
 

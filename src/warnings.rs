@@ -237,6 +237,82 @@ fn check_redundant_notparallel_wait(
         .collect()
 }
 
+pub static REDUNDANT_SILENT_AT: &str =
+    "REDUNDANT_SILENT_AT: .SILENT with @ is redundant and superfluous";
+
+/// check_redundant_silent_at reports REDUNDANT_SILENT_AT violations.
+fn check_redundant_silent_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut has_global_silence: bool = false;
+    let mut marked_silent_targets: HashSet<String> = HashSet::new();
+    for gem in gems {
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
+            if ts.contains(&".SILENT".to_string()) {
+                if ps.is_empty() {
+                    has_global_silence = true;
+                }
+
+                for p in ps {
+                    marked_silent_targets.insert(p.clone());
+                }
+            }
+        }
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs } => {
+                cs.iter().any(|e2| e2.starts_with('@'))
+                    && (has_global_silence
+                        || ts.iter().any(|e2| marked_silent_targets.contains(e2)))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: REDUNDANT_SILENT_AT.to_string(),
+        })
+        .collect()
+}
+
+pub static REDUNDANT_IGNORE_MINUS: &str =
+    "REDUNDANT_IGNORE_MINUS: .IGNORE with - is redundant and superfluous";
+
+/// check_redundant_ignore_minus reports REDUNDANT_IGNORE_MINUS violations.
+fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut has_global_ignore: bool = false;
+    let mut marked_ignored_targets: HashSet<String> = HashSet::new();
+    for gem in gems {
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
+            if ts.contains(&".IGNORE".to_string()) {
+                if ps.is_empty() {
+                    has_global_ignore = true;
+                }
+
+                for p in ps {
+                    marked_ignored_targets.insert(p.clone());
+                }
+            }
+        }
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs } => {
+                cs.iter().any(|e2| e2.starts_with('-'))
+                    && (has_global_ignore
+                        || ts.iter().any(|e2| marked_ignored_targets.contains(e2)))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: REDUNDANT_IGNORE_MINUS.to_string(),
+        })
+        .collect()
+}
+
 pub static STRICT_POSIX: &str =
     "STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk";
 
@@ -367,6 +443,8 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_wd_nop,
         check_wait_nop,
         check_redundant_notparallel_wait,
+        check_redundant_silent_at,
+        check_redundant_ignore_minus,
         check_command_comment,
         check_phony_target,
         check_final_eol,
@@ -689,6 +767,93 @@ pub fn test_redundant_nonparallel_wait() {
             .into_iter()
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_redundant_silent_at() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: lint\n.SILENT:\nlint:\n\t@unmake .\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![REDUNDANT_SILENT_AT]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\t@unmake .\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![REDUNDANT_SILENT_AT]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\tunmake .\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\n.PHONY: lint\nlint:\n\t@unmake .\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_redundant_ignore_minus() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\t-rm -rf bin\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![REDUNDANT_IGNORE_MINUS]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: clean\n.IGNORE:\nclean:\n\trm -rf bin\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
         Vec::<String>::new()
     );
 }
