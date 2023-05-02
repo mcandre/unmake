@@ -246,6 +246,7 @@ pub static REDUNDANT_SILENT_AT: &str =
 fn check_redundant_silent_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     let mut has_global_silence: bool = false;
     let mut marked_silent_targets: HashSet<String> = HashSet::new();
+
     for gem in gems {
         if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
             if ts.contains(&".SILENT".to_string()) {
@@ -282,15 +283,10 @@ pub static REDUNDANT_IGNORE_MINUS: &str =
 
 /// check_redundant_ignore_minus reports REDUNDANT_IGNORE_MINUS violations.
 fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    let mut has_global_ignore: bool = false;
     let mut marked_ignored_targets: HashSet<String> = HashSet::new();
     for gem in gems {
         if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
             if ts.contains(&".IGNORE".to_string()) {
-                if ps.is_empty() {
-                    has_global_ignore = true;
-                }
-
                 for p in ps {
                     marked_ignored_targets.insert(p.clone());
                 }
@@ -302,8 +298,7 @@ fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem])
         .filter(|e| match &e.n {
             ast::Ore::Ru { ps: _, ts, cs } => {
                 cs.iter().any(|e2| e2.starts_with('-'))
-                    && (has_global_ignore
-                        || ts.iter().any(|e2| marked_ignored_targets.contains(e2)))
+                    && ts.iter().any(|e2| marked_ignored_targets.contains(e2))
             }
             _ => false,
         })
@@ -311,6 +306,24 @@ fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem])
             path: metadata.path.clone(),
             line: e.l,
             policy: REDUNDANT_IGNORE_MINUS.to_string(),
+        })
+        .collect()
+}
+
+pub static GLOBAL_IGNORE: &str =
+    "GLOBAL_IGNORE: .IGNORE without prerequisites may corrupt artifacts";
+
+/// check_global_ignore reports GLOBAL_IGNORE violations.
+fn check_global_ignore(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps, ts, cs: _ } => ts.contains(&".IGNORE".to_string()) && ps.is_empty(),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: GLOBAL_IGNORE.to_string(),
         })
         .collect()
 }
@@ -447,6 +460,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_redundant_notparallel_wait,
         check_redundant_silent_at,
         check_redundant_ignore_minus,
+        check_global_ignore,
         check_command_comment,
         check_phony_target,
         check_final_eol,
@@ -822,6 +836,42 @@ pub fn test_redundant_silent_at() {
 }
 
 #[test]
+pub fn test_global_ignore() {
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\n.IGNORE:\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![GLOBAL_IGNORE]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\trm -rf bin"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
 pub fn test_redundant_ignore_minus() {
     assert_eq!(
         lint(
@@ -833,18 +883,6 @@ pub fn test_redundant_ignore_minus() {
         .map(|e| e.policy)
         .collect::<Vec<String>>(),
         vec![REDUNDANT_IGNORE_MINUS]
-    );
-
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: clean\n.IGNORE:\nclean:\n\trm -rf bin\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
     );
 
     assert_eq!(

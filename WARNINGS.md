@@ -362,9 +362,11 @@ lint:
 
 Hyphen-minus (`-`) continues makefile execution past soft failure exit codes of an individual command. This is useful for implementing cleanup tasks and other idempotent tasks.
 
-The `.IGNORE` special target also continues makefile execution past soft failures. If the special rule `.IGNORE:` is declared with no prerequisites, then exit codes of alll make commands globally are ignored. If the special rule `.SILENT:` is declared with prerequisite targets, then exit codes for commands for those specific targets are ignored. However, declaring `.IGNORE:` with no prerequisites is likely to cause subtle build problems.
+The `.IGNORE` special target also continues makefile execution past soft failures. If the special rule `.SILENT:` is declared with prerequisite targets, then exit codes for commands for those specific targets are ignored. However, declaring `.IGNORE:` with no prerequisites is likely to cause subtle build problems.
 
 Using both `-` and `.IGNORE` simultaneously is unnecessary.
+
+If the special rule `.IGNORE:` is declared with no prerequisites, then exit codes of all make commands globally are ignored. Due to more severe issues with `.IGNORE:` declared with no prerequisites, detailed in the `GLOBAL_IGNORE` policy, the `REDUNDANT_IGNORE_MINUS` policy does not provide an automatic check for redundant `-` with a global `.IGNORE:` declaration.
 
 ### Fail
 
@@ -406,6 +408,57 @@ clean:
 * Note that `.IGNORE:` declared with no prerequisites is likely to cause subtle build problems.
 * Avoid using hyphen-minus (`-`) with `.IGNORE` redundantly.
 * Redundancy of `.IGNORE` with hyphen-minus (`-`) is best avoided.
+
+## GLOBAL_IGNORE
+
+When the special target rule `.IGNORE:` is declared with no prerequisites, then make ignores exit codes for all make commands, for all rules. This is hazardous, and tends to invite file corruption.
+
+Caution: Avoid using `.IGNORE:` this way. Declare at least one prerequisite for `.IGNORE`, or use hyphen-minus (`-`) to ignore exit codes from individual commands.
+
+### Fail
+
+```make
+.IGNORE:
+
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	rm -f foo
+```
+
+### Pass
+
+```make
+.IGNORE: clean
+
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	rm -f foo
+```
+
+```make
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	-rm -f foo
+```
+
+```make
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	rm -f foo
+```
+
+### Mitigation
+
+* Avoid using `.IGNORE:` without at least one prerequisite.
+* Optionally, apply hyphen-minus (`-`) to individual commands.
 
 ## IMPLEMENTATION_DEFINED_TARGET
 
@@ -565,7 +618,7 @@ Special targets like `.POSIX` and `.PHONY` are important, but they may be elided
 
 # Undefined Behavior (UB)
 
-Linter warnings concerning UB level portability issues tend to carry higher risk than other warnings. This is a consequence of the POSIX standard not specifying any particular error handling (or error detection) semantic for make implementations to follow.
+Linter warnings concerning UB level portability issues tend to carry **higher** risk compared to other warnings. This is a consequence of the POSIX standard not specifying any particular error handling (or error detection) semantic for make implementations to follow.
 
 In the case of UB, a makefile may trigger an error message during certain project builds, silently skip processing, corrupt files, segfault, fire missiles, and/or any number of undefined behaviors.
 
