@@ -6,6 +6,29 @@ Note that `unmake` does not evaluate makefiles, and therefore ignores quirks ari
 
 # General
 
+## MISSING_FINAL_EOL
+
+When a text file suddenly reaches End Of File (EOF) without a Line Feed (LF), then the file is said to not feature a final End Of Line (EOL).
+
+UNIX text files expect each line to terminate in a final End Of Line, including the last line.  Omitting a final EOF can cause subtle text processing errors.
+
+### Fail
+
+```make
+PKG = curl<EOF>
+```
+
+### Pass
+
+```make
+PKG = curl<LF>
+<EOF>
+```
+
+### Mitigation
+
+* Configure [EditorConfig](https://editorconfig.org/) and text editors to apply a final EOL.
+
 ## MAKEFILE_PRECEDENCE
 
 > By default, the following files shall be tried in sequence: ./makefile and ./Makefile.
@@ -124,6 +147,36 @@ all: "foo"
 ### Mitigation
 
 * Avoid percents (`%`) and double-quotes (`"`), in targets and prerequisites.
+
+## INDENTED_COMMAND_COMMENT
+
+make has a tendency to forward commands literally to the shell interpreter. When a command has a sharp (`#`) at a tab indented column, then the entire indented comment may be sent for execution by the shell interpreter. In the best case, this increases log noise during builds. In the worst case, the command may be sent to a non-POSIX compliant shell interpreter such as Command Prompt, triggering build failures.
+
+### Fail
+
+```make
+foo: foo.c
+	# build foo
+	gcc -o foo foo.c
+```
+
+### Pass
+
+```make
+foo: foo.c
+# build foo
+	gcc -o foo foo.c
+```
+
+```make
+foo: foo.c
+	gcc -o foo foo.c
+```
+
+### Mitigation
+
+* Comment commands at the very start of the line, rather than after a tab.
+* Remove extraneous comments.
 
 ## STRICT_POSIX
 

@@ -211,6 +211,23 @@ fn check_implementation_defined_target(
         .collect()
 }
 
+pub static INDENTED_COMMAND_COMMENT: &str = "INDENTED_COMMAND_COMMENT: dedent commented commands";
+
+/// check_indented_command_comment reports INDENTED_COMMAND_COMMENT violations.
+fn check_indented_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| e2.starts_with('#')),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: INDENTED_COMMAND_COMMENT.to_string(),
+        })
+        .collect()
+}
+
 pub static MISSING_FINAL_EOL: &str =
     "MISSING_FINAL_EOL: UNIX text files may process poorly without a final LF";
 
@@ -242,6 +259,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_makefile_precedence,
         check_curdir_assignment_nop,
         check_wait_nop,
+        check_indented_command_comment,
         check_final_eol,
     ];
 
@@ -539,6 +557,33 @@ pub fn test_implementation_defined_target() {
             IMPLEMENTATTION_DEFINED_TARGET,
             IMPLEMENTATTION_DEFINED_TARGET
         ]
+    );
+}
+
+#[test]
+pub fn test_indented_command_comment() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nfoo: foo.c\n\t# compile foo\n\tgcc -o foo foo.c\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![INDENTED_COMMAND_COMMENT]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nfoo: foo.c\n# compile foo\n\tgcc -o foo foo.c\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
     );
 }
 
