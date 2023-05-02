@@ -102,7 +102,7 @@ all:
 
 ### Mitigation
 
-* Avoid running makefile commands beginning with `cd`, `pushd`, or `pop`
+* Avoid running makefile commands beginning with `cd`, `pushd`, or `popd`
 * Reduce use of shell implementation-specific commands in makefiles
 * Note that some commands offer a built-in way to adjust the current directory, e.g. `tar -C <dir>`
 * Promote complex logic to a dedicated script
