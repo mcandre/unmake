@@ -212,3 +212,51 @@ include $(PTH)
 * Avoid using equals (`=`) in path names.
 * Avoid using lowercase `include` as a macro name.
 * Consider removing whitespace between macro names and assignment operators.
+
+## UB_SHELL_MACRO
+
+> The value of the SHELL environment variable shall not be used as a macro and shall not be modified by defining the SHELL macro in a makefile or on the command line.
+
+`SHELL` provides low level functionality to make implementation internals. Expanding or assigning this macro is discouraged.
+
+make implementations that use `SHELL`, tend to set useful defaults. Overriding the defaults may produce non-portable, fragile makefiles.
+
+Some implementations do not define `SHELL`. Assigning a value `SHELL` can create an misleading, non-portable impression of makefile behavior.
+
+Due to `unmake` not evaluating macro expansions, expansion of the `SHELL` macro is not implemented as an automatic check.
+
+Some ancient platforms may present `SHELL` with a `cmd[.exe]` interpreter. But even Windows Command Prompt, the Chocolatey GNU make interpreter tends to default to a POSIX compliant `sh` interpreter suitable for use with makefile commands.
+
+### Fail
+
+```make
+SHELL = sh
+```
+
+```make
+all:
+	$(SHELL) script.sh
+```
+
+```make
+all:
+	${SHELL} script.sh
+```
+
+### Pass
+
+```make
+all:
+	./script.sh
+```
+
+```make
+	sh -c "echo $$SHELL"
+```
+
+### Mitigation
+
+* Avoid assignments to the `SHELL` makefile macro.
+* Treat the `SHELL` makefile macro as a private, internal make macro
+* Note that a distinct `SHELL` environment variable may be available to commands, apart from the `SHELL` make macro.
+* Move complex shell logic to a dedicated shell script.

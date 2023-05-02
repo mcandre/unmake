@@ -44,6 +44,23 @@ fn check_ub_ambiguous_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
         .collect()
 }
 
+pub static UB_SHELL_MACRO: &str = "UB_SHELL_MACRO: do not use or modify SHELL macro";
+
+/// check_ub_shell_macro reports UB_SHELL_MACRO violations.
+fn check_ub_shell_macro(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Mc { n, v: _ } => n == &"SHELL".to_string(),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: UB_SHELL_MACRO.to_string(),
+        })
+        .collect()
+}
+
 /// Warning models a linter recommendation.
 #[derive(Debug, PartialEq)]
 pub struct Warning {
@@ -123,6 +140,7 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
     let policies: Vec<Policy> = vec![
         check_ub_late_posix_marker,
         check_ub_ambiguous_include,
+        check_ub_shell_macro,
         check_makefile_precedence,
         check_wait_nop,
     ];
@@ -238,6 +256,22 @@ pub fn test_ub_warnings() {
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
         Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(mock_md("-"), ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![
+            UB_SHELL_MACRO,
+            UB_SHELL_MACRO,
+            UB_SHELL_MACRO,
+            UB_SHELL_MACRO,
+            UB_SHELL_MACRO,
+            UB_SHELL_MACRO,
+        ]
     );
 }
 
