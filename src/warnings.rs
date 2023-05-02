@@ -196,6 +196,36 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         .collect()
 }
 
+pub static REDUNDANT_NOTPARALLEL_WAIT: &str =
+    "REDUNDANT_NOTPARALLEL_WAIT: .NOTPARALLEL with .WAIT is redundant and superfluous";
+
+/// check_redundant_notparallel_wait reports REDUNDANT_NOTPARALLEL_WAIT violations.
+fn check_redundant_notparallel_wait(
+    metadata: &inspect::Metadata,
+    gems: &[ast::Gem],
+) -> Vec<Warning> {
+    let has_notparallel: bool = gems.iter().any(|e| match &e.n {
+        ast::Ore::Ru { ps: _, ts, cs: _ } => ts.contains(&".NOTPARALLEL".to_string()),
+        _ => false,
+    });
+
+    if !has_notparallel {
+        return Vec::new();
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps, ts: _, cs: _ } => ps.contains(&".WAIT".to_string()),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: REDUNDANT_NOTPARALLEL_WAIT.to_string(),
+        })
+        .collect()
+}
+
 pub static STRICT_POSIX: &str =
     "STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk";
 
@@ -290,6 +320,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_curdir_assignment_nop,
         check_wd_nop,
         check_wait_nop,
+        check_redundant_notparallel_wait,
         check_command_comment,
         check_final_eol,
     ];
@@ -577,6 +608,36 @@ pub fn test_wait_nop() {
 
     assert_eq!(
         lint(&mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_redundant_nonparallel_wait() {
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![REDUNDANT_NOTPARALLEL_WAIT]
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)

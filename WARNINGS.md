@@ -154,6 +154,67 @@ test-2:
 * Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
 * Avoid declaring `.WAIT` as a target.
 
+## REDUNDANT_NOTPARALLEL_WAIT
+
+The `.WAIT` pseudo-prerequisite disables asynchronous processing between prerequisites of a specific rule.
+
+`.NOTPARALLEL:` disables asyncronous processing for all prerequisites in all rules.
+
+Using both of these special targets simultaneously is unnecessary.
+
+### Fail
+
+```make
+.NOTPARALLEL:
+
+test: test-1 .WAIT test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+### Pass
+
+```make
+test: test-1 .WAIT test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+```make
+.NOTPARALLEL:
+
+test: test-1 test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+```make
+test: test-1 test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+### Mitigation
+
+* Avoid using `.NOTPARALLEL:` with `.WAIT` redundantly.
+* Avoid using `.NOTPARALLEL:` with `.WAIT` redundantly.
+
 ## IMPLEMENTATION_DEFINED_TARGET
 
 > The interpretation of targets containing the characters '%' and '"' is implementation-defined.
