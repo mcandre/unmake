@@ -29,7 +29,8 @@ See the [fixtures](fixtures) directory for more examples.
 * The first non-special target with no prerequisites is the default target, conventionally named `all`.
 * Minimal UNIX or Windows-specific arguments supplied to the `echo` command.
 * No single quotes (`'`) string arguments, which may break in certain Windows environments.
-* Optionally use `.SILENT:` instead of indivual `@` command markers, to silence all commands.
+* Optionally use either at (`@`) or a `.SILENT` special target rule, in order to silence all commands.
+* Optionally use either hyphen-minus (`-`) or an `.IGNORE` special target rule, in order to ignore commands expected to soft fail.
 
 # POSIX
 
