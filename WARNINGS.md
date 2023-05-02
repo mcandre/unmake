@@ -458,6 +458,8 @@ GNUmakefile:
 PKG = curl
 ```
 
+Special targets like `.POSIX` and `.PHONY` are important, but they may be elided from other passing examples in this document, for brevity.
+
 ### Mitigation
 
 * Declare `.POSIX:` in most makefiles.
