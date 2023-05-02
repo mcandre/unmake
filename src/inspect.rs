@@ -38,6 +38,10 @@ lazy_static::lazy_static! {
 
 /// Metadata collects information about a file path
 /// regarding its candidacy as a potential POSIX makefile.
+///
+/// Some of the information may be left at a default value,
+/// when scanning detects that the file is less sutiable for
+/// linting as a POSIX compliant makefile.
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct Metadata {
     /// path denotes some file path.
@@ -59,6 +63,15 @@ pub struct Metadata {
     /// written by an automated process, as a secondary artifact
     /// created by some higher level build system.
     pub is_machine_generated: bool,
+
+    /// is_empty denotes whether the file contains any data or not.
+    pub is_empty: bool,
+
+    /// lines denotes the number of LF's in the file.
+    pub lines: usize,
+
+    /// has_final_eol denotes whether a final eol has been read from the file.
+    pub has_final_eol: bool,
 }
 
 impl Metadata {
@@ -70,6 +83,9 @@ impl Metadata {
             is_makefile: false,
             build_system: String::new(),
             is_machine_generated: false,
+            is_empty: true,
+            lines: 0,
+            has_final_eol: false,
         }
     }
 }
@@ -100,6 +116,9 @@ impl fmt::Display for Metadata {
 /// May present some false negatives for makefile assets
 /// when manually written makefiles are used
 /// interchangeably with parent build systems.
+///
+/// Certain fields are left with default values,
+/// when scanning detects files not suitable for POSIX make linting.
 pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
     let pth_abs: path::PathBuf = pth
         .canonicalize()
@@ -124,6 +143,12 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         .to_string();
     let file_extension_lower: String = file_extension.to_lowercase();
 
+    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower)
+        && !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower)
+    {
+        return Ok(metadata);
+    }
+
     if let Some(implementation) =
         LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower)
     {
@@ -131,13 +156,15 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         metadata.build_system = implementation.to_string();
     }
 
-    if !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower) {
+    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower) {
+        metadata.is_makefile = true;
+        metadata.build_system = implementation.to_string();
+    }
+
+    if !metadata.is_makefile || metadata.build_system != "make" {
         return Ok(metadata);
     }
 
-    let implementation: &String = &LOWER_FILENAMES_TO_IMPLEMENTATIONS[&filename_lower];
-    metadata.is_makefile = true;
-    metadata.build_system = implementation.to_string();
     let parent_dir_option: Option<&path::Path> = pth_abs.parent();
 
     if parent_dir_option.is_none() {
@@ -166,6 +193,7 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         {
             metadata.is_machine_generated = true;
             metadata.build_system = parent_build_system.to_string();
+            return Ok(metadata);
         }
     }
 
@@ -201,7 +229,28 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         {
             metadata.is_machine_generated = true;
             metadata.build_system = grandparent_build_system.to_string();
+            return Ok(metadata);
         }
+    }
+
+    let byte_len: u64 = fs::metadata(&pth_abs)
+        .map_err(|_| {
+            format!(
+                "error: unable to retrieve file size of path {}",
+                pth_abs.display()
+            )
+        })?
+        .len();
+
+    metadata.is_empty = byte_len == 0;
+
+    if !metadata.is_empty {
+        let makefile_str: &str = &fs::read_to_string(&pth_abs)
+            .map_err(|_| format!("error: unable to read {}", pth_abs.display()))?;
+
+        metadata.lines = 1 + makefile_str.matches('\n').count();
+        let last_char: char = makefile_str.chars().last().unwrap_or(' ');
+        metadata.has_final_eol = last_char == '\n';
     }
 
     Ok(metadata)

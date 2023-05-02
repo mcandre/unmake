@@ -134,7 +134,7 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
 
 pub static IMPLEMENTATTION_DEFINED_TARGET: &str = "IMPLEMENTATTION_DEFINED_TARGET: non-portable percent (%) or double-quote (\") in target or prerequisite";
 
-/// check_implementation_defined_target reports WAIT_NOP violations.
+/// check_implementation_defined_target reports IMPLEMENTATTION_DEFINED_TARGET violations.
 fn check_implementation_defined_target(
     metadata: &inspect::Metadata,
     gems: &[ast::Gem],
@@ -155,6 +155,22 @@ fn check_implementation_defined_target(
         .collect()
 }
 
+pub static MISSING_FINAL_EOL: &str =
+    "MISSING_FINAL_EOL: UNIX text files may process poorly without a final LF";
+
+/// check_final_eol reports MISSING_FINAL_EOL violations.
+fn check_final_eol(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Vec<Warning> {
+    if !metadata.is_empty && !metadata.has_final_eol {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: metadata.lines,
+            policy: MISSING_FINAL_EOL.to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
 /// lint generates warnings for a makefile.
 pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
@@ -167,6 +183,7 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
         check_implementation_defined_target,
         check_makefile_precedence,
         check_wait_nop,
+        check_final_eol,
     ];
 
     for policy in policies {
@@ -177,6 +194,10 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
 }
 
 /// mock_md constructs simulated Metadata for a hypothetical path.
+///
+/// Assume a lintable POSIX makefile.
+///
+/// Certain fields are given dummy values.
 pub fn mock_md(pth: &str) -> inspect::Metadata {
     inspect::Metadata {
         path: pth.to_string(),
@@ -184,6 +205,9 @@ pub fn mock_md(pth: &str) -> inspect::Metadata {
         is_makefile: true,
         build_system: "make".to_string(),
         is_machine_generated: false,
+        is_empty: true,
+        lines: 0,
+        has_final_eol: false,
     }
 }
 
@@ -398,5 +422,50 @@ pub fn test_implementation_defined_target() {
             IMPLEMENTATTION_DEFINED_TARGET,
             IMPLEMENTATTION_DEFINED_TARGET
         ]
+    );
+}
+
+#[test]
+pub fn test_final_eol() {
+    let mf_pkg: &str = "PKG = curl";
+    let mut md_pkg: inspect::Metadata = mock_md("-");
+    md_pkg.is_empty = &mf_pkg.len() == &0;
+    md_pkg.has_final_eol = &mf_pkg.chars().last().unwrap_or(' ') == &'\n';
+
+    assert_eq!(
+        lint(md_pkg, &mf_pkg)
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![MISSING_FINAL_EOL]
+    );
+
+    let mf_pkg_final_eol: &str = "PKG = curl\n";
+    let mut md_pkg_final_eol: inspect::Metadata = mock_md("-");
+    md_pkg_final_eol.is_empty = &mf_pkg_final_eol.len() == &0;
+    md_pkg_final_eol.has_final_eol = &mf_pkg_final_eol.chars().last().unwrap_or(' ') == &'\n';
+
+    assert_eq!(
+        lint(md_pkg_final_eol, &mf_pkg_final_eol)
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    let mf_empty: &str = "";
+    let mut md_empty: inspect::Metadata = mock_md("-");
+    md_empty.is_empty = &mf_empty.len() == &0;
+    md_empty.has_final_eol = &mf_empty.chars().last().unwrap_or(' ') == &'\n';
+
+    assert_eq!(
+        lint(md_empty, &mf_empty)
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
     );
 }
