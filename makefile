@@ -1,4 +1,3 @@
-.POSIX:
 .PHONY: all
 
 all:

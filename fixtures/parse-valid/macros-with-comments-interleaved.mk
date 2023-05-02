@@ -1,4 +1,3 @@
-
 # PKG abstracts the name of the package to provision
 PKG=foo
 # CMD abstracts the provisioning command prefix

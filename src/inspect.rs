@@ -1,6 +1,7 @@
 //! inspect generates metadata reports on makefiles.
 
 extern crate lazy_static;
+extern crate regex;
 extern crate serde;
 extern crate serde_json;
 
@@ -34,6 +35,10 @@ lazy_static::lazy_static! {
         (".gyp".to_string(), "gyp".to_string()),
         ("makefile.pl".to_string(), "perl".to_string()),
     ].into_iter().collect::<HashMap<String, String>>();
+
+    /// INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
+    /// for inclusion into other makefiles.
+    pub static ref INCLUDE_FILENAME_PATTERN: regex::Regex = regex::Regex::new(r"^(sys\.mk|(.*\.include\.mk))$").unwrap();
 }
 
 /// Metadata collects information about a file path
@@ -64,6 +69,10 @@ pub struct Metadata {
     /// created by some higher level build system.
     pub is_machine_generated: bool,
 
+    /// is_include_file denotes whether the makefile is detected as an include file.
+    /// For example, "sys.mk" or "*.include.mk"
+    pub is_include_file: bool,
+
     /// is_empty denotes whether the file contains any data or not.
     pub is_empty: bool,
 
@@ -83,6 +92,7 @@ impl Metadata {
             is_makefile: false,
             build_system: String::new(),
             is_machine_generated: false,
+            is_include_file: false,
             is_empty: true,
             lines: 0,
             has_final_eol: false,
@@ -232,6 +242,8 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
             return Ok(metadata);
         }
     }
+
+    metadata.is_include_file = INCLUDE_FILENAME_PATTERN.is_match(&metadata.filename);
 
     let byte_len: u64 = fs::metadata(&pth_abs)
         .map_err(|_| {

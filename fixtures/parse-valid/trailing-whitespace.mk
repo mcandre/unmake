@@ -1,3 +1,5 @@
+.POSIX:
+
 FIRST=Alice 
 LAST=Liddell
 FULL_NAME=$(FIRST)$(LAST)

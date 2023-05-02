@@ -107,7 +107,7 @@ all: "foo"
 
 * Avoid percents (`%`) and double-quotes (`"`), in targets and prerequisites.
 
-## POSIX_MARKER
+## STRICT_POSIX
 
 > To receive exactly the behavior described in this section, the user shall ensure that a portable makefile shall:
 >
@@ -119,9 +119,9 @@ all: "foo"
 
 It is good form to begin most makefiles with a `.POSIX:` special target rule marker. This marker instructs make implementations to preserve processing semantics as defined in the POSIX standard without alteration. Omitting the marker may result in unknown behavior. So most makefiles benefit from more predictable behavior by leading with `.POSIX:`. You can declare this marker at the very first line of a makefile, or after some blank/comment lines.
 
-However, makefiles intended for simple text inclusion into other makefiles, may omit the `.POSIX:` marker. As well, files named like `GNUmakefile`, that are known to be implementation-specific, should not use this marker.
+However, makefiles named `*.include.mk`, designed for simple text inclusion into other makefiles, should omit the `.POSIX:` marker.
 
-Due to the ambiguity of whether a makefile is intended for direct use vs inclusion, this policy is not implemented as an automatic check. Likewise, `unmake` does not scan for spurious `.POSIX:` declarations in extended syntax files like `GNUmakefile`, because of the performance loss and requirement to handle additional grammars.
+Also, make distributions commonly install a `sys.mk` include file that provides defines a foundational set of macros, include lines, and rules for make implementations. A `.POSIX:` marker may not be necessary for make distribution files. As well, files named like `GNUmakefile`, that are known to be implementation-specific, should not use this marker. But most any POSIX makefile *not* named to indicate its intention as an include file, should feature the `.POSIX:` marker.
 
 ### Fail
 
@@ -140,6 +140,12 @@ makefile:
 PKG = curl
 ```
 
+provision.include.mk:
+
+```make
+PKG = curl
+```
+
 GNUmakefile:
 
 ```make
@@ -148,10 +154,9 @@ PKG = curl
 
 ### Mitigation
 
-* Declare `.POSIX:` in most makefiles
-* Avoid declaring `.POSIX:` in makefiles intended for inclusion
-* Consider naming makefiles intended for inclusion as `*.include.mk`, `*.include.GNUmakefile`, etc.
-* Avoid declaring `.POSIX:` in makefiles for specific implementations like `GNUmakefile`
+* Declare `.POSIX:` in most makefiles.
+* Rename makefiles intended for inclusion to `*.include.mk`.
+* Avoid declaring `.POSIX:` in makefiles for specific implementations like `GNUmakefile`.
 
 # Undefined Behavior (UB)
 

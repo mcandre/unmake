@@ -1,3 +1,5 @@
+.POSIX:
+
 all: foo%
 
 foo%: foo.c

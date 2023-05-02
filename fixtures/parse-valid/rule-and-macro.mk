@@ -1,3 +1,5 @@
+.POSIX:
+
 BIN=foo
 
 $(BIN): foo.c

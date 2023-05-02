@@ -1,3 +1,5 @@
+.POSIX:
+
 FRUIT=apple
 FRUIT?=banana
 

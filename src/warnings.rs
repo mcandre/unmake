@@ -132,6 +132,27 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         .collect()
 }
 
+pub static STRICT_POSIX: &str =
+    "STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk";
+
+/// check_strict_posix reports STRICT_POSIX violations.
+fn check_strict_posix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    if !metadata.is_include_file
+        && !gems.iter().any(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs: _ } => ts.contains(&".POSIX".to_string()),
+            _ => false,
+        })
+    {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: 1,
+            policy: STRICT_POSIX.to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
 pub static IMPLEMENTATTION_DEFINED_TARGET: &str = "IMPLEMENTATTION_DEFINED_TARGET: non-portable percent (%) or double-quote (\") in target or prerequisite";
 
 /// check_implementation_defined_target reports IMPLEMENTATTION_DEFINED_TARGET violations.
@@ -172,7 +193,7 @@ fn check_final_eol(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Vec<Warning>
 }
 
 /// lint generates warnings for a makefile.
-pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
+pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
     let mut warnings: Vec<Warning> = Vec::new();
 
@@ -180,6 +201,7 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
         check_ub_late_posix_marker,
         check_ub_ambiguous_include,
         check_ub_shell_macro,
+        check_strict_posix,
         check_implementation_defined_target,
         check_makefile_precedence,
         check_wait_nop,
@@ -187,7 +209,7 @@ pub fn lint(metadata: inspect::Metadata, makefile: &str) -> Result<Vec<Warning>,
     ];
 
     for policy in policies {
-        warnings.extend(policy(&metadata, &gems));
+        warnings.extend(policy(metadata, &gems));
     }
 
     Ok(warnings)
@@ -205,6 +227,7 @@ pub fn mock_md(pth: &str) -> inspect::Metadata {
         is_makefile: true,
         build_system: "make".to_string(),
         is_machine_generated: false,
+        is_include_file: false,
         is_empty: true,
         lines: 0,
         has_final_eol: false,
@@ -214,7 +237,7 @@ pub fn mock_md(pth: &str) -> inspect::Metadata {
 #[test]
 pub fn test_line_numbers() {
     assert_eq!(
-        lint(mock_md("-"), "PKG=curl\n.POSIX:\n").unwrap(),
+        lint(&mock_md("-"), "PKG=curl\n.POSIX:\n").unwrap(),
         vec![Warning {
             path: "-".to_string(),
             line: 2,
@@ -226,7 +249,7 @@ pub fn test_line_numbers() {
 #[test]
 pub fn test_ub_warnings() {
     assert_eq!(
-        lint(mock_md("-"), "PKG=curl\n.POSIX:\n")
+        lint(&mock_md("-"), "PKG=curl\n.POSIX:\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -235,7 +258,7 @@ pub fn test_ub_warnings() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), "PKG=curl\n.POSIX:\n.POSIX:\n")
+        lint(&mock_md("-"), "PKG=curl\n.POSIX:\n.POSIX:\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -244,7 +267,7 @@ pub fn test_ub_warnings() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
+        lint(&mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -253,7 +276,7 @@ pub fn test_ub_warnings() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), ".POSIX:\nPKG=curl\n")
+        lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -262,34 +285,7 @@ pub fn test_ub_warnings() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), "PKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
-
-    assert_eq!(
-        lint(mock_md("-"), "\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
-
-    assert_eq!(
-        lint(mock_md("-"), "")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
-
-    assert_eq!(
-        lint(mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
+        lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -298,7 +294,7 @@ pub fn test_ub_warnings() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
+        lint(&mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -307,7 +303,7 @@ pub fn test_ub_warnings() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n")
+        lint(&mock_md("-"), ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -324,9 +320,56 @@ pub fn test_ub_warnings() {
 }
 
 #[test]
+pub fn test_strict_posix() {
+    let md_stdin: inspect::Metadata = mock_md("-");
+
+    assert_eq!(
+        lint(&md_stdin, "PKG = curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![STRICT_POSIX]
+    );
+
+    assert_eq!(
+        lint(&md_stdin, ".POSIX:\nPKG = curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    let mut md_sys: inspect::Metadata = mock_md("sys.mk");
+    md_sys.is_include_file = true;
+
+    assert_eq!(
+        lint(&md_sys, "PKG = curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    let mut md_include_mk: inspect::Metadata = mock_md("foo.include.mk");
+    md_include_mk.is_include_file = true;
+
+    assert_eq!(
+        lint(&md_include_mk, "PKG = curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
 pub fn test_makefile_precedence() {
     assert_eq!(
-        lint(mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
+        lint(&mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -335,7 +378,7 @@ pub fn test_makefile_precedence() {
     );
 
     assert_eq!(
-        lint(mock_md("makefile"), ".POSIX:\nPKG=curl\n")
+        lint(&mock_md("makefile"), ".POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -344,7 +387,7 @@ pub fn test_makefile_precedence() {
     );
 
     assert_eq!(
-        lint(mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
+        lint(&mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -353,7 +396,7 @@ pub fn test_makefile_precedence() {
     );
 
     assert_eq!(
-        lint(mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
+        lint(&mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -362,7 +405,7 @@ pub fn test_makefile_precedence() {
     );
 
     assert_eq!(
-        lint(mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
+        lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -374,7 +417,7 @@ pub fn test_makefile_precedence() {
 #[test]
 pub fn test_wait_nop() {
     assert_eq!(
-        lint(mock_md("-"), ".POSIX:\n.WAIT:\n")
+        lint(&mock_md("-"), ".POSIX:\n.WAIT:\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -383,7 +426,7 @@ pub fn test_wait_nop() {
     );
 
     assert_eq!(
-        lint(mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+        lint(&mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -396,7 +439,7 @@ pub fn test_wait_nop() {
 pub fn test_implementation_defined_target() {
     assert_eq!(
         lint(
-            mock_md("-"),
+            &mock_md("-"),
             ".POSIX:\nall: foo%\nfoo%: foo.c\n\tgcc -o foo% foo.c\n"
         )
         .unwrap()
@@ -411,7 +454,7 @@ pub fn test_implementation_defined_target() {
 
     assert_eq!(
         lint(
-            mock_md("-"),
+            &mock_md("-"),
             ".POSIX:\nall: \"foo\"\n\"foo\": foo.c\n\tgcc -o \"foo\" foo.c\n"
         )
         .unwrap()
@@ -427,13 +470,13 @@ pub fn test_implementation_defined_target() {
 
 #[test]
 pub fn test_final_eol() {
-    let mf_pkg: &str = "PKG = curl";
+    let mf_pkg: &str = ".POSIX:\nPKG = curl";
     let mut md_pkg: inspect::Metadata = mock_md("-");
     md_pkg.is_empty = &mf_pkg.len() == &0;
     md_pkg.has_final_eol = &mf_pkg.chars().last().unwrap_or(' ') == &'\n';
 
     assert_eq!(
-        lint(md_pkg, &mf_pkg)
+        lint(&md_pkg, &mf_pkg)
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -441,13 +484,13 @@ pub fn test_final_eol() {
         vec![MISSING_FINAL_EOL]
     );
 
-    let mf_pkg_final_eol: &str = "PKG = curl\n";
+    let mf_pkg_final_eol: &str = ".POSIX:\nPKG = curl\n";
     let mut md_pkg_final_eol: inspect::Metadata = mock_md("-");
     md_pkg_final_eol.is_empty = &mf_pkg_final_eol.len() == &0;
     md_pkg_final_eol.has_final_eol = &mf_pkg_final_eol.chars().last().unwrap_or(' ') == &'\n';
 
     assert_eq!(
-        lint(md_pkg_final_eol, &mf_pkg_final_eol)
+        lint(&md_pkg_final_eol, &mf_pkg_final_eol)
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -461,11 +504,11 @@ pub fn test_final_eol() {
     md_empty.has_final_eol = &mf_empty.chars().last().unwrap_or(' ') == &'\n';
 
     assert_eq!(
-        lint(md_empty, &mf_empty)
+        lint(&md_empty, &mf_empty)
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
-        Vec::<String>::new()
+        vec![STRICT_POSIX]
     );
 }

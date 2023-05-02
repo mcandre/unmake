@@ -1,3 +1,5 @@
+.POSIX:
+
 .PHONY: test-1
 .PHONY: test-2
 

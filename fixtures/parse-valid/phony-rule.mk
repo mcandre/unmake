@@ -1,3 +1,4 @@
+.POSIX:
 .PHONY: DIR
 
 DIR:

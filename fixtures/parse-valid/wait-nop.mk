@@ -1,3 +1,5 @@
+.POSIX:
+
 .WAIT:
 
 test: test-1 test-2

@@ -1,1 +1,2 @@
+.POSIX:
 UNAME != uname -a

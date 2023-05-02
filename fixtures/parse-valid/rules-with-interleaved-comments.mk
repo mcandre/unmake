@@ -1,4 +1,4 @@
-
+.POSIX:
 .PHONY: test
 
 # foo is the application binary
