@@ -246,6 +246,37 @@ include $(PTH)
 * Avoid using lowercase `include` as a macro name.
 * Consider removing whitespace between macro names and assignment operators.
 
+## UB_MAKEFLAGS_ASSIGNMENT
+
+> The result of setting MAKEFLAGS in the Makefile is unspecified.
+
+The `MAKEFLAGS` macro is designed as read-only, set aside for make implementations to store command line flags.
+
+POSIX compliant make implementations automatically preserve command line flags with `MAKEFLAGS`.
+
+make implementations *implicitly* forward `MAKEFLAGS` to any child `$(MAKE)` invocations on behalf of the makefile user.
+
+### Fail
+
+```make
+MAKEFLAGS = -j
+
+all:
+	$(MAKE) $(MAKEFLAGS) foo.mk
+```
+
+### Pass
+
+```make
+all:
+	$(MAKE) foo.mk
+```
+
+### Mitigation
+
+* Avoid assigning to the `MAKEFLAGS` macro.
+* Move complex logic to a dedicated script.
+
 ## UB_SHELL_MACRO
 
 > The value of the SHELL environment variable shall not be used as a macro and shall not be modified by defining the SHELL macro in a makefile or on the command line.

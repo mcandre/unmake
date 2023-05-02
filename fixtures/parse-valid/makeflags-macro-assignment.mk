@@ -1,0 +1,8 @@
+.POSIX:
+
+MAKEFLAGS ?= -j
+MAKEFLAGS = -j
+MAKEFLAGS ::= -j
+MAKEFLAGS :::= -j
+MAKEFLAGS += -j
+MAKEFLAGS != echo "-j"

@@ -44,6 +44,23 @@ fn check_ub_ambiguous_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
         .collect()
 }
 
+pub static UB_MAKEFLAGS_ASSIGNMENT: &str = "UB_MAKEFLAGS_MACRO: do not modify MAKEFLAGS macro";
+
+/// check_ub_makeflags_assignment reports UB_MAKEFLAGS_ASSIGNMENT violations.
+fn check_ub_makeflags_assignment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Mc { n, v: _ } => n == &"MAKEFLAGS".to_string(),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: UB_MAKEFLAGS_ASSIGNMENT.to_string(),
+        })
+        .collect()
+}
+
 pub static UB_SHELL_MACRO: &str = "UB_SHELL_MACRO: do not use or modify SHELL macro";
 
 /// check_ub_shell_macro reports UB_SHELL_MACRO violations.
@@ -200,6 +217,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
     let policies: Vec<Policy> = vec![
         check_ub_late_posix_marker,
         check_ub_ambiguous_include,
+        check_ub_makeflags_assignment,
         check_ub_shell_macro,
         check_strict_posix,
         check_implementation_defined_target,
@@ -300,6 +318,22 @@ pub fn test_ub_warnings() {
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
         Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nMAKEFLAGS ?= -j\nMAKEFLAGS = -j\nMAKEFLAGS ::= -j\nMAKEFLAGS :::= -j\nMAKEFLAGS += -j\nMAKEFLAGS != echo \"-j\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![
+            UB_MAKEFLAGS_ASSIGNMENT,
+            UB_MAKEFLAGS_ASSIGNMENT,
+            UB_MAKEFLAGS_ASSIGNMENT,
+            UB_MAKEFLAGS_ASSIGNMENT,
+            UB_MAKEFLAGS_ASSIGNMENT,
+            UB_MAKEFLAGS_ASSIGNMENT,
+        ]
     );
 
     assert_eq!(
