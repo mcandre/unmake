@@ -3,6 +3,14 @@
 all:
 	echo "Hello World!"
 
+lint:;
+
+install:;
+
+uninstall:;
+
+publish:;
+
 test: test-1 test-2
 
 test-1:

@@ -15,7 +15,9 @@ lazy_static::lazy_static! {
 
     /// LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN matches common artifactless target names,
     /// specified in lowercase.
-    pub static ref LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN: regex::Regex = regex::Regex::new("^all|(test.*)|(clean.*)$").unwrap();
+    pub static ref LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN: regex::Regex = regex::Regex::new(
+        "^all|lint|install|uninstall|publish|(test.*)|(clean.*)$"
+    ).unwrap();
 }
 
 /// Policy implements a linter check.
@@ -966,6 +968,18 @@ pub fn test_phony_target() {
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
         vec![PHONY_TARGET]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nlint:;\ninstall:;\nuninstall:;\npublish:;\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![PHONY_TARGET, PHONY_TARGET, PHONY_TARGET, PHONY_TARGET,]
     );
 
     assert_eq!(

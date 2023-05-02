@@ -37,7 +37,7 @@ PKG = curl<LF>
 
 --POSIX 202x Issue 8/D3
 
-Briefly, make assumes that most rule targets are actual filenames. However, conventional targets named `all`, `test*`, or `clean*`, are usually not actual filenames. These are logical targets.
+Briefly, make assumes that most rule targets are actual filenames. However, conventional targets named `all`, `lint`, `install`, `uninstall`, `publish`, `test*`, or `clean*`, are usually not actual filenames. These are logical targets.
 
 When make is requested to perform these logical, top-level targets, then make needs to know not to apply the usual file-based caching. The way to do this is by declaring `.PHONY:` special rules, whose prerequisites are your logical targets.
 
@@ -121,7 +121,7 @@ If `cross-compile` and `archive` are also logical targets, then they should be d
 ### Mitigation
 
 * Avoid using make build artifacts named `all`, `test*`, or `clean*`.
-* Declare any targets named `all`, `test*`, or `clean*` as `.PHONY`
+* Declare any targets named `all`, `lint`, `install`, `uninstall`, `publish`, `test*`, or `clean*` as `.PHONY`
 * Declare command-less rule targets as `.PHONY`
 * Note that POSIX usually requires a semicolon (`;`) when declaring rules without commands.
 * Note that special targets like `.NOTPARALLEL`, `.PHONY`, `.POSIX`, `.WAIT`, etc., should not themselves be declared as `.PHONY`
