@@ -31,6 +31,101 @@ PKG = curl<LF>
 
 * Configure [EditorConfig](https://editorconfig.org/) and text editors to apply a final EOL.
 
+## PHONY_TARGET
+
+> Prerequisites of this special target are targets themselves; these targets (known as phony targets) shall be considered always out-of-date when the make utility begins executing. If a phony target’s commands are executed, that phony target shall then be considered up-to-date until the execution of make completes. Subsequent occurrences of .PHONY shall also apply these rules to the additional targets. A .PHONY special target with no prerequisites shall be ignored. If the -t option is specified, phony targets shall not be touched. Phony targets shall not be removed if make receives one of the asynchronous events explicitly described in the ASYNCHRONOUS EVENTS section.
+
+--POSIX 202x Issue 8/D3
+
+Briefly, make assumes that most rule targets are actual filenames. However, conventional targets named `all`, `test*`, or `clean*`, are usually not actual filenames. These are logical targets.
+
+When make is requested to perform these logical, top-level targets, then make needs to know not to apply the usual file-based caching. The way to do this is by declaring `.PHONY:` special rules, whose prerequisites are your logical targets.
+
+You may write logical target declarations as whitespace delimited prerequisites in a single `.PHONY:` rule, or distribute logical target declarations among multiple `.PHONY:` rules.
+
+As well, aggregate targets like `port: cross-compile archive`, that do not have any commands, are usually not actual filenames themselves. Aggregate, commandless targets are also logical targets. Which means that they should also have an entry as a prerequisite in a `.PHONY:` special rule.
+
+Due to the variance in artifact names, `unmake` cannot automate checking for all possible targets deserving `.PHONY` declarations. Neither `make` nor `unmake` knows this application-specific information. The makefile maintainer should supply this information, and configure any needed `.PHONY` declarations accordingly.
+
+### Fail
+
+```make
+all:
+	echo "Hello World!"
+```
+
+```make
+test: test-1 test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+```make
+clean:
+	-rm -rf bin
+```
+
+```make
+empty:;
+```
+
+```make
+port: cross-compile archive
+```
+
+### Pass
+
+```make
+.PHONY: all
+
+all:
+	echo "Hello World!"
+```
+
+```make
+.PHONY: test test-1 test-2
+
+test: test-1 test-2
+
+test-1:
+	echo "Hello World!"
+
+test-2:
+	echo "Hi World!"
+```
+
+```make
+.PHONY: clean
+
+clean:
+	-rm -rf bin
+```
+
+```make
+.PHONY: empty
+empty:;
+```
+
+```make
+.PHONY: port
+
+port: cross-compile archive
+```
+
+If `cross-compile` and `archive` are also logical targets, then they should be declared `.PHONY` as well.
+
+### Mitigation
+
+* Avoid using make build artifacts named `all`, `test*`, or `clean*`.
+* Declare any targets named `all`, `test*`, or `clean*` as `.PHONY`
+* Declare command-less rule targets as `.PHONY`
+* Note that POSIX usually requires a semicolon (`;`) when declaring rules without commands.
+* Note that special targets like `.NOTPARALLEL`, `.PHONY`, `.POSIX`, `.WAIT`, etc., should not themselves be declared as `.PHONY`
+
 ## MAKEFILE_PRECEDENCE
 
 > By default, the following files shall be tried in sequence: ./makefile and ./Makefile.

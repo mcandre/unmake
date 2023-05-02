@@ -1,7 +1,7 @@
 .POSIX:
-.PHONY: test test-1 test-2
 
-.WAIT:
+all:
+	echo "Hello World!"
 
 test: test-1 test-2
 
@@ -10,3 +10,10 @@ test-1:
 
 test-2:
 	echo "Hi World!"
+
+clean:
+	-rm -rf bin
+
+port: cross-compile archive
+
+empty:;

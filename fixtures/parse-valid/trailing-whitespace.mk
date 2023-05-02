@@ -1,4 +1,5 @@
 .POSIX:
+.PHONY: all
 
 FIRST=Alice 
 LAST=Liddell

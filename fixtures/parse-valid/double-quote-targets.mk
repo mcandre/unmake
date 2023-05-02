@@ -1,3 +1,5 @@
+.PHONY: all "foo"
+
 all: "foo"
 
 "foo": foo.c

@@ -9,6 +9,7 @@ use self::unmake::{inspect, warnings};
 use die::{die, Die};
 use std::env;
 use std::fs;
+use std::io;
 use std::path;
 
 lazy_static::lazy_static! {
@@ -65,9 +66,16 @@ fn main() {
 
     let mut action = |p: &path::Path| {
         let pth_string: String = p.display().to_string();
-        let metadata: unmake::inspect::Metadata = unmake::inspect::analyze(p)
-            .map_err(|err| die!(err))
-            .unwrap();
+        let metadata_result: Result<unmake::inspect::Metadata, String> =
+            unmake::inspect::analyze(p);
+
+        if let Err(err) = &metadata_result {
+            found_quirk = true;
+            println!("{}", err);
+            return;
+        }
+
+        let metadata: inspect::Metadata = metadata_result.unwrap();
 
         if !metadata.is_makefile {
             return;
@@ -95,10 +103,15 @@ fn main() {
             return;
         }
 
-        let makefile_str: &str = &fs::read_to_string(p)
-            .map_err(|err| die!(format!("error: {}: {}", p.display(), err)))
-            .unwrap();
+        let makefile_str_result: Result<String, io::Error> = fs::read_to_string(p);
 
+        if let Err(err) = &makefile_str_result {
+            found_quirk = true;
+            println!("error: {}: {}", p.display(), err);
+            return;
+        }
+
+        let makefile_str: &str = &makefile_str_result.unwrap();
         let warnings_result: Result<Vec<warnings::Warning>, String> =
             warnings::lint(&metadata, makefile_str);
 

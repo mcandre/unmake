@@ -2,6 +2,7 @@
 
 use ast;
 use inspect;
+use std::collections::HashSet;
 use std::fmt;
 
 lazy_static::lazy_static! {
@@ -11,6 +12,10 @@ lazy_static::lazy_static! {
         "pushd".to_string(),
         "popd".to_string(),
     ];
+
+    /// LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN matches common artifactless target names,
+    /// specified in lowercase.
+    pub static ref LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN: regex::Regex = regex::Regex::new("^all|(test.*)|(clean.*)$").unwrap();
 }
 
 /// Policy implements a linter check.
@@ -304,6 +309,41 @@ fn check_final_eol(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Vec<Warning>
     Vec::new()
 }
 
+pub static PHONY_TARGET: &str = "PHONY_TARGET: mark common artifactless rules as .PHONY";
+
+/// check_phony_target reports PHONY_TARGET violations.
+fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut marked_phony_targets: HashSet<String> = HashSet::new();
+    for gem in gems {
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
+            if ts.contains(&".PHONY".to_string()) {
+                for p in ps {
+                    marked_phony_targets.insert(p.clone());
+                }
+            }
+        }
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs }
+                if !ts.iter().any(|e2| ast::SPECIAL_TARGETS.contains(e2))
+                    && ts.iter().any(|e2| !marked_phony_targets.contains(e2)) =>
+            {
+                ts.iter().any(|e2| {
+                    LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN.is_match(e2.to_lowercase().as_str())
+                }) || cs.is_empty()
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: PHONY_TARGET.to_string(),
+        })
+        .collect()
+}
+
 /// lint generates warnings for a makefile.
 pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
@@ -322,6 +362,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_wait_nop,
         check_redundant_notparallel_wait,
         check_command_comment,
+        check_phony_target,
         check_final_eol,
     ];
 
@@ -573,7 +614,7 @@ pub fn test_wd_nop() {
     assert_eq!(
         lint(
             &mock_md("-"),
-            ".POSIX:\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
+            ".POSIX:\n.PHONY: all\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
         )
         .unwrap()
         .into_iter()
@@ -585,7 +626,7 @@ pub fn test_wd_nop() {
     assert_eq!(
         lint(
             &mock_md("-"),
-            ".POSIX:\nall:\n\ttar -C foo czvf foo.tgz .\n"
+            ".POSIX:\n.PHONY: all\nall:\n\ttar -C foo czvf foo.tgz .\n"
         )
         .unwrap()
         .into_iter()
@@ -607,7 +648,7 @@ pub fn test_wait_nop() {
     );
 
     assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+        lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -619,7 +660,7 @@ pub fn test_wait_nop() {
 #[test]
 pub fn test_redundant_nonparallel_wait() {
     assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -628,7 +669,7 @@ pub fn test_redundant_nonparallel_wait() {
     );
 
     assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+        lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -637,7 +678,7 @@ pub fn test_redundant_nonparallel_wait() {
     );
 
     assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
@@ -651,7 +692,7 @@ pub fn test_implementation_defined_target() {
     assert_eq!(
         lint(
             &mock_md("-"),
-            ".POSIX:\nall: foo%\nfoo%: foo.c\n\tgcc -o foo% foo.c\n"
+            ".POSIX:\n.PHONY: all\nall: foo%\nfoo%: foo.c\n\tgcc -o foo% foo.c\n"
         )
         .unwrap()
         .into_iter()
@@ -666,7 +707,7 @@ pub fn test_implementation_defined_target() {
     assert_eq!(
         lint(
             &mock_md("-"),
-            ".POSIX:\nall: \"foo\"\n\"foo\": foo.c\n\tgcc -o \"foo\" foo.c\n"
+            ".POSIX:\n.PHONY: all\nall: \"foo\"\n\"foo\": foo.c\n\tgcc -o \"foo\" foo.c\n"
         )
         .unwrap()
         .into_iter()
@@ -741,6 +782,128 @@ pub fn test_command_comment() {
         .into_iter()
         .map(|e| e.policy)
         .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_phony_target() {
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nall:\n\techo \"Hello World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![PHONY_TARGET]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: all\nall:\n\techo \"Hello World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![PHONY_TARGET, PHONY_TARGET, PHONY_TARGET]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test\ntest: test-1 test-2\n.PHONY: test-1\ntest-1:\n\techo \"Hello World!\"\n.PHONY: test-2\ntest-2:\n\techo \"Hi World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nclean:\n\t-rm -rf bin\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![PHONY_TARGET]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new(),
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nport: cross-compile archive\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![PHONY_TARGET]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: port\nport: cross-compile archive\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nempty:;\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
+        vec![PHONY_TARGET]
+    );
+
+    // Ensure that absent targets do not trigger a PHONY_TARGET warning,
+    // unlike some makefile linters in the past.
+    assert_eq!(
+        lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>(),
         Vec::<String>::new()
     );
 }

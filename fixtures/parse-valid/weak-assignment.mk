@@ -1,4 +1,5 @@
 .POSIX:
+.PHONY: all
 
 FRUIT=apple
 FRUIT?=banana

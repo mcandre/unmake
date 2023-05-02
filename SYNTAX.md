@@ -57,6 +57,8 @@ We do our best to catch many of the more obvious POSIX make mistakes, but some m
 
 make users are advised to generally familiarize with basic make usage, syntax, and semantics, in order to resolve problems faster.
 
+Note that make is not aware of the significance of the makefile's own timestamp when calculating whether a build is out of date. Whenever altering a makefile's contents, we recommend to reset the build, then redo the build. Such as running `make clean`, then `make`.
+
 ## UTF-8
 
 UNIX text files use UTF-8. Other encodings are likely to cause text processing problems with make and other UNIX components.

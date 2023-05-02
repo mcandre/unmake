@@ -181,57 +181,59 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         return Ok(metadata);
     }
 
-    let parent_dir: &path::Path = parent_dir_option.unwrap();
+    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower) {
+        let parent_dir: &path::Path = parent_dir_option.unwrap();
 
-    for sibling_entry_result in parent_dir
-        .read_dir()
-        .map_err(|err| format!("error: {}: {}", parent_dir.display(), err))?
-    {
-        let sibling_entry: fs::DirEntry = sibling_entry_result
-            .map_err(|err| format!("error: {}: {}", parent_dir.display(), err))?;
-        let sibling_string: String = sibling_entry
-            .path()
-            .file_name()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-
-        if let Some(parent_build_system) =
-            LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string)
+        for sibling_entry_result in parent_dir
+            .read_dir()
+            .map_err(|err| format!("error: {}: {}", parent_dir.display(), err))?
         {
-            metadata.is_machine_generated = true;
-            metadata.build_system = parent_build_system.to_string();
+            let sibling_entry: fs::DirEntry = sibling_entry_result
+                .map_err(|err| format!("error: {}: {}", parent_dir.display(), err))?;
+            let sibling_string: String = sibling_entry
+                .path()
+                .file_name()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+
+            if let Some(parent_build_system) =
+                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string)
+            {
+                metadata.is_machine_generated = true;
+                metadata.build_system = parent_build_system.to_string();
+                return Ok(metadata);
+            }
+        }
+
+        let grandparent_dir_option: Option<&path::Path> = parent_dir.parent();
+
+        if grandparent_dir_option.is_none() {
             return Ok(metadata);
         }
-    }
 
-    let grandparent_dir_option: Option<&path::Path> = parent_dir.parent();
+        let grandparent_dir: &path::Path = grandparent_dir_option.unwrap();
 
-    if grandparent_dir_option.is_none() {
-        return Ok(metadata);
-    }
-
-    let grandparent_dir: &path::Path = grandparent_dir_option.unwrap();
-
-    for aunt_entry_result in grandparent_dir
-        .read_dir()
-        .map_err(|err| format!("error: {}: {}", grandparent_dir.display(), err))?
-    {
-        let aunt_entry: fs::DirEntry = aunt_entry_result
-            .map_err(|err| format!("error: {}: {}", grandparent_dir.display(), err))?;
-        let aunt_string: String = aunt_entry
-            .path()
-            .file_name()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-
-        if let Some(grandparent_build_system) =
-            LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string)
+        for aunt_entry_result in grandparent_dir
+            .read_dir()
+            .map_err(|err| format!("error: {}: {}", grandparent_dir.display(), err))?
         {
-            metadata.is_machine_generated = true;
-            metadata.build_system = grandparent_build_system.to_string();
-            return Ok(metadata);
+            let aunt_entry: fs::DirEntry = aunt_entry_result
+                .map_err(|err| format!("error: {}: {}", grandparent_dir.display(), err))?;
+            let aunt_string: String = aunt_entry
+                .path()
+                .file_name()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+
+            if let Some(grandparent_build_system) =
+                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string)
+            {
+                metadata.is_machine_generated = true;
+                metadata.build_system = grandparent_build_system.to_string();
+                return Ok(metadata);
+            }
         }
     }
 

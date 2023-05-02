@@ -1,3 +1,5 @@
+.PHONY: all
+
 include foo.mk
 
 all:

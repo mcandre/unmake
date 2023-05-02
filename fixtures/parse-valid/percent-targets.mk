@@ -1,4 +1,5 @@
 .POSIX:
+.PHONY: all
 
 all: foo%
 

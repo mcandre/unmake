@@ -1,0 +1,2 @@
+.POSIX:
+PKG = curl

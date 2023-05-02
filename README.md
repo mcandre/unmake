@@ -26,9 +26,9 @@ See `unmake -h` for more options.
 
 # NOTABLE FEATURES
 
-`unmake` applies a stricter reading of POSIX syntax than `make -n`.
+`unmake` applies a stricter reading of POSIX syntax than `make -n`. Whereas `make -n` may skip inactive sections depending on control flow, `unmake` scans each line. For example, `make -n` may only check instructions specific to building the default task.
 
-In fact, the two checks complement each other. `unmake` checks for syntactic portability issues. `make -n` checks for dry-run runtime issues.
+In fact, the two checks *complement* each other. `make -n` checks for dry-run runtime issues. `unmake` checks for syntactic portability issues.
 
 ## Directory recursion
 
