@@ -4,6 +4,8 @@
 
 Note that `unmake` does not evaluate makefiles, and therefore ignores quirks arising from macro expansions.
 
+Note that line numbers in warnings are approximate, especially for instructions involving multiple lines, such as rule declarations and multiline commands.
+
 # General
 
 ## MISSING_FINAL_EOL
