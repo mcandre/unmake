@@ -81,6 +81,8 @@ CURDIR = build
 
 make often resets the working directory across successive commands, and across successive rules. Common commands for changing directories, such as `cd`, `pushd`, and `popd`, may not have the desired effect.
 
+Furthermore, `push` and `popd` are GNU bash extensions to the POSIX sh interpreter standard, and are likely to fail on other machines.
+
 ### Fail
 
 ```make
@@ -101,6 +103,7 @@ all:
 ### Mitigation
 
 * Avoid running makefile commands beginning with `cd`, `pushd`, or `pop`
+* Reduce use of shell implementation-specific commands in makefiles
 * Note that some commands offer a built-in way to adjust the current directory, e.g. `tar -C <dir>`
 * Promote complex logic to a dedicated script
 
