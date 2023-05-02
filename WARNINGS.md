@@ -77,6 +77,33 @@ CURDIR = build
 * Note that some commands offer a built-in way to adjust the current directory, e.g. `tar -C <dir>`
 * Promote complex logic to a dedicated script
 
+## WD_NOP
+
+make often resets the working directory across successive commands, and across successive rules. Common commands for changing directories, such as `cd`, `pushd`, and `popd`, may not have the desired effect.
+
+### Fail
+
+```make
+all:
+	cd foo
+```
+
+```make
+all:
+	pushd foo
+```
+
+```make
+all:
+	popd
+```
+
+### Mitigation
+
+* Avoid running makefile commands beginning with `cd`, `pushd`, or `pop`
+* Note that some commands offer a built-in way to adjust the current directory, e.g. `tar -C <dir>`
+* Promote complex logic to a dedicated script
+
 ## WAIT_NOP
 
 > When .WAIT appears as a target, it shall have no effect.

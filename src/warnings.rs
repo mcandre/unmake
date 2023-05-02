@@ -4,6 +4,15 @@ use ast;
 use inspect;
 use std::fmt;
 
+lazy_static::lazy_static! {
+    /// WD_COMMANDS collects common commands for modifying a shell's current working directory.
+    pub static ref WD_COMMANDS: Vec<String> = vec![
+        "cd".to_string(),
+        "pushd".to_string(),
+        "popd".to_string(),
+    ];
+}
+
 /// Policy implements a linter check.
 pub type Policy = fn(&inspect::Metadata, &[ast::Gem]) -> Vec<Warning>;
 
@@ -150,6 +159,26 @@ fn check_curdir_assignment_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) 
         .collect()
 }
 
+pub static WD_NOP: &str =
+    "WD_NOP: change directory commands may not persist across successive commands or rules";
+
+/// check_wd_nop reports WD_NOP violations.
+fn check_wd_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| {
+                WD_COMMANDS.contains(&e2.split_whitespace().next().unwrap_or("").to_string())
+            }),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: WD_NOP.to_string(),
+        })
+        .collect()
+}
+
 pub static WAIT_NOP: &str = "WAIT_NOP: .WAIT as a target has no effect";
 
 /// check_makefile_precedence reports WAIT_NOP violations.
@@ -259,6 +288,7 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
         check_implementation_defined_target,
         check_makefile_precedence,
         check_curdir_assignment_nop,
+        check_wd_nop,
         check_wait_nop,
         check_command_comment,
         check_final_eol,
@@ -503,6 +533,33 @@ pub fn test_curdir_assignment_nop() {
             .into_iter()
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_wd_nop() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![WD_NOP]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nall:\n\ttar -C foo czvf foo.tgz .\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
         Vec::<String>::new()
     );
 }
