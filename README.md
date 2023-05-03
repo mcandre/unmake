@@ -9,7 +9,9 @@
 
 # ABOUT
 
-`unmake` checks makefiles for syntax errors and portability issues.
+`unmake` is a makefile linter emphasizing portability. We target the POSIX make standard.
+
+With `unmake`, you can develop practical, portable `makefile` scripts, such as for provisioning dev environments. No Ansible, Docker, or WSL necessary!
 
 # EXAMPLES
 
