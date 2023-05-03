@@ -36,6 +36,8 @@ lazy_static::lazy_static! {
         check_redundant_silent_at,
         check_redundant_ignore_minus,
         check_global_ignore,
+        check_simplify_at,
+        check_simplify_minus,
         check_command_comment,
         check_phony_target,
         check_final_eol,
@@ -363,6 +365,92 @@ fn check_global_ignore(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<W
             path: metadata.path.clone(),
             line: e.l,
             policy: GLOBAL_IGNORE.to_string(),
+        })
+        .collect()
+}
+
+pub static SIMPLIFY_AT: &str =
+    "SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)";
+
+/// check_simplify_at reports SIMPLIFY_AT violations.
+fn check_simplify_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut has_global_silence: bool = false;
+    let mut marked_silent_targets: HashSet<String> = HashSet::new();
+
+    for gem in gems {
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
+            if ts.contains(&".SILENT".to_string()) {
+                if ps.is_empty() {
+                    has_global_silence = true;
+                }
+
+                for p in ps {
+                    marked_silent_targets.insert(p.clone());
+                }
+            }
+        }
+    }
+
+    if has_global_silence {
+        return Vec::new();
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs } => {
+                cs.len() > 1
+                    && cs.iter().all(|e2| e2.starts_with('@'))
+                    && !ts.iter().any(|e2| marked_silent_targets.contains(e2))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: SIMPLIFY_AT.to_string(),
+        })
+        .collect()
+}
+
+pub static SIMPLIFY_MINUS: &str =
+    "SIMPLIFY_MINUS: replace individual hyphen-minus (-) signs with .IGNORE target declaration(s)";
+
+/// check_simplify_minus reports SIMPLIFY_MINUS violations.
+fn check_simplify_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut has_global_ignore: bool = false;
+    let mut marked_ignored_targets: HashSet<String> = HashSet::new();
+
+    for gem in gems {
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
+            if ts.contains(&".IGNORE".to_string()) {
+                if ps.is_empty() {
+                    has_global_ignore = true;
+                }
+
+                for p in ps {
+                    marked_ignored_targets.insert(p.clone());
+                }
+            }
+        }
+    }
+
+    if has_global_ignore {
+        return Vec::new();
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs } => {
+                cs.len() > 1
+                    && cs.iter().all(|e2| e2.starts_with('-'))
+                    && !ts.iter().any(|e2| marked_ignored_targets.contains(e2))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: SIMPLIFY_MINUS.to_string(),
         })
         .collect()
 }
@@ -1173,6 +1261,84 @@ pub fn test_phony_target() {
             .into_iter()
             .map(|e| e.policy)
             .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_simplify_at() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\t@echo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![SIMPLIFY_AT]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\techo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.SILENT: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_simplify_minus() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\t-echo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![SIMPLIFY_MINUS]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\techo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.IGNORE: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
         Vec::<String>::new()
     );
 }

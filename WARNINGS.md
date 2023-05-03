@@ -500,6 +500,63 @@ clean:
 * Avoid using `.IGNORE:` without at least one prerequisite.
 * Optionally, apply hyphen-minus (`-`) to individual commands.
 
+## SIMPLIFY_AT / SIMPLIFY_MINUS
+
+Using at (`@`) or hyphen-minus (`-`) command prefixes for several individual commands in a rule can be simplified to a `.SILENT` or `.IGNORE` declaration respectively.
+
+Due to flexibility needs, this warning emits automatically for rules with at least two or more commands, where all of the commands feature the same at (`@`) or hyphen-minus (`-`) prefix. Rules with zero or one command, and rules with mixed command prefixes, may not trigger this warning.
+
+We generally recommend using `.SILENT` / `.IGNORE` over individual at (`@`) / hyphen-minus (`-`).
+
+### Fail
+
+```make
+welcome:
+	-echo foo
+    -echo bar
+    -echo baz
+```
+
+```make
+welcome:
+	@echo foo
+    @echo bar
+    @echo baz
+```
+
+### Pass
+
+```make
+.IGNORE: welcome
+
+welcome:
+	echo foo
+    echo bar
+    echo baz
+```
+
+```make
+.SILENT: welcome
+
+welcome:
+	echo foo
+    echo bar
+    echo baz
+```
+
+```make
+.SILENT:
+
+welcome:
+	echo foo
+    echo bar
+    echo baz
+```
+### Mitigation
+
+* Use `.SILENT` / `.IGNORE` targets rather than individual at (`@`) / hyphen-minus (`-`) targets.
+* Note that `.IGNORE` may have poor behavior without at least one prerequisite.
+
 ## IMPLEMENTATION_DEFINED_TARGET
 
 > The interpretation of targets containing the characters '%' and '"' is implementation-defined.

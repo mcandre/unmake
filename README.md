@@ -19,6 +19,8 @@ $ cd fixtures
 $ unmake .
 error: ./parse-invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
 warning: ./parse-valid/Makefile:0 MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
+warning: ./parse-valid/boilerplate-ats.mk:4 SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)
+warning: ./parse-valid/missing-posix.mk:1 STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk
 ...
 ```
 
