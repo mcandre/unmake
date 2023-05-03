@@ -21,9 +21,9 @@ No need for more heavyweight tools like Ansible, Docker, Lua, Python, or WSL! Ju
 $ cd fixtures/parse-valid
 
 $ unmake .
-warning: ./Makefile:0 MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
-warning: ./boilerplate-ats.mk:4 SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)
-warning: ./missing-posix.mk:1 STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk
+warning: ./Makefile: MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
+warning: ./boilerplate-ats.mk:4: SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)
+warning: ./missing-posix.mk:1: STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk
 ...
 ```
 

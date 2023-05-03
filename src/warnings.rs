@@ -155,7 +155,7 @@ impl fmt::Display for Warning {
         write!(f, "warning: {}:", self.path)?;
 
         if self.line > 0 {
-            write!(f, "{}", self.line)?;
+            write!(f, "{}:", self.line)?;
         }
 
         write!(f, " {}", self.policy)
