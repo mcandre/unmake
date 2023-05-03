@@ -49,7 +49,7 @@ When recursing over directories, `unmake` skips symlinks.
 
 `unmake` skips any third party makefiles housed in subdirectories like `.git`, `node_modules`, or `vendor`.
 
-To investigate makefiles in more detail, try the `--debug` or `--inspect` options.
+To investigate makefiles in more detail, see the `--debug` or `--inspect` command line options for `unmake`.
 
 # PARSE ERRORS
 
