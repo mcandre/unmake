@@ -1,0 +1,4 @@
+.POSIX:
+.PHONY: test
+test:
+	@+-

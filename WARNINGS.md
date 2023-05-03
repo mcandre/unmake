@@ -660,6 +660,50 @@ foo: foo.c
 * Move comments to the leftmost column, fully *de*dented.
 * Consider removing extraneous lines.
 
+## BLANK_COMMAND
+
+Rule commands consisting of nothing more than at (`@`), plus (`+`), minus (`-`) prefixes, and/or whitespace, can produce spurious results when the essentially empty command is executed. Without any prefixes, blank commands are likely to trigger parse errors.
+
+Blank commands are distinct from blank lines, which normally act as comments.
+
+Blank commands are distinct from rules that are reset to have *no* commands.
+
+### Fail
+
+```make
+test:
+	@+-
+```
+
+### Pass
+
+```make
+test:
+	@+-echo "Hello World!"
+```
+
+```make
+test:
+	@+-echo "Hello World!"
+```
+
+```make
+test:;
+```
+
+```make
+#test:
+```
+
+```make
+<rule removed>
+```
+
+### Mitigation
+
+* Give the command something useful to do.
+* Remove extraneous code.
+
 ## STRICT_POSIX
 
 > To receive exactly the behavior described in this section, the user shall ensure that a portable makefile shall:
