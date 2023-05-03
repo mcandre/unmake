@@ -35,6 +35,8 @@ See the [fixtures](fixtures) directory for more examples.
 * `.IGNORE` without a prerequisite is unsafe to apply globally.
 * At (`@`) / `.SILENT` can reduce log noise and mitigate certain types of sensitive data leaks.
 * At (`@`) / `.SILENT` are generally safe to apply to globally.
+* At (`@`), hyphen-minus (`-`), and/or plus (`+`) prefixes can be combined for the same command.
+* Prerequisites may appear in `.SILENT` and/or `.IGNORE` special targets.
 
 # POSIX
 
