@@ -29,8 +29,12 @@ See the [fixtures](fixtures) directory for more examples.
 * The first non-special target with no prerequisites is the default target, conventionally named `all`.
 * Minimal UNIX or Windows-specific arguments supplied to the `echo` command.
 * No single quotes (`'`) string arguments, which may break in certain Windows environments.
-* Optionally use either at (`@`) or a `.SILENT` special target rule, in order to silence all commands.
-* Optionally use either hyphen-minus (`-`) or an `.IGNORE` special target rule, in order to ignore commands expected to soft fail.
+* Hyphen-minus (`-`) and `.IGNORE` suppress the overall `make` exit code.
+* Hyphen-minus (`-`) / `.IGNORE` can turn make commands into soft assertions, which can emit console messages without short-circuiting the build task tree.
+* Hyphen-minus (`-`) / `.IGNORE` are often associated with `clean*` task idempotence.
+* `.IGNORE` without a prerequisite is unsafe to apply globally.
+* At (`@`) / `.SILENT` can reduce log noise and mitigate certain types of sensitive data leaks.
+* At (`@`) / `.SILENT` are generally safe to apply to globally.
 
 # POSIX
 
