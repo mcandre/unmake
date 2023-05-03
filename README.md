@@ -11,22 +11,25 @@
 
 `unmake` is a makefile linter emphasizing portability. We target the POSIX make standard.
 
-With `unmake`, you can develop practical, portable `makefile` scripts, such as for provisioning dev environments. No Ansible, Docker, or WSL necessary!
+With `unmake`, you can develop practical, portable `makefile` scripts, such as for provisioning dev environments.
+
+No need for more heavyweight tools like Ansible, Docker, Lua, Python, or WSL! Just good ol' make.
 
 # EXAMPLES
 
 ```console
-$ cd fixtures
+$ cd fixtures/parse-valid
 
 $ unmake .
-error: ./parse-invalid/crlf.mk:1:5 found "\r", expected: LF, comment, inline command, macro expansion, target, wait prerequisite marker
-warning: ./parse-valid/Makefile:0 MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
-warning: ./parse-valid/boilerplate-ats.mk:4 SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)
-warning: ./parse-valid/missing-posix.mk:1 STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk
+warning: ./Makefile:0 MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
+warning: ./boilerplate-ats.mk:4 SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)
+warning: ./missing-posix.mk:1 STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk
 ...
 ```
 
 See `unmake -h` for more options.
+
+See [makefile](makefile) for a live example of a portable dev environment provisioning script for this Rust project.
 
 # NOTABLE FEATURES
 
