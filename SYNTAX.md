@@ -31,7 +31,7 @@ See the [fixtures](fixtures) directory for more examples.
 * No single quotes (`'`) string arguments, which may break in certain Windows environments.
 * Hyphen-minus (`-`) and `.IGNORE` suppress the overall `make` exit code.
 * Hyphen-minus (`-`) / `.IGNORE` can turn make commands into soft assertions, which can emit console messages without short-circuiting the build task tree.
-* Hyphen-minus (`-`) / `.IGNORE` are often associated with `clean*` task idempotence.
+* Hyphen-minus (`-`) / `.IGNORE` are often associated with `uninstall` and `clean*` task idempotence.
 * `.IGNORE` without a prerequisite is unsafe to apply globally.
 * At (`@`) / `.SILENT` can reduce log noise and mitigate certain types of sensitive data leaks.
 * At (`@`) / `.SILENT` are generally safe to apply to globally.
