@@ -47,7 +47,7 @@ When recursing over directories, `unmake` skips symlinks.
 
 `unmake` skips many *machine-generated* makefiles. For example, makefiles produced by autotools; Perl; and cmake when using the Unix Makefile generator (both in-source builds and out-of-source builds).
 
-`unmake` skips any third party makefiles house in subdirectories like `.git`, `node_modules`, or `vendor`.
+`unmake` skips any third party makefiles housed in subdirectories like `.git`, `node_modules`, or `vendor`.
 
 To investigate makefiles in more detail, try the `--debug` or `--inspect` options.
 
