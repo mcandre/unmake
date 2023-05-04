@@ -19,6 +19,9 @@ lazy_static::lazy_static! {
         "^all|lint|install|uninstall|publish|(test.*)|(clean.*)$"
     ).unwrap();
 
+    /// COMMAND_PREFIX_PATTERN matches commands with prefixes.
+    pub static ref COMMAND_PREFIX_PATTERN: regex::Regex = regex::Regex::new(r"^(?P<prefix>[-+@]+)").unwrap();
+
     /// BLANK_COMMAND_PATTERN matches empty commands.
     ///
     /// Empty commands are distinct from a rule without commands.
@@ -45,6 +48,7 @@ lazy_static::lazy_static! {
         check_simplify_minus,
         check_command_comment,
         check_phony_target,
+        check_repeated_command_prefix,
         check_blank_command,
         check_final_eol,
     ];
@@ -519,6 +523,38 @@ fn check_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec
             path: metadata.path.clone(),
             line: e.l,
             policy: COMMAND_COMMENT.to_string(),
+        })
+        .collect()
+}
+
+pub static REPEATED_COMMAND_PREFIX: &str =
+    "REPEATED_COMMAND_PREFIX: redundant prefixes are superfluous";
+
+/// check_blank_command reports BLANK_COMMAND violations.
+fn check_repeated_command_prefix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| {
+                if BLANK_COMMAND_PATTERN.is_match(e2) {
+                    return false;
+                }
+
+                let prefix: &str = COMMAND_PREFIX_PATTERN
+                    .captures(e2)
+                    .and_then(|e3| e3.name("prefix"))
+                    .map(|e3| e3.as_str())
+                    .unwrap_or("");
+
+                prefix.matches('@').count() > 1
+                    || prefix.matches('+').count() > 1
+                    || prefix.matches('-').count() > 1
+            }),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: REPEATED_COMMAND_PREFIX.to_string(),
         })
         .collect()
 }
@@ -1360,6 +1396,57 @@ pub fn test_simplify_minus() {
         lint(
             &mock_md("-"),
             ".POSIX:\n.IGNORE: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+pub fn test_repeated_command_prefix() {
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test\ntest:\n\t@@echo \"Hello World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![REPEATED_COMMAND_PREFIX]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test\ntest:\n\t--echo \"Hello World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![REPEATED_COMMAND_PREFIX]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test\ntest:\n\t@-@echo \"Hello World!\"\n"
+        )
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>(),
+        vec![REPEATED_COMMAND_PREFIX]
+    );
+
+    assert_eq!(
+        lint(
+            &mock_md("-"),
+            ".POSIX:\n.PHONY: test\ntest:\n\t@+-echo \"Hello World!\"\n"
         )
         .unwrap()
         .into_iter()

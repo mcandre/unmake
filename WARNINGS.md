@@ -660,6 +660,36 @@ foo: foo.c
 * Move comments to the leftmost column, fully *de*dented.
 * Consider removing extraneous lines.
 
+## REPEATED_COMMAND_PREFIX
+
+Supplying the same command prefix multiple times is wasteful.
+
+### Fail
+
+```make
+test:
+	@@+-+--echo "Hello World!"
+```
+
+### Pass
+
+```make
+test:
+	@+-echo "Hello World!"
+```
+
+```make
+test:
+	echo "Hello World!"
+```
+
+(Any combination of `@`, `+`, and `-` is fine as long as none of the prefix types are duplicated.)
+
+### Mitigation
+
+* Remove redundant code.
+* Code that is redundant should be removed.
+
 ## BLANK_COMMAND
 
 Rule commands consisting of nothing more than at (`@`), plus (`+`), minus (`-`) prefixes, and/or whitespace, can produce spurious results when the essentially empty command is executed. Without any prefixes, blank commands are likely to trigger parse errors.
