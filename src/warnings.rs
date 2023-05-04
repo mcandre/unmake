@@ -107,6 +107,25 @@ impl fmt::Display for Warning {
     }
 }
 
+/// mock_md constructs simulated Metadata for a hypothetical path.
+///
+/// Assume a lintable POSIX makefile.
+///
+/// Certain fields are given dummy values.
+pub fn mock_md(pth: &str) -> inspect::Metadata {
+    inspect::Metadata {
+        path: pth.to_string(),
+        filename: pth.to_string(),
+        is_makefile: true,
+        build_system: "make".to_string(),
+        is_machine_generated: false,
+        is_include_file: false,
+        is_empty: true,
+        lines: 0,
+        has_final_eol: false,
+    }
+}
+
 pub static UB_LATE_POSIX_MARKER: &str =
     "UB_LATE_POSIX_MARKER: the special rule \".POSIX:\" should be the first uncommented instruction in POSIX makefiles, or else absent from *.include.mk files";
 
@@ -128,6 +147,54 @@ fn check_ub_late_posix_marker(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
         .collect()
 }
 
+#[test]
+fn test_late_posix_marker() {
+    assert!(lint(&mock_md("-"), "PKG=curl\n.POSIX:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    assert!(!lint(&mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    assert!(!lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    let mut md_include = mock_md("provision.include.mk");
+    md_include.is_include_file = true;
+
+    assert!(lint(&md_include, ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    assert!(!lint(&md_include, "PKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    assert!(lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
+}
+
 pub static UB_AMBIGUOUS_INCLUDE: &str =
     "UB_AMBIGUOUS_INCLUDE: unclear whether include line or macro definition";
 
@@ -144,6 +211,30 @@ fn check_ub_ambiguous_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
             message: UB_AMBIGUOUS_INCLUDE.to_string(),
         })
         .collect()
+}
+
+#[test]
+fn test_ub_ambiguous_include() {
+    assert!(lint(&mock_md("-"), ".POSIX:\ninclude = foo.mk\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
+
+    assert!(lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
+
+    assert!(!lint(&mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
 }
 
 pub static UB_MAKEFLAGS_ASSIGNMENT: &str = "UB_MAKEFLAGS_MACRO: do not modify MAKEFLAGS macro";
@@ -163,6 +254,23 @@ fn check_ub_makeflags_assignment(metadata: &inspect::Metadata, gems: &[ast::Gem]
         .collect()
 }
 
+#[test]
+fn test_ub_makeflags_assignment() {
+    assert!(
+        lint(&mock_md("-"), ".POSIX:\nMAKEFLAGS ?= -j\nMAKEFLAGS = -j\nMAKEFLAGS ::= -j\nMAKEFLAGS :::= -j\nMAKEFLAGS += -j\nMAKEFLAGS != echo \"-j\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>().contains(&UB_MAKEFLAGS_ASSIGNMENT.to_string()));
+
+    assert!(!lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_MAKEFLAGS_ASSIGNMENT.to_string()));
+}
+
 pub static UB_SHELL_MACRO: &str = "UB_SHELL_MACRO: do not use or modify SHELL macro";
 
 /// check_ub_shell_macro reports UB_SHELL_MACRO violations.
@@ -178,6 +286,26 @@ fn check_ub_shell_macro(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
             message: UB_SHELL_MACRO.to_string(),
         })
         .collect()
+}
+
+#[test]
+fn test_ub_shell_macro() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&UB_SHELL_MACRO.to_string()));
+
+    assert!(!lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&UB_SHELL_MACRO.to_string()));
 }
 
 pub static MAKEFILE_PRECEDENCE: &str =
@@ -196,6 +324,44 @@ fn check_makefile_precedence(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Ve
     Vec::new()
 }
 
+#[test]
+pub fn test_makefile_precedence() {
+    assert!(lint(&mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
+
+    assert!(!lint(&mock_md("makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
+
+    assert!(!lint(&mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
+
+    assert!(!lint(&mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
+
+    assert!(!lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
+}
+
 pub static CURDIR_ASSIGNMENT_NOP: &str =
     "CURDIR_ASSIGNMENT_NOP: CURDIR assignment does not change the make working directory";
 
@@ -212,6 +378,23 @@ fn check_curdir_assignment_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) 
             message: CURDIR_ASSIGNMENT_NOP.to_string(),
         })
         .collect()
+}
+
+#[test]
+pub fn test_curdir_assignment_nop() {
+    assert!(lint(&mock_md("-"), ".POSIX:\nCURDIR = build\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
+
+    assert!(!lint(&mock_md("-"), ".POSIX:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
 }
 
 pub static WD_NOP: &str =
@@ -234,6 +417,29 @@ fn check_wd_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning>
         .collect()
 }
 
+#[test]
+pub fn test_wd_nop() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&WD_NOP.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall:\n\ttar -C foo czvf foo.tgz .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&WD_NOP.to_string()));
+}
+
 pub static WAIT_NOP: &str = "WAIT_NOP: .WAIT as a target has no effect";
 
 /// check_makefile_precedence reports WAIT_NOP violations.
@@ -251,6 +457,23 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         .collect()
 }
 
+#[test]
+pub fn test_wait_nop() {
+    assert!(lint(&mock_md("-"), ".POSIX:\n.WAIT:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&WAIT_NOP.to_string()));
+
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>().contains(&WAIT_NOP.to_string()));
+}
+
 pub static PHONY_NOP: &str = "PHONY_NOP: empty .PHONY has no effect";
 
 /// check_phony_nop reports PHONY_NOP violations.
@@ -266,6 +489,29 @@ fn check_phony_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warni
             message: PHONY_NOP.to_string(),
         })
         .collect()
+}
+
+#[test]
+pub fn test_phony_nop() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY:\nfoo: foo.c\n\tgcc -o foo foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_NOP.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_NOP.to_string()));
 }
 
 pub static REDUNDANT_NOTPARALLEL_WAIT: &str =
@@ -296,6 +542,30 @@ fn check_redundant_notparallel_wait(
             message: REDUNDANT_NOTPARALLEL_WAIT.to_string(),
         })
         .collect()
+}
+
+#[test]
+pub fn test_redundant_nonparallel_wait() {
+    assert!(
+        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
+
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
+
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 }
 
 pub static REDUNDANT_SILENT_AT: &str =
@@ -337,6 +607,48 @@ fn check_redundant_silent_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) ->
         .collect()
 }
 
+#[test]
+pub fn test_redundant_silent_at() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: lint\n.SILENT:\nlint:\n\t@unmake .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_SILENT_AT.to_string()));
+
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\t@unmake .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_SILENT_AT.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\tunmake .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_SILENT_AT.to_string()));
+
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.PHONY: lint\nlint:\n\t@unmake .\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&REDUNDANT_SILENT_AT.to_string())
+    );
+}
+
 pub static REDUNDANT_IGNORE_MINUS: &str =
     "REDUNDANT_IGNORE_MINUS: .IGNORE with - is redundant and superfluous";
 
@@ -369,6 +681,29 @@ fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem])
         .collect()
 }
 
+#[test]
+pub fn test_redundant_ignore_minus() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\t-rm -rf bin\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
+}
+
 pub static GLOBAL_IGNORE: &str =
     "GLOBAL_IGNORE: .IGNORE without prerequisites may corrupt artifacts";
 
@@ -385,6 +720,36 @@ fn check_global_ignore(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<W
             message: GLOBAL_IGNORE.to_string(),
         })
         .collect()
+}
+
+#[test]
+pub fn test_global_ignore() {
+    assert!(lint(&mock_md("-"), ".POSIX:\n.IGNORE:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&GLOBAL_IGNORE.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\trm -rf bin"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&GLOBAL_IGNORE.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&GLOBAL_IGNORE.to_string()));
 }
 
 pub static SIMPLIFY_AT: &str =
@@ -430,6 +795,39 @@ fn check_simplify_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<War
         .collect()
 }
 
+#[test]
+pub fn test_simplify_at() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\t@echo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_AT.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_AT.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.SILENT: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_AT.to_string()));
+}
+
 pub static SIMPLIFY_MINUS: &str =
     "SIMPLIFY_MINUS: replace individual hyphen-minus (-) signs with .IGNORE target declaration(s)";
 
@@ -473,6 +871,39 @@ fn check_simplify_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
         .collect()
 }
 
+#[test]
+pub fn test_simplify_minus() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\t-echo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_MINUS.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_MINUS.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.IGNORE: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_MINUS.to_string()));
+}
+
 pub static STRICT_POSIX: &str =
     "STRICT_POSIX: lead makefiles with the \".POSIX:\" compliance marker, or else rename include files to *.include.mk";
 
@@ -496,362 +927,6 @@ fn check_strict_posix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
     }
 
     Vec::new()
-}
-
-pub static IMPLEMENTATTION_DEFINED_TARGET: &str = "IMPLEMENTATTION_DEFINED_TARGET: non-portable percent (%) or double-quote (\") in target or prerequisite";
-
-/// check_implementation_defined_target reports IMPLEMENTATTION_DEFINED_TARGET violations.
-fn check_implementation_defined_target(
-    metadata: &inspect::Metadata,
-    gems: &[ast::Gem],
-) -> Vec<Warning> {
-    gems.iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps, ts, cs: _ } => {
-                ps.iter().any(|e2| e2.contains('%') || e2.contains('\"'))
-                    || ts.iter().any(|e2| e2.contains('%') || e2.contains('\"'))
-            }
-            _ => false,
-        })
-        .map(|e| Warning {
-            path: metadata.path.clone(),
-            line: e.l,
-            message: IMPLEMENTATTION_DEFINED_TARGET.to_string(),
-        })
-        .collect()
-}
-
-pub static COMMAND_COMMENT: &str =
-    "COMMAND_COMMENT: comment embedded inside commands will forward to the shell interpreter";
-
-/// check_command_comment reports COMMAND_COMMENT violations.
-fn check_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    gems.iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| e2.contains('#')),
-            _ => false,
-        })
-        .map(|e| Warning {
-            path: metadata.path.clone(),
-            line: e.l,
-            message: COMMAND_COMMENT.to_string(),
-        })
-        .collect()
-}
-
-pub static REPEATED_COMMAND_PREFIX: &str =
-    "REPEATED_COMMAND_PREFIX: redundant prefixes are superfluous";
-
-/// check_blank_command reports BLANK_COMMAND violations.
-fn check_repeated_command_prefix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    gems.iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| {
-                if BLANK_COMMAND_PATTERN.is_match(e2) {
-                    return false;
-                }
-
-                let prefix: &str = COMMAND_PREFIX_PATTERN
-                    .captures(e2)
-                    .and_then(|e3| e3.name("prefix"))
-                    .map(|e3| e3.as_str())
-                    .unwrap_or("");
-
-                prefix.matches('@').count() > 1
-                    || prefix.matches('+').count() > 1
-                    || prefix.matches('-').count() > 1
-            }),
-            _ => false,
-        })
-        .map(|e| Warning {
-            path: metadata.path.clone(),
-            line: e.l,
-            message: REPEATED_COMMAND_PREFIX.to_string(),
-        })
-        .collect()
-}
-
-pub static BLANK_COMMAND: &str =
-    "BLANK_COMMAND: indeterminate behavior when empty commands are sent to assorted shell interpreters";
-
-/// check_blank_command reports BLANK_COMMAND violations.
-fn check_blank_command(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    gems.iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts: _, cs } => {
-                cs.iter().any(|e2| BLANK_COMMAND_PATTERN.is_match(e2))
-            }
-            _ => false,
-        })
-        .map(|e| Warning {
-            path: metadata.path.clone(),
-            line: e.l,
-            message: BLANK_COMMAND.to_string(),
-        })
-        .collect()
-}
-
-pub static WHITESPACE_LEADING_COMMAND: &str =
-    "WHITESPACE_LEADING_COMMAND: questionable whitespace detected at the start of a command";
-
-/// check_whitespace_leading_command reports WHITESPACE_LEADING_COMMAND violations.
-fn check_whitespace_leading_command(
-    metadata: &inspect::Metadata,
-    gems: &[ast::Gem],
-) -> Vec<Warning> {
-    gems.iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts: _, cs } => cs
-                .iter()
-                .any(|e2| WHITESPACE_LEADING_COMMAND_PATTERN.is_match(e2)),
-            _ => false,
-        })
-        .map(|e| Warning {
-            path: metadata.path.clone(),
-            line: e.l,
-            message: WHITESPACE_LEADING_COMMAND.to_string(),
-        })
-        .collect()
-}
-
-pub static MISSING_FINAL_EOL: &str =
-    "MISSING_FINAL_EOL: UNIX text files may process poorly without a final LF";
-
-/// check_final_eol reports MISSING_FINAL_EOL violations.
-fn check_final_eol(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Vec<Warning> {
-    if !metadata.is_empty && !metadata.has_final_eol {
-        return vec![Warning {
-            path: metadata.path.clone(),
-            line: metadata.lines,
-            message: MISSING_FINAL_EOL.to_string(),
-        }];
-    }
-
-    Vec::new()
-}
-
-pub static PHONY_TARGET: &str = "PHONY_TARGET: mark common artifactless rules as .PHONY";
-
-/// check_phony_target reports PHONY_TARGET violations.
-fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    let mut marked_phony_targets: HashSet<String> = HashSet::new();
-    for gem in gems {
-        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
-            if ts.contains(&".PHONY".to_string()) {
-                for p in ps {
-                    marked_phony_targets.insert(p.clone());
-                }
-            }
-        }
-    }
-
-    gems.iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts, cs }
-                if !ts.iter().any(|e2| ast::SPECIAL_TARGETS.contains(e2))
-                    && ts.iter().any(|e2| !marked_phony_targets.contains(e2)) =>
-            {
-                ts.iter().any(|e2| {
-                    LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN.is_match(e2.to_lowercase().as_str())
-                }) || cs.is_empty()
-            }
-            _ => false,
-        })
-        .map(|e| Warning {
-            path: metadata.path.clone(),
-            line: e.l,
-            message: PHONY_TARGET.to_string(),
-        })
-        .collect()
-}
-
-pub static NO_RULES: &str =
-    "NO_RULES: declare at least one non-special rule, or else rename to *.include.mk";
-
-/// check_no_rules reports NO_RULES violations.
-fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    if metadata.is_include_file {
-        return Vec::new();
-    }
-
-    let has_nonspecial_rule: bool = !gems
-        .iter()
-        .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts, cs: _ } => {
-                ts.iter().any(|e2| !ast::SPECIAL_TARGETS.contains(e2))
-            }
-            _ => false,
-        })
-        .collect::<Vec<&ast::Gem>>()
-        .is_empty();
-
-    if !has_nonspecial_rule {
-        return vec![Warning {
-            path: metadata.path.clone(),
-            line: 0,
-            message: NO_RULES.to_string(),
-        }];
-    }
-
-    Vec::new()
-}
-
-pub static RULE_ALL: &str =
-    "RULE_ALL: makefiles conventionally name the first non-special, default rule \"all\", excepting certain *.include.mk files";
-
-/// check_rule_all reports RULE_ALL violations.
-fn check_rule_all(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    if metadata.is_include_file {
-        return Vec::new();
-    }
-
-    let mut first_nonspecial_target: &String = &String::new();
-    let mut found_nonspecial_target: bool = false;
-
-    for gem in gems {
-        match &gem.n {
-            ast::Ore::Ru { ps: _, ts, cs: _ }
-                if !ts.is_empty() && ts.iter().all(|e2| !ast::SPECIAL_TARGETS.contains(e2)) =>
-            {
-                found_nonspecial_target = true;
-                first_nonspecial_target = ts.first().unwrap();
-                break;
-            }
-            _ => (),
-        }
-    }
-
-    if found_nonspecial_target && first_nonspecial_target != &"all".to_string() {
-        return vec![Warning {
-            path: metadata.path.clone(),
-            line: 0,
-            message: RULE_ALL.to_string(),
-        }];
-    }
-
-    Vec::new()
-}
-
-/// lint generates warnings for a makefile.
-pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
-    let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
-    let mut warnings: Vec<Warning> = Vec::new();
-
-    for check in CHECKS.iter() {
-        warnings.extend(check(metadata, &gems));
-    }
-
-    Ok(warnings)
-}
-
-/// mock_md constructs simulated Metadata for a hypothetical path.
-///
-/// Assume a lintable POSIX makefile.
-///
-/// Certain fields are given dummy values.
-pub fn mock_md(pth: &str) -> inspect::Metadata {
-    inspect::Metadata {
-        path: pth.to_string(),
-        filename: pth.to_string(),
-        is_makefile: true,
-        build_system: "make".to_string(),
-        is_machine_generated: false,
-        is_include_file: false,
-        is_empty: true,
-        lines: 0,
-        has_final_eol: false,
-    }
-}
-
-#[test]
-pub fn test_line_numbers() {
-    let md: inspect::Metadata = mock_md("-");
-
-    assert_eq!(
-        check_ub_late_posix_marker(
-            &md,
-            &ast::parse_posix(md.path.as_str(), "PKG=curl\n.POSIX:\n")
-                .unwrap()
-                .ns
-        ),
-        vec![Warning {
-            path: "-".to_string(),
-            line: 2,
-            message: UB_LATE_POSIX_MARKER.to_string(),
-        },]
-    );
-}
-
-#[test]
-pub fn test_ub_warnings() {
-    assert!(lint(&mock_md("-"), "PKG=curl\n.POSIX:\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_LATE_POSIX_MARKER.to_string()));
-
-    assert!(!lint(&mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_LATE_POSIX_MARKER.to_string()));
-
-    assert!(!lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_LATE_POSIX_MARKER.to_string()));
-
-    let mut md_include = mock_md("provision.include.mk");
-    md_include.is_include_file = true;
-
-    assert!(lint(&md_include, ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_LATE_POSIX_MARKER.to_string()));
-
-    assert!(!lint(&md_include, "PKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_LATE_POSIX_MARKER.to_string()));
-
-    assert!(lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
-
-    assert!(!lint(&mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
-
-    assert!(
-        lint(&mock_md("-"), ".POSIX:\nMAKEFLAGS ?= -j\nMAKEFLAGS = -j\nMAKEFLAGS ::= -j\nMAKEFLAGS :::= -j\nMAKEFLAGS += -j\nMAKEFLAGS != echo \"-j\"\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>().contains(&UB_MAKEFLAGS_ASSIGNMENT.to_string()));
-
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&UB_SHELL_MACRO.to_string()));
 }
 
 #[test]
@@ -893,241 +968,27 @@ pub fn test_strict_posix() {
         .contains(&STRICT_POSIX.to_string()));
 }
 
-#[test]
-pub fn test_makefile_precedence() {
-    assert!(lint(&mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MAKEFILE_PRECEDENCE.to_string()));
+pub static IMPLEMENTATTION_DEFINED_TARGET: &str = "IMPLEMENTATTION_DEFINED_TARGET: non-portable percent (%) or double-quote (\") in target or prerequisite";
 
-    assert!(!lint(&mock_md("makefile"), ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MAKEFILE_PRECEDENCE.to_string()));
-
-    assert!(!lint(&mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MAKEFILE_PRECEDENCE.to_string()));
-
-    assert!(!lint(&mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MAKEFILE_PRECEDENCE.to_string()));
-
-    assert!(!lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MAKEFILE_PRECEDENCE.to_string()));
-}
-
-#[test]
-pub fn test_curdir_assignment_nop() {
-    assert!(lint(&mock_md("-"), ".POSIX:\nCURDIR = build\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
-
-    assert!(!lint(&mock_md("-"), ".POSIX:\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
-}
-
-#[test]
-pub fn test_wd_nop() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: all\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&WD_NOP.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: all\nall:\n\ttar -C foo czvf foo.tgz .\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&WD_NOP.to_string()));
-}
-
-#[test]
-pub fn test_wait_nop() {
-    assert!(lint(&mock_md("-"), ".POSIX:\n.WAIT:\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&WAIT_NOP.to_string()));
-
-    assert!(
-        !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>().contains(&WAIT_NOP.to_string()));
-}
-
-#[test]
-pub fn test_phony_nop() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY:\nfoo: foo.c\n\tgcc -o foo foo.c\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&PHONY_NOP.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&PHONY_NOP.to_string()));
-}
-
-#[test]
-pub fn test_redundant_nonparallel_wait() {
-    assert!(
-        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
-
-    assert!(
-        !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
-
-    assert!(
-        !lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
-}
-
-#[test]
-pub fn test_redundant_silent_at() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: lint\n.SILENT:\nlint:\n\t@unmake .\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REDUNDANT_SILENT_AT.to_string()));
-
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\t@unmake .\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REDUNDANT_SILENT_AT.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\tunmake .\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REDUNDANT_SILENT_AT.to_string()));
-
-    assert!(
-        !lint(&mock_md("-"), ".POSIX:\n.PHONY: lint\nlint:\n\t@unmake .\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>()
-            .contains(&REDUNDANT_SILENT_AT.to_string())
-    );
-}
-
-#[test]
-pub fn test_global_ignore() {
-    assert!(lint(&mock_md("-"), ".POSIX:\n.IGNORE:\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&GLOBAL_IGNORE.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\trm -rf bin"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&GLOBAL_IGNORE.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&GLOBAL_IGNORE.to_string()));
-}
-
-#[test]
-pub fn test_redundant_ignore_minus() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\t-rm -rf bin\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
+/// check_implementation_defined_target reports IMPLEMENTATTION_DEFINED_TARGET violations.
+fn check_implementation_defined_target(
+    metadata: &inspect::Metadata,
+    gems: &[ast::Gem],
+) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps, ts, cs: _ } => {
+                ps.iter().any(|e2| e2.contains('%') || e2.contains('\"'))
+                    || ts.iter().any(|e2| e2.contains('%') || e2.contains('\"'))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            message: IMPLEMENTATTION_DEFINED_TARGET.to_string(),
+        })
+        .collect()
 }
 
 #[test]
@@ -1161,6 +1022,24 @@ pub fn test_implementation_defined_target() {
     .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
+}
+
+pub static COMMAND_COMMENT: &str =
+    "COMMAND_COMMENT: comment embedded inside commands will forward to the shell interpreter";
+
+/// check_command_comment reports COMMAND_COMMENT violations.
+fn check_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| e2.contains('#')),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            message: COMMAND_COMMENT.to_string(),
+        })
+        .collect()
 }
 
 #[test]
@@ -1223,6 +1102,167 @@ pub fn test_command_comment() {
     .contains(&COMMAND_COMMENT.to_string()));
 }
 
+pub static REPEATED_COMMAND_PREFIX: &str =
+    "REPEATED_COMMAND_PREFIX: redundant prefixes are superfluous";
+
+/// check_repeated_command_prefix reports REPEATED_COMMAND_PREFIX violations.
+fn check_repeated_command_prefix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs.iter().any(|e2| {
+                if BLANK_COMMAND_PATTERN.is_match(e2) {
+                    return false;
+                }
+
+                let prefix: &str = COMMAND_PREFIX_PATTERN
+                    .captures(e2)
+                    .and_then(|e3| e3.name("prefix"))
+                    .map(|e3| e3.as_str())
+                    .unwrap_or("");
+
+                prefix.matches('@').count() > 1
+                    || prefix.matches('+').count() > 1
+                    || prefix.matches('-').count() > 1
+            }),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            message: REPEATED_COMMAND_PREFIX.to_string(),
+        })
+        .collect()
+}
+
+#[test]
+pub fn test_repeated_command_prefix() {
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t@@echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
+
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t--echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
+
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t@-@echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t@+-echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
+}
+
+pub static BLANK_COMMAND: &str =
+    "BLANK_COMMAND: indeterminate behavior when empty commands are sent to assorted shell interpreters";
+
+/// check_blank_command reports BLANK_COMMAND violations.
+fn check_blank_command(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => {
+                cs.iter().any(|e2| BLANK_COMMAND_PATTERN.is_match(e2))
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            message: BLANK_COMMAND.to_string(),
+        })
+        .collect()
+}
+
+#[test]
+pub fn test_blank_command() {
+    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&BLANK_COMMAND.to_string()));
+
+    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t-\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&BLANK_COMMAND.to_string()));
+
+    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t+\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&BLANK_COMMAND.to_string()));
+
+    assert!(
+        lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@+- \n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&BLANK_COMMAND.to_string())
+    );
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.message)
+    .collect::<Vec<String>>()
+    .contains(&BLANK_COMMAND.to_string()));
+}
+
+pub static WHITESPACE_LEADING_COMMAND: &str =
+    "WHITESPACE_LEADING_COMMAND: questionable whitespace detected at the start of a command";
+
+/// check_whitespace_leading_command reports WHITESPACE_LEADING_COMMAND violations.
+fn check_whitespace_leading_command(
+    metadata: &inspect::Metadata,
+    gems: &[ast::Gem],
+) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs
+                .iter()
+                .any(|e2| WHITESPACE_LEADING_COMMAND_PATTERN.is_match(e2)),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            message: WHITESPACE_LEADING_COMMAND.to_string(),
+        })
+        .collect()
+}
+
 #[test]
 pub fn test_whitespace_leading_command() {
     assert!(lint(&mock_md("-"), "foo:\n\t gcc -o foo foo.c\n")
@@ -1268,6 +1308,96 @@ pub fn test_whitespace_leading_command() {
             .collect::<Vec<String>>()
             .contains(&WHITESPACE_LEADING_COMMAND.to_string())
     );
+}
+
+pub static MISSING_FINAL_EOL: &str =
+    "MISSING_FINAL_EOL: UNIX text files may process poorly without a final LF";
+
+/// check_final_eol reports MISSING_FINAL_EOL violations.
+fn check_final_eol(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Vec<Warning> {
+    if !metadata.is_empty && !metadata.has_final_eol {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: metadata.lines,
+            message: MISSING_FINAL_EOL.to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
+#[test]
+pub fn test_final_eol() {
+    let mf_pkg: &str = ".POSIX:\nPKG = curl";
+    let mut md_pkg: inspect::Metadata = mock_md("-");
+    md_pkg.is_empty = &mf_pkg.len() == &0;
+    md_pkg.has_final_eol = &mf_pkg.chars().last().unwrap_or(' ') == &'\n';
+
+    assert!(lint(&md_pkg, &mf_pkg)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MISSING_FINAL_EOL.to_string()));
+
+    let mf_pkg_final_eol: &str = ".POSIX:\nPKG = curl\n";
+    let mut md_pkg_final_eol: inspect::Metadata = mock_md("-");
+    md_pkg_final_eol.is_empty = &mf_pkg_final_eol.len() == &0;
+    md_pkg_final_eol.has_final_eol = &mf_pkg_final_eol.chars().last().unwrap_or(' ') == &'\n';
+
+    assert!(!lint(&md_pkg_final_eol, &mf_pkg_final_eol)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MISSING_FINAL_EOL.to_string()));
+
+    let mf_empty: &str = "";
+    let mut md_empty: inspect::Metadata = mock_md("-");
+    md_empty.is_empty = &mf_empty.len() == &0;
+    md_empty.has_final_eol = &mf_empty.chars().last().unwrap_or(' ') == &'\n';
+
+    assert!(!lint(&md_empty, &mf_empty)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.message)
+        .collect::<Vec<String>>()
+        .contains(&MISSING_FINAL_EOL.to_string()));
+}
+
+pub static PHONY_TARGET: &str = "PHONY_TARGET: mark common artifactless rules as .PHONY";
+
+/// check_phony_target reports PHONY_TARGET violations.
+fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut marked_phony_targets: HashSet<String> = HashSet::new();
+    for gem in gems {
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
+            if ts.contains(&".PHONY".to_string()) {
+                for p in ps {
+                    marked_phony_targets.insert(p.clone());
+                }
+            }
+        }
+    }
+
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs }
+                if !ts.iter().any(|e2| ast::SPECIAL_TARGETS.contains(e2))
+                    && ts.iter().any(|e2| !marked_phony_targets.contains(e2)) =>
+            {
+                ts.iter().any(|e2| {
+                    LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN.is_match(e2.to_lowercase().as_str())
+                }) || cs.is_empty()
+            }
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            message: PHONY_TARGET.to_string(),
+        })
+        .collect()
 }
 
 #[test]
@@ -1384,156 +1514,35 @@ pub fn test_phony_target() {
         .contains(&PHONY_TARGET.to_string()));
 }
 
-#[test]
-pub fn test_simplify_at() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\t@echo baz\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&SIMPLIFY_AT.to_string()));
+pub static NO_RULES: &str =
+    "NO_RULES: declare at least one non-special rule, or else rename to *.include.mk";
 
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\techo baz\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&SIMPLIFY_AT.to_string()));
+/// check_no_rules reports NO_RULES violations.
+fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    if metadata.is_include_file {
+        return Vec::new();
+    }
 
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.SILENT: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&SIMPLIFY_AT.to_string()));
-}
+    let has_nonspecial_rule: bool = !gems
+        .iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs: _ } => {
+                ts.iter().any(|e2| !ast::SPECIAL_TARGETS.contains(e2))
+            }
+            _ => false,
+        })
+        .collect::<Vec<&ast::Gem>>()
+        .is_empty();
 
-#[test]
-pub fn test_simplify_minus() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\t-echo baz\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&SIMPLIFY_MINUS.to_string()));
+    if !has_nonspecial_rule {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: 0,
+            message: NO_RULES.to_string(),
+        }];
+    }
 
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\techo baz\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&SIMPLIFY_MINUS.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.IGNORE: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&SIMPLIFY_MINUS.to_string()));
-}
-
-#[test]
-pub fn test_repeated_command_prefix() {
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: test\ntest:\n\t@@echo \"Hello World!\"\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
-
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: test\ntest:\n\t--echo \"Hello World!\"\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
-
-    assert!(lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: test\ntest:\n\t@-@echo \"Hello World!\"\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: test\ntest:\n\t@+-echo \"Hello World!\"\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
-}
-
-#[test]
-pub fn test_blank_command() {
-    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&BLANK_COMMAND.to_string()));
-
-    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t-\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&BLANK_COMMAND.to_string()));
-
-    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t+\n")
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&BLANK_COMMAND.to_string()));
-
-    assert!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@+- \n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.message)
-            .collect::<Vec<String>>()
-            .contains(&BLANK_COMMAND.to_string())
-    );
-
-    assert!(!lint(
-        &mock_md("-"),
-        ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
-    )
-    .unwrap()
-    .into_iter()
-    .map(|e| e.message)
-    .collect::<Vec<String>>()
-    .contains(&BLANK_COMMAND.to_string()));
+    Vec::new()
 }
 
 #[test]
@@ -1563,6 +1572,42 @@ pub fn test_no_rules() {
         .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&NO_RULES.to_string()));
+}
+
+pub static RULE_ALL: &str =
+    "RULE_ALL: makefiles conventionally name the first non-special, default rule \"all\", excepting certain *.include.mk files";
+
+/// check_rule_all reports RULE_ALL violations.
+fn check_rule_all(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    if metadata.is_include_file {
+        return Vec::new();
+    }
+
+    let mut first_nonspecial_target: &String = &String::new();
+    let mut found_nonspecial_target: bool = false;
+
+    for gem in gems {
+        match &gem.n {
+            ast::Ore::Ru { ps: _, ts, cs: _ }
+                if !ts.is_empty() && ts.iter().all(|e2| !ast::SPECIAL_TARGETS.contains(e2)) =>
+            {
+                found_nonspecial_target = true;
+                first_nonspecial_target = ts.first().unwrap();
+                break;
+            }
+            _ => (),
+        }
+    }
+
+    if found_nonspecial_target && first_nonspecial_target != &"all".to_string() {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: 0,
+            message: RULE_ALL.to_string(),
+        }];
+    }
+
+    Vec::new()
 }
 
 #[test]
@@ -1609,41 +1654,33 @@ pub fn test_rule_all() {
         .contains(&RULE_ALL.to_string()));
 }
 
+/// lint generates warnings for a makefile.
+pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
+    let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
+    let mut warnings: Vec<Warning> = Vec::new();
+
+    for check in CHECKS.iter() {
+        warnings.extend(check(metadata, &gems));
+    }
+
+    Ok(warnings)
+}
+
 #[test]
-pub fn test_final_eol() {
-    let mf_pkg: &str = ".POSIX:\nPKG = curl";
-    let mut md_pkg: inspect::Metadata = mock_md("-");
-    md_pkg.is_empty = &mf_pkg.len() == &0;
-    md_pkg.has_final_eol = &mf_pkg.chars().last().unwrap_or(' ') == &'\n';
+pub fn test_line_numbers() {
+    let md: inspect::Metadata = mock_md("-");
 
-    assert!(lint(&md_pkg, &mf_pkg)
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MISSING_FINAL_EOL.to_string()));
-
-    let mf_pkg_final_eol: &str = ".POSIX:\nPKG = curl\n";
-    let mut md_pkg_final_eol: inspect::Metadata = mock_md("-");
-    md_pkg_final_eol.is_empty = &mf_pkg_final_eol.len() == &0;
-    md_pkg_final_eol.has_final_eol = &mf_pkg_final_eol.chars().last().unwrap_or(' ') == &'\n';
-
-    assert!(!lint(&md_pkg_final_eol, &mf_pkg_final_eol)
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MISSING_FINAL_EOL.to_string()));
-
-    let mf_empty: &str = "";
-    let mut md_empty: inspect::Metadata = mock_md("-");
-    md_empty.is_empty = &mf_empty.len() == &0;
-    md_empty.has_final_eol = &mf_empty.chars().last().unwrap_or(' ') == &'\n';
-
-    assert!(!lint(&md_empty, &mf_empty)
-        .unwrap()
-        .into_iter()
-        .map(|e| e.message)
-        .collect::<Vec<String>>()
-        .contains(&MISSING_FINAL_EOL.to_string()));
+    assert_eq!(
+        check_ub_late_posix_marker(
+            &md,
+            &ast::parse_posix(md.path.as_str(), "PKG=curl\n.POSIX:\n")
+                .unwrap()
+                .ns
+        ),
+        vec![Warning {
+            path: "-".to_string(),
+            line: 2,
+            message: UB_LATE_POSIX_MARKER.to_string(),
+        },]
+    );
 }
