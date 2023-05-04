@@ -743,6 +743,7 @@ make generally expects a makefile to define at least one (non-special) rule to p
 makefile:
 
 ```make
+.POSIX:
 PKG = curl
 ```
 
@@ -751,6 +752,7 @@ PKG = curl
 makefile:
 
 ```make
+.POSIX:
 PKG = curl
 
 all:
@@ -767,6 +769,43 @@ PKG = curl
 
 * Declare at least one non-special rule in most makefiles.
 * Rename include files to `*.include.mk`.
+
+## RULE_ALL
+
+make interprets the first non-special rule as the default rule. Apart from non-special targets, the top-most rule is conventionally named `all`. This helps to avoid confusion and accidents.
+
+### Fail
+
+```make
+.POSIX:
+
+build:
+	echo "Hello World!"
+```
+
+### Pass
+
+```make
+.POSIX:
+
+all:
+	echo "Hello World!"
+```
+
+Optionally, list subsequent rules as prerequisites for the `all` target.
+
+```make
+.POSIX:
+
+all: build
+
+build:
+	echo "Hello World!"
+```
+
+### Mitigation
+
+* Name the top-most, non-special, default rule `all`.
 
 ## STRICT_POSIX
 

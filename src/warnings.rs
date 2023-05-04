@@ -51,6 +51,7 @@ lazy_static::lazy_static! {
         check_repeated_command_prefix,
         check_blank_command,
         check_no_rules,
+        check_rule_all,
         check_final_eol,
     ];
 }
@@ -660,6 +661,38 @@ fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
             path: metadata.path.clone(),
             line: 0,
             policy: NO_RULES.to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
+pub static RULE_ALL: &str =
+    "RULE_ALL: makefiles conventionally name the first non-special, default rule \"all\"";
+
+/// check_rule_all reports RULE_ALL violations.
+fn check_rule_all(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    let mut first_nonspecial_target: &String = &String::new();
+    let mut found_nonspecial_target: bool = false;
+
+    for gem in gems {
+        match &gem.n {
+            ast::Ore::Ru { ps: _, ts, cs: _ }
+                if !ts.is_empty() && ts.iter().all(|e2| !ast::SPECIAL_TARGETS.contains(e2)) =>
+            {
+                found_nonspecial_target = true;
+                first_nonspecial_target = ts.first().unwrap();
+                break;
+            }
+            _ => (),
+        }
+    }
+
+    if found_nonspecial_target && first_nonspecial_target != &"all".to_string() {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: 0,
+            policy: RULE_ALL.to_string(),
         }];
     }
 
@@ -1410,7 +1443,7 @@ pub fn test_blank_command() {
 pub fn test_no_rules() {
     let md_stdin: inspect::Metadata = mock_md("-");
 
-    assert!(lint(&md_stdin, "PKG = curl\n")
+    assert!(lint(&md_stdin, ".POSIX:\nPKG = curl\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
@@ -1433,6 +1466,40 @@ pub fn test_no_rules() {
         .map(|e| e.policy)
         .collect::<Vec<String>>()
         .contains(&NO_RULES.to_string()));
+}
+
+#[test]
+pub fn test_rule_all() {
+    assert!(lint(&mock_md("-"), "build:\n\techo \"Hello World!\"\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&RULE_ALL.to_string()));
+
+    assert!(!lint(&mock_md("-"), "all:\n\techo \"Hello World!\"\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&RULE_ALL.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        "all: build\nbuild:\n\techo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&RULE_ALL.to_string()));
+
+    assert!(!lint(&mock_md("-"), "PKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&RULE_ALL.to_string()));
 }
 
 #[test]
