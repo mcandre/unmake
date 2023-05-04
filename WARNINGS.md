@@ -740,7 +740,7 @@ After any optional `@`/`+`/`-` prefix modifiers, whitespace leading a command is
 
 The earliest whitespace for a command, should consist mainly of the standard one-tab indentation.
 
-Successive lines in a multiline make command commonly use two tabs for visual clarity.
+Successive lines in a multiline make command commonly may use tabs for visual clarity.
 
 ### Fail
 
@@ -779,7 +779,7 @@ foo:
 * Verify multiline instruction syntax in earlier commands.
 * Avoid inserting whitespace between `@`/`+`/`-` prefix modifiers and the rest of the command.
 * Generally, avoid starting commands with whitespace.
-* Consider indenting successive lines in a multiline make command exactly two tabs, for visual clarity.
+* Consider indenting successive lines in a multiline make command with 1 tab (prerequisites) or 2 tabs (commands), for visual clarity.
 
 ## NO_RULES
 
