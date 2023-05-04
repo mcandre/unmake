@@ -406,7 +406,7 @@ The `.IGNORE` special target also continues makefile execution past soft failure
 
 Using both `-` and `.IGNORE` simultaneously is unnecessary.
 
-If the special rule `.IGNORE:` is declared with no prerequisites, then exit codes of all make commands globally are ignored. Due to more severe issues with `.IGNORE:` declared with no prerequisites, detailed in the `GLOBAL_IGNORE` policy, the `REDUNDANT_IGNORE_MINUS` policy does not provide an automatic check for redundant `-` with a global `.IGNORE:` declaration.
+If the special rule `.IGNORE:` is declared with no prerequisites, then exit codes of all make commands globally are ignored. Due to more severe issues with `.IGNORE:` declared with no prerequisites, detailed in the `GLOBAL_IGNORE` check, the `REDUNDANT_IGNORE_MINUS` check does not provide an automatic check for redundant `-` with a global `.IGNORE:` declaration.
 
 ### Fail
 

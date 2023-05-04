@@ -30,8 +30,8 @@ lazy_static::lazy_static! {
     /// WHITESPACE_LEADING_COMMAND_PATTERN matches commands that start with whitespace.
     pub static ref WHITESPACE_LEADING_COMMAND_PATTERN: regex::Regex = regex::Regex::new(r"^[-+@]*\s+").unwrap();
 
-    /// POLICIES collects the set of available high level makefile checks.
-    pub static ref POLICIES: Vec<Policy> = vec![
+    /// CHECKS collects the set of available high level makefile scans.
+    pub static ref CHECKS: Vec<Check> = vec![
         check_ub_late_posix_marker,
         check_ub_ambiguous_include,
         check_ub_makeflags_assignment,
@@ -60,8 +60,8 @@ lazy_static::lazy_static! {
     ];
 }
 
-/// Policy implements a linter check.
-pub type Policy = fn(&inspect::Metadata, &[ast::Gem]) -> Vec<Warning>;
+/// Check implements a linter scan.
+pub type Check = fn(&inspect::Metadata, &[ast::Gem]) -> Vec<Warning>;
 
 pub static UB_LATE_POSIX_MARKER: &str =
     "UB_LATE_POSIX_MARKER: the special rule \".POSIX:\" should be the first uncommented instruction in POSIX makefiles, or else absent from *.include.mk files";
@@ -79,7 +79,7 @@ fn check_ub_late_posix_marker(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
         .map(|(_, e)| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: UB_LATE_POSIX_MARKER.to_string(),
+            message: UB_LATE_POSIX_MARKER.to_string(),
         })
         .collect()
 }
@@ -97,7 +97,7 @@ fn check_ub_ambiguous_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: UB_AMBIGUOUS_INCLUDE.to_string(),
+            message: UB_AMBIGUOUS_INCLUDE.to_string(),
         })
         .collect()
 }
@@ -114,7 +114,7 @@ fn check_ub_makeflags_assignment(metadata: &inspect::Metadata, gems: &[ast::Gem]
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: UB_MAKEFLAGS_ASSIGNMENT.to_string(),
+            message: UB_MAKEFLAGS_ASSIGNMENT.to_string(),
         })
         .collect()
 }
@@ -131,7 +131,7 @@ fn check_ub_shell_macro(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: UB_SHELL_MACRO.to_string(),
+            message: UB_SHELL_MACRO.to_string(),
         })
         .collect()
 }
@@ -145,8 +145,8 @@ pub struct Warning {
     /// line denotes the location of the relevant code section to enhance.
     pub line: usize,
 
-    /// policy denotes the nature of the recommendation.
-    pub policy: String,
+    /// message denotes a brief description of the recommendation.
+    pub message: String,
 }
 
 impl Warning {
@@ -155,7 +155,7 @@ impl Warning {
         Warning {
             path: String::new(),
             line: 0,
-            policy: String::new(),
+            message: String::new(),
         }
     }
 }
@@ -176,7 +176,7 @@ impl fmt::Display for Warning {
             write!(f, "{}:", self.line)?;
         }
 
-        write!(f, " {}", self.policy)
+        write!(f, " {}", self.message)
     }
 }
 
@@ -189,7 +189,7 @@ fn check_makefile_precedence(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Ve
         return vec![Warning {
             path: metadata.path.clone(),
             line: 0,
-            policy: MAKEFILE_PRECEDENCE.to_string(),
+            message: MAKEFILE_PRECEDENCE.to_string(),
         }];
     }
 
@@ -209,7 +209,7 @@ fn check_curdir_assignment_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) 
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: CURDIR_ASSIGNMENT_NOP.to_string(),
+            message: CURDIR_ASSIGNMENT_NOP.to_string(),
         })
         .collect()
 }
@@ -229,7 +229,7 @@ fn check_wd_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning>
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: WD_NOP.to_string(),
+            message: WD_NOP.to_string(),
         })
         .collect()
 }
@@ -246,7 +246,7 @@ fn check_wait_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: WAIT_NOP.to_string(),
+            message: WAIT_NOP.to_string(),
         })
         .collect()
 }
@@ -263,7 +263,7 @@ fn check_phony_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warni
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: PHONY_NOP.to_string(),
+            message: PHONY_NOP.to_string(),
         })
         .collect()
 }
@@ -293,7 +293,7 @@ fn check_redundant_notparallel_wait(
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: REDUNDANT_NOTPARALLEL_WAIT.to_string(),
+            message: REDUNDANT_NOTPARALLEL_WAIT.to_string(),
         })
         .collect()
 }
@@ -332,7 +332,7 @@ fn check_redundant_silent_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) ->
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: REDUNDANT_SILENT_AT.to_string(),
+            message: REDUNDANT_SILENT_AT.to_string(),
         })
         .collect()
 }
@@ -364,7 +364,7 @@ fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem])
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: REDUNDANT_IGNORE_MINUS.to_string(),
+            message: REDUNDANT_IGNORE_MINUS.to_string(),
         })
         .collect()
 }
@@ -382,7 +382,7 @@ fn check_global_ignore(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<W
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: GLOBAL_IGNORE.to_string(),
+            message: GLOBAL_IGNORE.to_string(),
         })
         .collect()
 }
@@ -425,7 +425,7 @@ fn check_simplify_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<War
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: SIMPLIFY_AT.to_string(),
+            message: SIMPLIFY_AT.to_string(),
         })
         .collect()
 }
@@ -468,7 +468,7 @@ fn check_simplify_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: SIMPLIFY_MINUS.to_string(),
+            message: SIMPLIFY_MINUS.to_string(),
         })
         .collect()
 }
@@ -491,7 +491,7 @@ fn check_strict_posix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
         return vec![Warning {
             path: metadata.path.clone(),
             line: 1,
-            policy: STRICT_POSIX.to_string(),
+            message: STRICT_POSIX.to_string(),
         }];
     }
 
@@ -516,7 +516,7 @@ fn check_implementation_defined_target(
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: IMPLEMENTATTION_DEFINED_TARGET.to_string(),
+            message: IMPLEMENTATTION_DEFINED_TARGET.to_string(),
         })
         .collect()
 }
@@ -534,7 +534,7 @@ fn check_command_comment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: COMMAND_COMMENT.to_string(),
+            message: COMMAND_COMMENT.to_string(),
         })
         .collect()
 }
@@ -566,7 +566,7 @@ fn check_repeated_command_prefix(metadata: &inspect::Metadata, gems: &[ast::Gem]
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: REPEATED_COMMAND_PREFIX.to_string(),
+            message: REPEATED_COMMAND_PREFIX.to_string(),
         })
         .collect()
 }
@@ -586,7 +586,7 @@ fn check_blank_command(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<W
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: BLANK_COMMAND.to_string(),
+            message: BLANK_COMMAND.to_string(),
         })
         .collect()
 }
@@ -609,7 +609,7 @@ fn check_whitespace_leading_command(
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: WHITESPACE_LEADING_COMMAND.to_string(),
+            message: WHITESPACE_LEADING_COMMAND.to_string(),
         })
         .collect()
 }
@@ -623,7 +623,7 @@ fn check_final_eol(metadata: &inspect::Metadata, _: &[ast::Gem]) -> Vec<Warning>
         return vec![Warning {
             path: metadata.path.clone(),
             line: metadata.lines,
-            policy: MISSING_FINAL_EOL.to_string(),
+            message: MISSING_FINAL_EOL.to_string(),
         }];
     }
 
@@ -660,7 +660,7 @@ fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
         .map(|e| Warning {
             path: metadata.path.clone(),
             line: e.l,
-            policy: PHONY_TARGET.to_string(),
+            message: PHONY_TARGET.to_string(),
         })
         .collect()
 }
@@ -689,7 +689,7 @@ fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         return vec![Warning {
             path: metadata.path.clone(),
             line: 0,
-            policy: NO_RULES.to_string(),
+            message: NO_RULES.to_string(),
         }];
     }
 
@@ -725,7 +725,7 @@ fn check_rule_all(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
         return vec![Warning {
             path: metadata.path.clone(),
             line: 0,
-            policy: RULE_ALL.to_string(),
+            message: RULE_ALL.to_string(),
         }];
     }
 
@@ -737,8 +737,8 @@ pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
     let mut warnings: Vec<Warning> = Vec::new();
 
-    for policy in POLICIES.iter() {
-        warnings.extend(policy(metadata, &gems));
+    for check in CHECKS.iter() {
+        warnings.extend(check(metadata, &gems));
     }
 
     Ok(warnings)
@@ -777,7 +777,7 @@ pub fn test_line_numbers() {
         vec![Warning {
             path: "-".to_string(),
             line: 2,
-            policy: UB_LATE_POSIX_MARKER.to_string(),
+            message: UB_LATE_POSIX_MARKER.to_string(),
         },]
     );
 }
@@ -787,21 +787,21 @@ pub fn test_ub_warnings() {
     assert!(lint(&mock_md("-"), "PKG=curl\n.POSIX:\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
     assert!(!lint(&mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
     assert!(!lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
@@ -811,28 +811,28 @@ pub fn test_ub_warnings() {
     assert!(lint(&md_include, ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
     assert!(!lint(&md_include, "PKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
     assert!(lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
 
     assert!(!lint(&mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
 
@@ -840,7 +840,7 @@ pub fn test_ub_warnings() {
         lint(&mock_md("-"), ".POSIX:\nMAKEFLAGS ?= -j\nMAKEFLAGS = -j\nMAKEFLAGS ::= -j\nMAKEFLAGS :::= -j\nMAKEFLAGS += -j\nMAKEFLAGS != echo \"-j\"\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>().contains(&UB_MAKEFLAGS_ASSIGNMENT.to_string()));
 
     assert!(lint(
@@ -849,7 +849,7 @@ pub fn test_ub_warnings() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&UB_SHELL_MACRO.to_string()));
 }
@@ -861,14 +861,14 @@ pub fn test_strict_posix() {
     assert!(lint(&md_stdin, "PKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&STRICT_POSIX.to_string()));
 
     assert!(!lint(&md_stdin, ".POSIX:\nPKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&STRICT_POSIX.to_string()));
 
@@ -878,7 +878,7 @@ pub fn test_strict_posix() {
     assert!(!lint(&md_sys, "PKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&STRICT_POSIX.to_string()));
 
@@ -888,7 +888,7 @@ pub fn test_strict_posix() {
     assert!(!lint(&md_include_mk, "PKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&STRICT_POSIX.to_string()));
 }
@@ -898,35 +898,35 @@ pub fn test_makefile_precedence() {
     assert!(lint(&mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
     assert!(!lint(&mock_md("makefile"), ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
     assert!(!lint(&mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
     assert!(!lint(&mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
     assert!(!lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MAKEFILE_PRECEDENCE.to_string()));
 }
@@ -936,14 +936,14 @@ pub fn test_curdir_assignment_nop() {
     assert!(lint(&mock_md("-"), ".POSIX:\nCURDIR = build\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
 
     assert!(!lint(&mock_md("-"), ".POSIX:\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
 }
@@ -956,7 +956,7 @@ pub fn test_wd_nop() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&WD_NOP.to_string()));
 
@@ -966,7 +966,7 @@ pub fn test_wd_nop() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&WD_NOP.to_string()));
 }
@@ -976,7 +976,7 @@ pub fn test_wait_nop() {
     assert!(lint(&mock_md("-"), ".POSIX:\n.WAIT:\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&WAIT_NOP.to_string()));
 
@@ -984,7 +984,7 @@ pub fn test_wait_nop() {
         !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>().contains(&WAIT_NOP.to_string()));
 }
 
@@ -996,7 +996,7 @@ pub fn test_phony_nop() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&PHONY_NOP.to_string()));
 
@@ -1006,7 +1006,7 @@ pub fn test_phony_nop() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&PHONY_NOP.to_string()));
 }
@@ -1017,21 +1017,21 @@ pub fn test_redundant_nonparallel_wait() {
         lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 
     assert!(
         !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 
     assert!(
         !lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 }
 
@@ -1043,7 +1043,7 @@ pub fn test_redundant_silent_at() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REDUNDANT_SILENT_AT.to_string()));
 
@@ -1053,7 +1053,7 @@ pub fn test_redundant_silent_at() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REDUNDANT_SILENT_AT.to_string()));
 
@@ -1063,7 +1063,7 @@ pub fn test_redundant_silent_at() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REDUNDANT_SILENT_AT.to_string()));
 
@@ -1071,7 +1071,7 @@ pub fn test_redundant_silent_at() {
         !lint(&mock_md("-"), ".POSIX:\n.PHONY: lint\nlint:\n\t@unmake .\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&REDUNDANT_SILENT_AT.to_string())
     );
@@ -1082,7 +1082,7 @@ pub fn test_global_ignore() {
     assert!(lint(&mock_md("-"), ".POSIX:\n.IGNORE:\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&GLOBAL_IGNORE.to_string()));
 
@@ -1092,7 +1092,7 @@ pub fn test_global_ignore() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&GLOBAL_IGNORE.to_string()));
 
@@ -1102,7 +1102,7 @@ pub fn test_global_ignore() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&GLOBAL_IGNORE.to_string()));
 }
@@ -1115,7 +1115,7 @@ pub fn test_redundant_ignore_minus() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
 
@@ -1125,7 +1125,7 @@ pub fn test_redundant_ignore_minus() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
 }
@@ -1138,7 +1138,7 @@ pub fn test_implementation_defined_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
 
@@ -1148,7 +1148,7 @@ pub fn test_implementation_defined_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
 
@@ -1158,7 +1158,7 @@ pub fn test_implementation_defined_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
 }
@@ -1171,7 +1171,7 @@ pub fn test_command_comment() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&COMMAND_COMMENT.to_string()));
 
@@ -1179,7 +1179,7 @@ pub fn test_command_comment() {
         lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t@#gcc -o foo foo.c\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&COMMAND_COMMENT.to_string())
     );
@@ -1188,7 +1188,7 @@ pub fn test_command_comment() {
         lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t-#gcc -o foo foo.c\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&COMMAND_COMMENT.to_string())
     );
@@ -1197,7 +1197,7 @@ pub fn test_command_comment() {
         lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t+#gcc -o foo foo.c\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&COMMAND_COMMENT.to_string())
     );
@@ -1208,7 +1208,7 @@ pub fn test_command_comment() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&COMMAND_COMMENT.to_string()));
 
@@ -1218,7 +1218,7 @@ pub fn test_command_comment() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&COMMAND_COMMENT.to_string()));
 }
@@ -1228,35 +1228,35 @@ pub fn test_whitespace_leading_command() {
     assert!(lint(&mock_md("-"), "foo:\n\t gcc -o foo foo.c\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
 
     assert!(lint(&mock_md("-"), "foo:\n\t\tgcc -o foo foo.c\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
 
     assert!(lint(&mock_md("-"), "foo:\n\t@+- gcc -o foo foo.c\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
 
     assert!(!lint(&mock_md("-"), "foo:\n\tgcc -o foo foo.c\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
 
     assert!(!lint(&mock_md("-"), "foo:\n\t@+-gcc -o foo foo.c\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
 
@@ -1264,7 +1264,7 @@ pub fn test_whitespace_leading_command() {
         !lint(&mock_md("-"), "foo:\n\tgcc \\\n\t\t-o \\\n\t\tfoo foo.c\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&WHITESPACE_LEADING_COMMAND.to_string())
     );
@@ -1276,7 +1276,7 @@ pub fn test_phony_target() {
         lint(&mock_md("-"), ".POSIX:\nall:\n\techo \"Hello World!\"\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&PHONY_TARGET.to_string())
     );
@@ -1287,7 +1287,7 @@ pub fn test_phony_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&PHONY_TARGET.to_string()));
 
@@ -1297,7 +1297,7 @@ pub fn test_phony_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&PHONY_TARGET.to_string()));
 
@@ -1308,7 +1308,7 @@ pub fn test_phony_target() {
         )
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>().contains(&PHONY_TARGET.to_string()));
 
     assert!(
@@ -1318,7 +1318,7 @@ pub fn test_phony_target() {
         )
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>().contains(&PHONY_TARGET.to_string()));
 
     assert!(
@@ -1328,13 +1328,13 @@ pub fn test_phony_target() {
         )
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>().contains(&PHONY_TARGET.to_string()));
 
     assert!(lint(&mock_md("-"), ".POSIX:\nclean:\n\t-rm -rf bin\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&PHONY_TARGET.to_string()));
 
@@ -1344,7 +1344,7 @@ pub fn test_phony_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&PHONY_TARGET.to_string()));
 
@@ -1352,7 +1352,7 @@ pub fn test_phony_target() {
         lint(&mock_md("-"), ".POSIX:\nport: cross-compile archive\n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&PHONY_TARGET.to_string())
     );
@@ -1363,14 +1363,14 @@ pub fn test_phony_target() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&PHONY_TARGET.to_string()));
 
     assert!(lint(&mock_md("-"), ".POSIX:\nempty:;\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&PHONY_TARGET.to_string()));
 
@@ -1379,7 +1379,7 @@ pub fn test_phony_target() {
     assert!(!lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&PHONY_TARGET.to_string()));
 }
@@ -1392,7 +1392,7 @@ pub fn test_simplify_at() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&SIMPLIFY_AT.to_string()));
 
@@ -1402,7 +1402,7 @@ pub fn test_simplify_at() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&SIMPLIFY_AT.to_string()));
 
@@ -1412,7 +1412,7 @@ pub fn test_simplify_at() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&SIMPLIFY_AT.to_string()));
 }
@@ -1425,7 +1425,7 @@ pub fn test_simplify_minus() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&SIMPLIFY_MINUS.to_string()));
 
@@ -1435,7 +1435,7 @@ pub fn test_simplify_minus() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&SIMPLIFY_MINUS.to_string()));
 
@@ -1445,7 +1445,7 @@ pub fn test_simplify_minus() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&SIMPLIFY_MINUS.to_string()));
 }
@@ -1458,7 +1458,7 @@ pub fn test_repeated_command_prefix() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 
@@ -1468,7 +1468,7 @@ pub fn test_repeated_command_prefix() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 
@@ -1478,7 +1478,7 @@ pub fn test_repeated_command_prefix() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 
@@ -1488,7 +1488,7 @@ pub fn test_repeated_command_prefix() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 }
@@ -1498,21 +1498,21 @@ pub fn test_blank_command() {
     assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&BLANK_COMMAND.to_string()));
 
     assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t-\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&BLANK_COMMAND.to_string()));
 
     assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t+\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&BLANK_COMMAND.to_string()));
 
@@ -1520,7 +1520,7 @@ pub fn test_blank_command() {
         lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@+- \n")
             .unwrap()
             .into_iter()
-            .map(|e| e.policy)
+            .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&BLANK_COMMAND.to_string())
     );
@@ -1531,7 +1531,7 @@ pub fn test_blank_command() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&BLANK_COMMAND.to_string()));
 }
@@ -1543,7 +1543,7 @@ pub fn test_no_rules() {
     assert!(lint(&md_stdin, ".POSIX:\nPKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&NO_RULES.to_string()));
 
@@ -1553,14 +1553,14 @@ pub fn test_no_rules() {
     assert!(!lint(&md_include, "PKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&NO_RULES.to_string()));
 
     assert!(!lint(&md_stdin, "all:\n\techo \"Hello World!\"\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&NO_RULES.to_string()));
 }
@@ -1570,14 +1570,14 @@ pub fn test_rule_all() {
     assert!(lint(&mock_md("-"), "build:\n\techo \"Hello World!\"\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&RULE_ALL.to_string()));
 
     assert!(!lint(&mock_md("-"), "all:\n\techo \"Hello World!\"\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&RULE_ALL.to_string()));
 
@@ -1587,14 +1587,14 @@ pub fn test_rule_all() {
     )
     .unwrap()
     .into_iter()
-    .map(|e| e.policy)
+    .map(|e| e.message)
     .collect::<Vec<String>>()
     .contains(&RULE_ALL.to_string()));
 
     assert!(!lint(&mock_md("-"), "PKG = curl\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&RULE_ALL.to_string()));
 
@@ -1604,7 +1604,7 @@ pub fn test_rule_all() {
     assert!(!lint(&md_include, "build:\n\techo \"Hello World!\"\n")
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&RULE_ALL.to_string()));
 }
@@ -1619,7 +1619,7 @@ pub fn test_final_eol() {
     assert!(lint(&md_pkg, &mf_pkg)
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MISSING_FINAL_EOL.to_string()));
 
@@ -1631,7 +1631,7 @@ pub fn test_final_eol() {
     assert!(!lint(&md_pkg_final_eol, &mf_pkg_final_eol)
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MISSING_FINAL_EOL.to_string()));
 
@@ -1643,7 +1643,7 @@ pub fn test_final_eol() {
     assert!(!lint(&md_empty, &mf_empty)
         .unwrap()
         .into_iter()
-        .map(|e| e.policy)
+        .map(|e| e.message)
         .collect::<Vec<String>>()
         .contains(&MISSING_FINAL_EOL.to_string()));
 }
