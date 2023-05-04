@@ -697,7 +697,7 @@ fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warnin
 }
 
 pub static RULE_ALL: &str =
-    "RULE_ALL: makefiles conventionally name the first non-special, default rule \"all\"";
+    "RULE_ALL: makefiles conventionally name the first non-special, default rule \"all\", excepting certain *.include.mk files";
 
 /// check_rule_all reports RULE_ALL violations.
 fn check_rule_all(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
