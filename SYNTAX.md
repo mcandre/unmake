@@ -431,10 +431,6 @@ Escaped newlines that directly meet the end of the file (`<eof>`), or subsequent
 
 Escaped newlines featuring whitespace between the backslash and the line feed, may trigger parse errors.
 
-Escaped newlines occuring elsewhere in a makefile, may lack a definite parsing behavior. For example, in comments or general macro expressions.
-
-Some escaped newlines occuring in more fringe areas can impair readability: The left side of macro assignment operators, inside macro expansions, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
-
 We encourage makefile authors to generally limit use of multiline makefile instructions to rule commands, where they can help to tidy up commands with long lists of arguments.
 
 ### Fail
@@ -442,6 +438,12 @@ We encourage makefile authors to generally limit use of multiline makefile instr
 ```make
 include \
 foo.mk
+```
+
+### Pass
+
+```make
+include foo.mk
 ```
 
 ```make
@@ -452,20 +454,6 @@ Charlie
 ```
 
 ```make
-provision \
-:
-	pip install \
-		bashate \
-		safety
-```
-
-### Pass
-
-```make
-include foo.mk
-```
-
-```make
 NAMES = Alice Bob Charlie
 ```
 
@@ -473,6 +461,21 @@ NAMES = Alice Bob Charlie
 NAMES = Alice\
 Bob\
 Charlie
+```
+
+```make
+.PHONY: \
+	all \
+	foo \
+	clean
+
+all: foo
+
+foo: foo.c
+	gcc -o foo foo.c
+
+clean:
+	rm -f foo
 ```
 
 ```make
@@ -495,10 +498,9 @@ provision :
 ### Mitigation
 
 * Configure [EditorConfig](https://editorconfig.org/) to remove most trailing whitespace.
-* Avoid use of multiline instructions in makefiles in the left side of macro assignment operators, inside macro expansions, in the opening line of rule declaration blocks, in general macro expressions, and near comments.
 * Handle whitespace carefully.
 * Handle multiline termination carefully.
-* Consider using multilines for complex macro definitions, complex commands, or commands expected to grow longer over time.
+* Consider using multilines for complex macro definitions, long prerequisite lists, complex commands, or commands expected to grow longer over time.
 * When possible, track build-time packages with a package manager-specific configuration file.
 * Consider moving complex rule logic to a separate makefile, script, or compiled application.
 * For classic Windows environments, acquire make from [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Chocolatey](https://chocolatey.org/), etc., which provide POSIX compatible interpreters.

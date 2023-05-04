@@ -240,12 +240,6 @@ parser! {
         /// eof matches the end of a file.
         rule eof() = quiet!{![_]} / expected!("EOF")
 
-        /// _ matches optional whitespace.
-        rule _ = quiet!{(" " / "\t")*} / expected!("whitespace")
-
-        /// __ matches required whitespace.
-        rule __ = quiet!{(" " / "\t")+} / expected!("whitespace")
-
         rule line_ending() -> String =
             quiet!{
                 s:$"\n" {
@@ -259,6 +253,14 @@ parser! {
                     " ".to_string()
                 }
             } / expected!("escaped LF")
+
+        /// _ matches optional whitespace, with optional escaped newlines.
+        ///
+        /// Leading whitespace on successive lines is elided.
+        rule _ = quiet!{(" " / "\t" / macro_escaped_newline())*} / expected!("whitespace")
+
+        /// __ matches required whitespace, without allowing escaped newlines.
+        rule __ = quiet!{(" " / "\t")+} / expected!("whitespace")
 
         rule escaped_non_line_ending() -> String =
             quiet!{
@@ -829,7 +831,7 @@ fn test_c_family_escape_preservation() {
 #[test]
 fn test_multiline_expressions() {
     assert_eq!(
-        parse_posix("-", "FULL_NAME=Alice\\\n \tLiddell\n")
+        parse_posix("-", "FULL_NAME\\\n=\\\n \tAlice\\\n \tLiddell\n")
             .unwrap()
             .ns
             .into_iter()
@@ -852,6 +854,31 @@ fn test_multiline_expressions() {
             ps: vec!["foo.c".to_string()],
             ts: vec!["foo".to_string()],
             cs: vec!["gcc\\\n-o foo\\\nfoo.c".to_string()],
+        }]
+    );
+
+    assert_eq!(
+        parse_posix(
+            "-",
+            "report-1 \\\nreport-2 \\\n \treport-3\\\n:\\\ntest-1\\\ntest-2\\\n \ttest-3\n"
+        )
+        .unwrap()
+        .ns
+        .into_iter()
+        .map(|e| e.n)
+        .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ps: vec![
+                "test-1".to_string(),
+                "test-2".to_string(),
+                "test-3".to_string(),
+            ],
+            ts: vec![
+                "report-1".to_string(),
+                "report-2".to_string(),
+                "report-3".to_string(),
+            ],
+            cs: Vec::new(),
         }]
     );
 }
