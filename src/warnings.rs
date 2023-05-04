@@ -701,6 +701,10 @@ pub static RULE_ALL: &str =
 
 /// check_rule_all reports RULE_ALL violations.
 fn check_rule_all(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    if metadata.is_include_file {
+        return Vec::new();
+    }
+
     let mut first_nonspecial_target: &String = &String::new();
     let mut found_nonspecial_target: bool = false;
 
@@ -1588,6 +1592,16 @@ pub fn test_rule_all() {
     .contains(&RULE_ALL.to_string()));
 
     assert!(!lint(&mock_md("-"), "PKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&RULE_ALL.to_string()));
+
+    let mut md_include = mock_md("foo.include.mk");
+    md_include.is_include_file = true;
+
+    assert!(!lint(&md_include, "build:\n\techo \"Hello World!\"\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)

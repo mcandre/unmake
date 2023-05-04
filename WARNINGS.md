@@ -821,7 +821,11 @@ PKG = curl
 
 make interprets the first non-special rule as the default rule. Apart from non-special targets, the top-most rule is conventionally named `all`. This helps to avoid confusion and accidents.
 
+Common include files like `sys.mk` and `*.include.mk` may export rules, named `all` or something else. However, the top-most, non-special default rule semantic still applies, so order `include` lines and rule declarations carefully.
+
 ### Fail
+
+makefile:
 
 ```make
 .POSIX:
@@ -832,6 +836,8 @@ build:
 
 ### Pass
 
+makefile:
+
 ```make
 .POSIX:
 
@@ -840,6 +846,8 @@ all:
 ```
 
 Optionally, list subsequent rules as prerequisites for the `all` target.
+
+makefile:
 
 ```make
 .POSIX:
@@ -850,9 +858,17 @@ build:
 	echo "Hello World!"
 ```
 
+foo.include.mk:
+
+```make
+build:
+	echo "Hello World!"
+```
+
 ### Mitigation
 
 * Name the top-most, non-special, default rule `all`.
+* Note that the order of `include` lines and rule declarations interacts with the top-most, non-special, default rule.
 
 ## STRICT_POSIX
 
