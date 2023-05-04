@@ -63,6 +63,50 @@ lazy_static::lazy_static! {
 /// Check implements a linter scan.
 pub type Check = fn(&inspect::Metadata, &[ast::Gem]) -> Vec<Warning>;
 
+/// Warning models a linter recommendation.
+#[derive(Debug, PartialEq)]
+pub struct Warning {
+    /// path denotes an offending file path.
+    pub path: String,
+
+    /// line denotes the location of the relevant code section to enhance.
+    pub line: usize,
+
+    /// message denotes a brief description of the recommendation.
+    pub message: String,
+}
+
+impl Warning {
+    /// new constructs a Warning.
+    pub fn new() -> Warning {
+        Warning {
+            path: String::new(),
+            line: 0,
+            message: String::new(),
+        }
+    }
+}
+
+impl Default for Warning {
+    /// default generates a basic Warning.
+    fn default() -> Self {
+        Warning::new()
+    }
+}
+
+impl fmt::Display for Warning {
+    /// fmt renders a Warning for console use.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "warning: {}:", self.path)?;
+
+        if self.line > 0 {
+            write!(f, "{}:", self.line)?;
+        }
+
+        write!(f, " {}", self.message)
+    }
+}
+
 pub static UB_LATE_POSIX_MARKER: &str =
     "UB_LATE_POSIX_MARKER: the special rule \".POSIX:\" should be the first uncommented instruction in POSIX makefiles, or else absent from *.include.mk files";
 
@@ -134,50 +178,6 @@ fn check_ub_shell_macro(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
             message: UB_SHELL_MACRO.to_string(),
         })
         .collect()
-}
-
-/// Warning models a linter recommendation.
-#[derive(Debug, PartialEq)]
-pub struct Warning {
-    /// path denotes an offending file path.
-    pub path: String,
-
-    /// line denotes the location of the relevant code section to enhance.
-    pub line: usize,
-
-    /// message denotes a brief description of the recommendation.
-    pub message: String,
-}
-
-impl Warning {
-    /// new constructs a Warning.
-    pub fn new() -> Warning {
-        Warning {
-            path: String::new(),
-            line: 0,
-            message: String::new(),
-        }
-    }
-}
-
-impl Default for Warning {
-    /// default generates a basic Warning.
-    fn default() -> Self {
-        Warning::new()
-    }
-}
-
-impl fmt::Display for Warning {
-    /// fmt renders a Warning for console use.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "warning: {}:", self.path)?;
-
-        if self.line > 0 {
-            write!(f, "{}:", self.line)?;
-        }
-
-        write!(f, " {}", self.message)
-    }
 }
 
 pub static MAKEFILE_PRECEDENCE: &str =
