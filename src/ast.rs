@@ -237,6 +237,9 @@ impl Traceable for Mk {
 
 parser! {
     grammar parser() for str {
+        /// eof matches the end of a file.
+        rule eof() = quiet!{![_]} / expected!("EOF")
+
         /// _ matches optional whitespace.
         rule _ = quiet!{(" " / "\t")*} / expected!("whitespace")
 
@@ -252,12 +255,10 @@ parser! {
 
         rule macro_escaped_newline() -> String =
             quiet!{
-                ("\\" line_ending()) {
+                ("\\" line_ending() _) {
                     " ".to_string()
                 }
             } / expected!("escaped LF")
-
-        rule eof() = quiet!{![_]} / expected!("EOF")
 
         rule escaped_non_line_ending() -> String =
             quiet!{
@@ -828,7 +829,7 @@ fn test_c_family_escape_preservation() {
 #[test]
 fn test_multiline_expressions() {
     assert_eq!(
-        parse_posix("-", "FULL_NAME=Alice\\\nLiddell\n")
+        parse_posix("-", "FULL_NAME=Alice\\\n \tLiddell\n")
             .unwrap()
             .ns
             .into_iter()
