@@ -734,6 +734,40 @@ test:;
 * Give the command something useful to do.
 * Remove extraneous code.
 
+## NO_RULES
+
+make generally expects a makefile to define at least one (non-special) rule to provide some action on when running `make`. Excepting include files like `sys.mk` or `*.include.mk`.
+
+### Fail
+
+makefile:
+
+```make
+PKG = curl
+```
+
+### Pass
+
+makefile:
+
+```make
+PKG = curl
+
+all:
+	apt-get install -y $(PKG)
+```
+
+provision.include.mk:
+
+```make
+PKG = curl
+```
+
+### Mitigation
+
+* Declare at least one non-special rule in most makefiles.
+* Rename include files to `*.include.mk`.
+
 ## STRICT_POSIX
 
 > To receive exactly the behavior described in this section, the user shall ensure that a portable makefile shall:

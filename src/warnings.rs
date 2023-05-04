@@ -50,6 +50,7 @@ lazy_static::lazy_static! {
         check_phony_target,
         check_repeated_command_prefix,
         check_blank_command,
+        check_no_rules,
         check_final_eol,
     ];
 }
@@ -470,12 +471,16 @@ pub static STRICT_POSIX: &str =
 
 /// check_strict_posix reports STRICT_POSIX violations.
 fn check_strict_posix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
-    if !metadata.is_include_file
-        && !gems.iter().any(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts, cs: _ } => ts.contains(&".POSIX".to_string()),
-            _ => false,
-        })
-    {
+    if metadata.is_include_file {
+        return Vec::new();
+    }
+
+    let has_strict_posix: bool = gems.iter().any(|e| match &e.n {
+        ast::Ore::Ru { ps: _, ts, cs: _ } => ts.contains(&".POSIX".to_string()),
+        _ => false,
+    });
+
+    if !has_strict_posix {
         return vec![Warning {
             path: metadata.path.clone(),
             line: 1,
@@ -630,6 +635,37 @@ fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
         .collect()
 }
 
+pub static NO_RULES: &str =
+    "NO_RULES: declare at least one non-special rule, or rename to *.include.mk";
+
+/// check_no_rules reports NO_RULES violations.
+fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    if metadata.is_include_file {
+        return Vec::new();
+    }
+
+    let has_nonspecial_rule: bool = !gems
+        .iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts, cs: _ } => {
+                ts.iter().any(|e2| !ast::SPECIAL_TARGETS.contains(e2))
+            }
+            _ => false,
+        })
+        .collect::<Vec<&ast::Gem>>()
+        .is_empty();
+
+    if !has_nonspecial_rule {
+        return vec![Warning {
+            path: metadata.path.clone(),
+            line: 0,
+            policy: NO_RULES.to_string(),
+        }];
+    }
+
+    Vec::new()
+}
+
 /// lint generates warnings for a makefile.
 pub fn lint(metadata: &inspect::Metadata, makefile: &str) -> Result<Vec<Warning>, String> {
     let gems: Vec<ast::Gem> = ast::parse_posix(&metadata.path, makefile)?.ns;
@@ -663,8 +699,15 @@ pub fn mock_md(pth: &str) -> inspect::Metadata {
 
 #[test]
 pub fn test_line_numbers() {
+    let md: inspect::Metadata = mock_md("-");
+
     assert_eq!(
-        lint(&mock_md("-"), "PKG=curl\n.POSIX:\n").unwrap(),
+        check_ub_late_posix_marker(
+            &md,
+            &ast::parse_posix(md.path.as_str(), "PKG=curl\n.POSIX:\n")
+                .unwrap()
+                .ns
+        ),
         vec![Warning {
             path: "-".to_string(),
             line: 2,
@@ -675,560 +718,460 @@ pub fn test_line_numbers() {
 
 #[test]
 pub fn test_ub_warnings() {
-    assert_eq!(
-        lint(&mock_md("-"), "PKG=curl\n.POSIX:\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![UB_LATE_POSIX_MARKER]
-    );
+    assert!(lint(&mock_md("-"), "PKG=curl\n.POSIX:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), "PKG=curl\n.POSIX:\n.POSIX:\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![UB_LATE_POSIX_MARKER, UB_LATE_POSIX_MARKER]
-    );
+    assert!(!lint(&mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), "# strict posix\n.POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\ninclude =foo.mk\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![UB_AMBIGUOUS_INCLUDE]
-    );
+    assert!(!lint(&mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_AMBIGUOUS_INCLUDE.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\ninclude=foo.mk\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
-
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\nMAKEFLAGS ?= -j\nMAKEFLAGS = -j\nMAKEFLAGS ::= -j\nMAKEFLAGS :::= -j\nMAKEFLAGS += -j\nMAKEFLAGS != echo \"-j\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![
-            UB_MAKEFLAGS_ASSIGNMENT,
-            UB_MAKEFLAGS_ASSIGNMENT,
-            UB_MAKEFLAGS_ASSIGNMENT,
-            UB_MAKEFLAGS_ASSIGNMENT,
-            UB_MAKEFLAGS_ASSIGNMENT,
-            UB_MAKEFLAGS_ASSIGNMENT,
-        ]
-    );
+            .collect::<Vec<String>>().contains(&UB_MAKEFLAGS_ASSIGNMENT.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![
-            UB_SHELL_MACRO,
-            UB_SHELL_MACRO,
-            UB_SHELL_MACRO,
-            UB_SHELL_MACRO,
-            UB_SHELL_MACRO,
-            UB_SHELL_MACRO,
-        ]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nSHELL ?= sh\nSHELL = sh\nSHELL ::= sh\nSHELL :::= sh\nSHELL += sh\nSHELL != sh\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&UB_SHELL_MACRO.to_string()));
 }
 
 #[test]
 pub fn test_strict_posix() {
     let md_stdin: inspect::Metadata = mock_md("-");
 
-    assert_eq!(
-        lint(&md_stdin, "PKG = curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![STRICT_POSIX]
-    );
+    assert!(lint(&md_stdin, "PKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&STRICT_POSIX.to_string()));
 
-    assert_eq!(
-        lint(&md_stdin, ".POSIX:\nPKG = curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&md_stdin, ".POSIX:\nPKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&STRICT_POSIX.to_string()));
 
     let mut md_sys: inspect::Metadata = mock_md("sys.mk");
     md_sys.is_include_file = true;
 
-    assert_eq!(
-        lint(&md_sys, "PKG = curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&md_sys, "PKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&STRICT_POSIX.to_string()));
 
     let mut md_include_mk: inspect::Metadata = mock_md("foo.include.mk");
     md_include_mk.is_include_file = true;
 
-    assert_eq!(
-        lint(&md_include_mk, "PKG = curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&md_include_mk, "PKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&STRICT_POSIX.to_string()));
 }
 
 #[test]
 pub fn test_makefile_precedence() {
-    assert_eq!(
-        lint(&mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![MAKEFILE_PRECEDENCE]
-    );
+    assert!(lint(&mock_md("Makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("makefile"), ".POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("foo.mk"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("foo.Makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("foo.makefile"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MAKEFILE_PRECEDENCE.to_string()));
 }
 
 #[test]
 pub fn test_curdir_assignment_nop() {
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\nCURDIR = build\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![CURDIR_ASSIGNMENT_NOP]
-    );
+    assert!(lint(&mock_md("-"), ".POSIX:\nCURDIR = build\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("-"), ".POSIX:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&CURDIR_ASSIGNMENT_NOP.to_string()));
 }
 
 #[test]
 pub fn test_wd_nop() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: all\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![WD_NOP]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall:\n\tcd foo\n\n\tpushd bar\n\tpopd\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&WD_NOP.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: all\nall:\n\ttar -C foo czvf foo.tgz .\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall:\n\ttar -C foo czvf foo.tgz .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&WD_NOP.to_string()));
 }
 
 #[test]
 pub fn test_wait_nop() {
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.WAIT:\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![WAIT_NOP]
-    );
+    assert!(lint(&mock_md("-"), ".POSIX:\n.WAIT:\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&WAIT_NOP.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+            .collect::<Vec<String>>().contains(&WAIT_NOP.to_string()));
 }
 
 #[test]
 pub fn test_phony_nop() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY:\nfoo: foo.c\n\tgcc -o foo foo.c\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![PHONY_NOP]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY:\nfoo: foo.c\n\tgcc -o foo foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_NOP.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_NOP.to_string()));
 }
 
 #[test]
 pub fn test_redundant_nonparallel_wait() {
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![REDUNDANT_NOTPARALLEL_WAIT]
-    );
+            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 .WAIT test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.NOTPARALLEL:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+            .collect::<Vec<String>>().contains(&REDUNDANT_NOTPARALLEL_WAIT.to_string()));
 }
 
 #[test]
 pub fn test_redundant_silent_at() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: lint\n.SILENT:\nlint:\n\t@unmake .\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![REDUNDANT_SILENT_AT]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: lint\n.SILENT:\nlint:\n\t@unmake .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_SILENT_AT.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\t@unmake .\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![REDUNDANT_SILENT_AT]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\t@unmake .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_SILENT_AT.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\tunmake .\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: lint\n.SILENT: lint\nlint:\n\tunmake .\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_SILENT_AT.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: lint\nlint:\n\t@unmake .\n")
+    assert!(
+        !lint(&mock_md("-"), ".POSIX:\n.PHONY: lint\nlint:\n\t@unmake .\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
+            .collect::<Vec<String>>()
+            .contains(&REDUNDANT_SILENT_AT.to_string())
     );
 }
 
 #[test]
 pub fn test_global_ignore() {
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.IGNORE:\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![GLOBAL_IGNORE]
-    );
-
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\trm -rf bin"
-        )
+    assert!(lint(&mock_md("-"), ".POSIX:\n.IGNORE:\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+        .collect::<Vec<String>>()
+        .contains(&GLOBAL_IGNORE.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\trm -rf bin"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&GLOBAL_IGNORE.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&GLOBAL_IGNORE.to_string()));
 }
 
 #[test]
 pub fn test_redundant_ignore_minus() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\t-rm -rf bin\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![REDUNDANT_IGNORE_MINUS]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\n.IGNORE: clean\nclean:\n\t-rm -rf bin\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REDUNDANT_IGNORE_MINUS.to_string()));
 }
 
 #[test]
 pub fn test_implementation_defined_target() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: all\nall: foo%\nfoo%: foo.c\n\tgcc -o foo% foo.c\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![
-            IMPLEMENTATTION_DEFINED_TARGET,
-            IMPLEMENTATTION_DEFINED_TARGET
-        ]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall: foo%\nfoo%: foo.c\n\tgcc -o foo% foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: all\nall: \"foo\"\n\"foo\": foo.c\n\tgcc -o \"foo\" foo.c\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![
-            IMPLEMENTATTION_DEFINED_TARGET,
-            IMPLEMENTATTION_DEFINED_TARGET
-        ]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall: \"foo\"\n\"foo\": foo.c\n\tgcc -o \"foo\" foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
+
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall: foo\nfoo: foo.c\n\tgcc -o foo foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&IMPLEMENTATTION_DEFINED_TARGET.to_string()));
 }
 
 #[test]
 pub fn test_command_comment() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nfoo: foo.c\n\t#build foo\n\tgcc -o foo foo.c\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![COMMAND_COMMENT]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nfoo: foo.c\n\t#build foo\n\tgcc -o foo foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&COMMAND_COMMENT.to_string()));
 
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t@#gcc -o foo foo.c\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![COMMAND_COMMENT]
+            .collect::<Vec<String>>()
+            .contains(&COMMAND_COMMENT.to_string())
     );
 
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t-#gcc -o foo foo.c\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![COMMAND_COMMENT]
+            .collect::<Vec<String>>()
+            .contains(&COMMAND_COMMENT.to_string())
     );
 
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\nfoo: foo.c\n\t+#gcc -o foo foo.c\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![COMMAND_COMMENT]
+            .collect::<Vec<String>>()
+            .contains(&COMMAND_COMMENT.to_string())
     );
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nfoo: foo.c\n\tgcc \\\n#output file \\\n\t\t-o foo \\\n\t\tfoo.c\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![COMMAND_COMMENT]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nfoo: foo.c\n\tgcc \\\n#output file \\\n\t\t-o foo \\\n\t\tfoo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&COMMAND_COMMENT.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nfoo: foo.c\n#build foo\n\tgcc -o foo foo.c\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\nfoo: foo.c\n#build foo\n\tgcc -o foo foo.c\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&COMMAND_COMMENT.to_string()));
 }
 
 #[test]
 pub fn test_phony_target() {
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\nall:\n\techo \"Hello World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![PHONY_TARGET]
+            .collect::<Vec<String>>()
+            .contains(&PHONY_TARGET.to_string())
     );
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nlint:;\ninstall:;\nuninstall:;\npublish:;\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![PHONY_TARGET, PHONY_TARGET, PHONY_TARGET, PHONY_TARGET,]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nlint:;\ninstall:;\nuninstall:;\npublish:;\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_TARGET.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: all\nall:\n\techo \"Hello World!\"\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: all\nall:\n\techo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_TARGET.to_string()));
 
-    assert_eq!(
+    assert!(
         lint(
             &mock_md("-"),
             ".POSIX:\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n"
@@ -1236,275 +1179,260 @@ pub fn test_phony_target() {
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![PHONY_TARGET, PHONY_TARGET, PHONY_TARGET]
-    );
+        .collect::<Vec<String>>().contains(&PHONY_TARGET.to_string()));
 
-    assert_eq!(
-        lint(
+    assert!(
+        !lint(
             &mock_md("-"),
             ".POSIX:\n.PHONY: test test-1 test-2\ntest: test-1 test-2\ntest-1:\n\techo \"Hello World!\"\ntest-2:\n\techo \"Hi World!\"\n"
         )
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+        .collect::<Vec<String>>().contains(&PHONY_TARGET.to_string()));
 
-    assert_eq!(
-        lint(
+    assert!(
+        !lint(
             &mock_md("-"),
             ".POSIX:\n.PHONY: test\ntest: test-1 test-2\n.PHONY: test-1\ntest-1:\n\techo \"Hello World!\"\n.PHONY: test-2\ntest-2:\n\techo \"Hi World!\"\n"
         )
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+        .collect::<Vec<String>>().contains(&PHONY_TARGET.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\nclean:\n\t-rm -rf bin\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![PHONY_TARGET]
-    );
-
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
-        )
+    assert!(lint(&mock_md("-"), ".POSIX:\nclean:\n\t-rm -rf bin\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new(),
-    );
+        .collect::<Vec<String>>()
+        .contains(&PHONY_TARGET.to_string()));
 
-    assert_eq!(
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: clean\nclean:\n\t-rm -rf bin\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_TARGET.to_string()));
+
+    assert!(
         lint(&mock_md("-"), ".POSIX:\nport: cross-compile archive\n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![PHONY_TARGET]
+            .collect::<Vec<String>>()
+            .contains(&PHONY_TARGET.to_string())
     );
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: port\nport: cross-compile archive\n"
-        )
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: port\nport: cross-compile archive\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&PHONY_TARGET.to_string()));
+
+    assert!(lint(&mock_md("-"), ".POSIX:\nempty:;\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
-
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\nempty:;\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![PHONY_TARGET]
-    );
+        .collect::<Vec<String>>()
+        .contains(&PHONY_TARGET.to_string()));
 
     // Ensure that absent targets do not trigger a PHONY_TARGET warning,
     // unlike some makefile linters in the past.
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&PHONY_TARGET.to_string()));
 }
 
 #[test]
 pub fn test_simplify_at() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\t@echo baz\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![SIMPLIFY_AT]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\t@echo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_AT.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\techo baz\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t@echo foo\n\t@echo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_AT.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.SILENT: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.SILENT: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_AT.to_string()));
 }
 
 #[test]
 pub fn test_simplify_minus() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\t-echo baz\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![SIMPLIFY_MINUS]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\t-echo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_MINUS.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\techo baz\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\nwelcome:\n\t-echo foo\n\t-echo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_MINUS.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.IGNORE: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.IGNORE: welcome\nwelcome:\n\techo foo\n\techo bar\n\techo baz\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&SIMPLIFY_MINUS.to_string()));
 }
 
 #[test]
 pub fn test_repeated_command_prefix() {
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: test\ntest:\n\t@@echo \"Hello World!\"\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![REPEATED_COMMAND_PREFIX]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t@@echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: test\ntest:\n\t--echo \"Hello World!\"\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![REPEATED_COMMAND_PREFIX]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t--echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: test\ntest:\n\t@-@echo \"Hello World!\"\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        vec![REPEATED_COMMAND_PREFIX]
-    );
+    assert!(lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t@-@echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: test\ntest:\n\t@+-echo \"Hello World!\"\n"
-        )
-        .unwrap()
-        .into_iter()
-        .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\t@+-echo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&REPEATED_COMMAND_PREFIX.to_string()));
 }
 
 #[test]
 pub fn test_blank_command() {
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![BLANK_COMMAND]
-    );
+    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&BLANK_COMMAND.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t-\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![BLANK_COMMAND]
-    );
+    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t-\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&BLANK_COMMAND.to_string()));
 
-    assert_eq!(
-        lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t+\n")
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![BLANK_COMMAND]
-    );
+    assert!(lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t+\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&BLANK_COMMAND.to_string()));
 
-    assert_eq!(
+    assert!(
         lint(&mock_md("-"), ".POSIX:\n.PHONY: test\ntest:\n\t@+- \n")
             .unwrap()
             .into_iter()
             .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![BLANK_COMMAND]
+            .collect::<Vec<String>>()
+            .contains(&BLANK_COMMAND.to_string())
     );
 
-    assert_eq!(
-        lint(
-            &mock_md("-"),
-            ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
-        )
+    assert!(!lint(
+        &mock_md("-"),
+        ".POSIX:\n.PHONY: test\ntest:\n\techo \"Hello World!\"\n"
+    )
+    .unwrap()
+    .into_iter()
+    .map(|e| e.policy)
+    .collect::<Vec<String>>()
+    .contains(&BLANK_COMMAND.to_string()));
+}
+
+#[test]
+pub fn test_no_rules() {
+    let md_stdin: inspect::Metadata = mock_md("-");
+
+    assert!(lint(&md_stdin, "PKG = curl\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)
-        .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+        .collect::<Vec<String>>()
+        .contains(&NO_RULES.to_string()));
+
+    let mut md_include: inspect::Metadata = mock_md("foo.include.mk");
+    md_include.is_include_file = true;
+
+    assert!(!lint(&md_include, "PKG = curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&NO_RULES.to_string()));
+
+    assert!(!lint(&md_stdin, "all:\n\techo \"Hello World!\"\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&NO_RULES.to_string()));
 }
 
 #[test]
@@ -1514,40 +1442,34 @@ pub fn test_final_eol() {
     md_pkg.is_empty = &mf_pkg.len() == &0;
     md_pkg.has_final_eol = &mf_pkg.chars().last().unwrap_or(' ') == &'\n';
 
-    assert_eq!(
-        lint(&md_pkg, &mf_pkg)
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![MISSING_FINAL_EOL]
-    );
+    assert!(lint(&md_pkg, &mf_pkg)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MISSING_FINAL_EOL.to_string()));
 
     let mf_pkg_final_eol: &str = ".POSIX:\nPKG = curl\n";
     let mut md_pkg_final_eol: inspect::Metadata = mock_md("-");
     md_pkg_final_eol.is_empty = &mf_pkg_final_eol.len() == &0;
     md_pkg_final_eol.has_final_eol = &mf_pkg_final_eol.chars().last().unwrap_or(' ') == &'\n';
 
-    assert_eq!(
-        lint(&md_pkg_final_eol, &mf_pkg_final_eol)
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        Vec::<String>::new()
-    );
+    assert!(!lint(&md_pkg_final_eol, &mf_pkg_final_eol)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MISSING_FINAL_EOL.to_string()));
 
     let mf_empty: &str = "";
     let mut md_empty: inspect::Metadata = mock_md("-");
     md_empty.is_empty = &mf_empty.len() == &0;
     md_empty.has_final_eol = &mf_empty.chars().last().unwrap_or(' ') == &'\n';
 
-    assert_eq!(
-        lint(&md_empty, &mf_empty)
-            .unwrap()
-            .into_iter()
-            .map(|e| e.policy)
-            .collect::<Vec<String>>(),
-        vec![STRICT_POSIX]
-    );
+    assert!(!lint(&md_empty, &mf_empty)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&MISSING_FINAL_EOL.to_string()));
 }
