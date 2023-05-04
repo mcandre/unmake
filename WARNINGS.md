@@ -734,6 +734,53 @@ test:;
 * Give the command something useful to do.
 * Remove extraneous code.
 
+## WHITESPACE_LEADING_COMMAND
+
+After any optional `@`/`+`/`-` prefix modifiers, whitespace leading a command is bad form. In commands, leading whitespace may be a sign of a typo in an earlier multiline instructions.
+
+The earliest whitespace for a command, should consist mainly of the standard one-tab indentation.
+
+Successive lines in a multiline make command commonly use two tabs for visual clarity.
+
+### Fail
+
+```make
+foo:
+<tab><space>gcc -o foo foo.c
+```
+
+```make
+foo:
+<tab>@+-<space>gcc -o foo foo.c
+```
+
+### Pass
+
+```make
+foo:
+<tab><no space>gcc -o foo foo.c
+```
+
+```make
+foo:
+<tab>@+-<no space>gcc -o foo foo.c
+```
+
+```make
+foo:
+	gcc \
+		-o \
+		foo \
+		foo.c
+```
+
+### Mitigation
+
+* Verify multiline instruction syntax in earlier commands.
+* Avoid inserting whitespace between `@`/`+`/`-` prefix modifiers and the rest of the command.
+* Generally, avoid starting commands with whitespace.
+* Consider indenting successive lines in a multiline make command exactly two tabs, for visual clarity.
+
 ## NO_RULES
 
 make generally expects a makefile to define at least one (non-special) rule to provide some action on when running `make`. Excepting include files like `sys.mk` or `*.include.mk`.

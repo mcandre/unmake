@@ -27,6 +27,9 @@ lazy_static::lazy_static! {
     /// Empty commands are distinct from a rule without commands.
     pub static ref BLANK_COMMAND_PATTERN: regex::Regex = regex::Regex::new(r"^[-+@]+\s*$").unwrap();
 
+    /// WHITESPACE_LEADING_COMMAND_PATTERN matches commands that start with whitespace.
+    pub static ref WHITESPACE_LEADING_COMMAND_PATTERN: regex::Regex = regex::Regex::new(r"^[-+@]*\s+").unwrap();
+
     /// POLICIES collects the set of available high level makefile checks.
     pub static ref POLICIES: Vec<Policy> = vec![
         check_ub_late_posix_marker,
@@ -50,6 +53,7 @@ lazy_static::lazy_static! {
         check_phony_target,
         check_repeated_command_prefix,
         check_blank_command,
+        check_whitespace_leading_command,
         check_no_rules,
         check_rule_all,
         check_final_eol,
@@ -583,6 +587,29 @@ fn check_blank_command(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<W
             path: metadata.path.clone(),
             line: e.l,
             policy: BLANK_COMMAND.to_string(),
+        })
+        .collect()
+}
+
+pub static WHITESPACE_LEADING_COMMAND: &str =
+    "WHITESPACE_LEADING_COMMAND: questionable whitespace detected at the start of a command";
+
+/// check_whitespace_leading_command reports WHITESPACE_LEADING_COMMAND violations.
+fn check_whitespace_leading_command(
+    metadata: &inspect::Metadata,
+    gems: &[ast::Gem],
+) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Ru { ps: _, ts: _, cs } => cs
+                .iter()
+                .any(|e2| WHITESPACE_LEADING_COMMAND_PATTERN.is_match(e2)),
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.clone(),
+            line: e.l,
+            policy: WHITESPACE_LEADING_COMMAND.to_string(),
         })
         .collect()
 }
@@ -1190,6 +1217,53 @@ pub fn test_command_comment() {
     .map(|e| e.policy)
     .collect::<Vec<String>>()
     .contains(&COMMAND_COMMENT.to_string()));
+}
+
+#[test]
+pub fn test_whitespace_leading_command() {
+    assert!(lint(&mock_md("-"), "foo:\n\t gcc -o foo foo.c\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
+
+    assert!(lint(&mock_md("-"), "foo:\n\t\tgcc -o foo foo.c\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
+
+    assert!(lint(&mock_md("-"), "foo:\n\t@+- gcc -o foo foo.c\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
+
+    assert!(!lint(&mock_md("-"), "foo:\n\tgcc -o foo foo.c\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
+
+    assert!(!lint(&mock_md("-"), "foo:\n\t@+-gcc -o foo foo.c\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&WHITESPACE_LEADING_COMMAND.to_string()));
+
+    assert!(
+        !lint(&mock_md("-"), "foo:\n\tgcc \\\n\t\t-o \\\n\t\tfoo foo.c\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.policy)
+            .collect::<Vec<String>>()
+            .contains(&WHITESPACE_LEADING_COMMAND.to_string())
+    );
 }
 
 #[test]
