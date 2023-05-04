@@ -60,14 +60,16 @@ lazy_static::lazy_static! {
 pub type Policy = fn(&inspect::Metadata, &[ast::Gem]) -> Vec<Warning>;
 
 pub static UB_LATE_POSIX_MARKER: &str =
-    "UB_LATE_POSIX_MARKER: a .POSIX: special target rule must be either the first non-comment line, or absent";
+    "UB_LATE_POSIX_MARKER: the special rule \".POSIX:\" should be the first uncommented instruction in POSIX makefiles, or else absent from *.include.mk files";
 
 /// check_ub_late_posix_marker reports UB_LATE_POSIX_MARKER violations.
 fn check_ub_late_posix_marker(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     gems.iter()
         .enumerate()
         .filter(|(i, e)| match &e.n {
-            ast::Ore::Ru { ps: _, ts, cs: _ } => i > &0 && ts == &vec![".POSIX".to_string()],
+            ast::Ore::Ru { ps: _, ts, cs: _ } => {
+                (metadata.is_include_file || i > &0) && ts == &vec![".POSIX".to_string()]
+            }
             _ => false,
         })
         .map(|(_, e)| Warning {
@@ -468,7 +470,7 @@ fn check_simplify_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
 }
 
 pub static STRICT_POSIX: &str =
-    "STRICT_POSIX: lead makefiles with the .POSIX: compliance marker, or rename to *.include.mk";
+    "STRICT_POSIX: lead makefiles with the \".POSIX:\" compliance marker, or else rename include files to *.include.mk";
 
 /// check_strict_posix reports STRICT_POSIX violations.
 fn check_strict_posix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
@@ -637,7 +639,7 @@ fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
 }
 
 pub static NO_RULES: &str =
-    "NO_RULES: declare at least one non-special rule, or rename to *.include.mk";
+    "NO_RULES: declare at least one non-special rule, or else rename to *.include.mk";
 
 /// check_no_rules reports NO_RULES violations.
 fn check_no_rules(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
@@ -766,6 +768,23 @@ pub fn test_ub_warnings() {
         .contains(&UB_LATE_POSIX_MARKER.to_string()));
 
     assert!(!lint(&mock_md("-"), ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    let mut md_include = mock_md("provision.include.mk");
+    md_include.is_include_file = true;
+
+    assert!(lint(&md_include, ".POSIX:\nPKG=curl\n")
+        .unwrap()
+        .into_iter()
+        .map(|e| e.policy)
+        .collect::<Vec<String>>()
+        .contains(&UB_LATE_POSIX_MARKER.to_string()));
+
+    assert!(!lint(&md_include, "PKG=curl\n")
         .unwrap()
         .into_iter()
         .map(|e| e.policy)

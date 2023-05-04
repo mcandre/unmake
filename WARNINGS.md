@@ -872,28 +872,41 @@ In the case of UB, a makefile may trigger an error message during certain projec
 
 When the `.POSIX:` rule is used in a makefile, it must be the first thing in the makefile, apart from any blank or commented lines.
 
+Note that common include files like `sys.mk` or `*.include.mk`, should not present `.POSIX:`, as their text necessarily copies as late as some earlier `include` line in an outer makefile.
+
 ### Fail
+
+makefile:
 
 ```make
 PKG = curl
 .POSIX:
 ```
 
+makefile:
+
 ```make
 .POSIX:
 .POSIX:
+```
+
+provision.include.mk:
+
+```make
+.POSIX:
+PKG = curl
 ```
 
 ### Pass
 
+makefile:
+
 ```make
 .POSIX:
 PKG = curl
 ```
 
-```make
-.POSIX:
-```
+provision.include.mk:
 
 ```make
 PKG = curl
@@ -903,7 +916,7 @@ PKG = curl
 
 * Move `.POSIX` to the first non-blank, non-commented line in the makefile.
 * Avoid mixing the `.POSIX` target with other targets in a single rule declaration.
-* Avoid declaring `.POSIX:` in makefiles intended for use in include lines.
+* Avoid declaring `.POSIX:` in `sys.mk` or `*.include.mk`.
 * Avoid declaring `.POSIX:` multiple times.
 
 ## UB_AMBIGUOUS_INCLUDE
