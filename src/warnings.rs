@@ -124,7 +124,7 @@ pub fn mock_md(pth: &str) -> inspect::Metadata {
         path: pth.to_string(),
         filename: pth.to_string(),
         is_makefile: true,
-        build_system: inspect::DEFAULT_BUILD_SYSTEM.to_string(),
+        build_system: String::new(),
         is_machine_generated: false,
         is_include_file: false,
         is_empty: true,

@@ -12,9 +12,6 @@ use std::fs;
 use std::path;
 
 lazy_static::lazy_static! {
-    /// DEFAULT_BUILD_SYSTEM is assumed (POSIX) make.
-    pub static ref DEFAULT_BUILD_SYSTEM: String = "make".to_string();
-
     /// LOWER_FILENAMES_TO_IMPLEMENTATIONS maps common filenames to make implementation flavors.
     pub static ref LOWER_FILENAMES_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
         ("bsdmakefile", "bmake"),
@@ -102,7 +99,7 @@ impl Metadata {
             path: String::new(),
             filename: String::new(),
             is_makefile: false,
-            build_system: DEFAULT_BUILD_SYSTEM.to_string(),
+            build_system: String::new(),
             is_machine_generated: false,
             is_include_file: false,
             is_empty: true,
