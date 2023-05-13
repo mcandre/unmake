@@ -822,7 +822,7 @@ fn test_multiline_expressions() {
 }
 
 #[test]
-fn test_backslash_prefixed_command() {
+fn test_backslash_prefixed_values() {
     assert_eq!(
         parse_posix("-", "all:\n\t\\curl --version")
             .unwrap()
@@ -834,6 +834,19 @@ fn test_backslash_prefixed_command() {
             ts: vec!["all".to_string()],
             ps: Vec::new(),
             cs: vec!["\\curl --version".to_string()]
+        }]
+    );
+
+    assert_eq!(
+        parse_posix("-", "CLIENT=\\curl")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "CLIENT".to_string(),
+            v: "\\curl".to_string()
         }]
     );
 }
