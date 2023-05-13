@@ -1,4 +1,3 @@
-.POSIX:
 .PHONY: all test .TEST .TEST-UNIT .TEST-INTEGRATION
 
 all: test

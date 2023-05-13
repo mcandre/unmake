@@ -63,6 +63,7 @@ fn main() {
     }
 
     let mut found_quirk = false;
+    let mut ws: Vec<warnings::Warning> = Vec::new();
 
     let mut action = |p: &path::Path| {
         let pth_string: String = p.display().to_string();
@@ -112,24 +113,22 @@ fn main() {
         }
 
         let makefile_str: &str = &makefile_str_result.unwrap();
-        let warnings_result: Result<Vec<warnings::Warning>, String> =
+        let ws2_result: Result<Vec<warnings::Warning>, String> =
             warnings::lint(&metadata, makefile_str);
 
-        if let Err(err) = warnings_result {
+        if let Err(err) = ws2_result {
             found_quirk = true;
             println!("{}", err);
             return;
         }
 
-        let warnings: Vec<warnings::Warning> = warnings_result.unwrap();
+        let ws2: Vec<warnings::Warning> = ws2_result.unwrap();
 
-        if !warnings.is_empty() {
+        if !ws2.is_empty() {
             found_quirk = true;
         }
 
-        for warning in warnings {
-            println!("{}", warning);
-        }
+        ws.extend(ws2);
     };
 
     for pth_string in pth_strings {
@@ -156,6 +155,12 @@ fn main() {
         } else {
             action(pth);
         }
+    }
+
+    ws.sort_by(|a, b| a.line.cmp(&b.line));
+
+    for w in ws {
+        println!("{}", w);
     }
 
     if found_quirk {
