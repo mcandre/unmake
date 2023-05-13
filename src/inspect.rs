@@ -151,13 +151,12 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
     metadata.filename = filename;
 
     let filename_lower: String = metadata.filename.to_lowercase();
-
-    let file_extension: String = pth
+    let file_extension_lower: String = pth
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
-        .to_string();
-    let file_extension_lower: String = file_extension.to_lowercase();
+        .to_string()
+        .to_lowercase();
 
     if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower.as_str())
         && !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower.as_str())
@@ -165,14 +164,14 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         return Ok(metadata);
     }
 
-    if let Some(implementation) =
-        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower.as_str())
-    {
+    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower.as_str()) {
         metadata.is_makefile = true;
         metadata.build_system = implementation;
     }
 
-    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower.as_str()) {
+    if let Some(implementation) =
+        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower.as_str())
+    {
         metadata.is_makefile = true;
         metadata.build_system = implementation;
     }
