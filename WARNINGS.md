@@ -966,6 +966,9 @@ test: test-unit test-integration
 
 ### Mitigation
 
+* Avoid using reserved names in targets or prerequisites.
+* Consider pair programming to spot typos.
+
 # Undefined Behavior (UB)
 
 Linter warnings concerning UB level portability issues tend to carry **higher** risk compared to other warnings. This is a consequence of the POSIX standard not specifying any particular error handling (or error detection) semantic for make implementations to follow.
