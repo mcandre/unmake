@@ -271,7 +271,7 @@ parser! {
 
         rule simple_command() -> String =
             quiet!{
-                s:$([^ ('\r' | '\n' | '\\')]+ escaped_non_line_ending()* [^ ('\r' | '\n' | '\\')]*) {
+                s:$((("\\" (! line_ending())) / [^ ('\\' | '\n' | '\r')])+) {
                     s.to_string()
                 }
             } / expected!("command")
@@ -817,6 +817,23 @@ fn test_multiline_expressions() {
                 "test-3".to_string(),
             ],
             cs: Vec::new(),
+        }]
+    );
+}
+
+#[test]
+fn test_backslash_prefixed_command() {
+    assert_eq!(
+        parse_posix("-", "all:\n\t\\curl --version")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Ru {
+            ts: vec!["all".to_string()],
+            ps: Vec::new(),
+            cs: vec!["\\curl --version".to_string()]
         }]
     );
 }
