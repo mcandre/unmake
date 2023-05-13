@@ -14,10 +14,10 @@ use std::path;
 
 lazy_static::lazy_static! {
     /// DIRECTORY_EXCLUSIONS
-    pub static ref DIRECTORY_EXCLUSIONS: Vec<String> = vec![
-        ".git".to_string(),
-        "node_modules".to_string(),
-        "vendor".to_string(),
+    pub static ref DIRECTORY_EXCLUSIONS: Vec<&'static str> = vec![
+        ".git",
+        "node_modules",
+        "vendor",
     ];
 }
 
@@ -140,8 +140,7 @@ fn main() {
                 .sort_by_file_name()
                 .into_iter()
                 .filter_entry(|e| {
-                    !DIRECTORY_EXCLUSIONS
-                        .contains(&e.file_name().to_str().unwrap_or("").to_string())
+                    !DIRECTORY_EXCLUSIONS.contains(&e.file_name().to_str().unwrap_or(""))
                 });
 
             for entry_result in walker {

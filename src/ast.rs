@@ -15,20 +15,20 @@ pub static UPPERCASE_ALPHABETIC: RangeInclusive<char> = 'A'..='Z';
 
 lazy_static::lazy_static! {
     /// SPECIAL_TARGETS collects POSIX special target names.
-    pub static ref SPECIAL_TARGETS: HashSet<String> = vec![
-            ".POSIX".to_string(),
-            ".DEFAULT".to_string(),
-            ".IGNORE".to_string(),
-            ".NOTPARALLEL".to_string(),
-            ".PHONY".to_string(),
-            ".PRECIOUS".to_string(),
-            ".SCCS_GET".to_string(),
-            ".SILENT".to_string(),
-            ".SUFFIXES".to_string(),
-            ".WAIT".to_string(),
+    pub static ref SPECIAL_TARGETS: HashSet<&'static str> = vec![
+            ".POSIX",
+            ".DEFAULT",
+            ".IGNORE",
+            ".NOTPARALLEL",
+            ".PHONY",
+            ".PRECIOUS",
+            ".SCCS_GET",
+            ".SILENT",
+            ".SUFFIXES",
+            ".WAIT",
         ]
         .into_iter()
-        .collect::<HashSet<String>>();
+        .collect::<HashSet<&'static str>>();
 }
 
 /// is_reserved reports non-special, reserved target names.
@@ -100,14 +100,14 @@ pub trait Node: Traceable + Debug + PartialEq {}
 /// as originally supplied in the AST. Minimal or no evaluation is performed;
 /// The actual value may vary during makefile processing with a live make implementation.
 #[derive(Debug, PartialEq)]
-pub enum Ore {
+pub enum Ore<'a> {
     /// Ru models a makefile rule.
     Ru {
         /// ts denotes the target(s) produced by this rule.
-        ts: Vec<String>,
+        ts: Vec<&'a str>,
 
         /// ps denotes any prerequisite(s) depended on by this rule.
-        ps: Vec<String>,
+        ps: Vec<&'a str>,
 
         /// cs denotes any shell command(s) executed by this rule.
         cs: Vec<String>,
@@ -118,7 +118,7 @@ pub enum Ore {
     /// Values
     Mc {
         /// n denotes a name for this macro.
-        n: String,
+        n: &'a str,
 
         /// v denotes an unexpanded value for this macro.
         v: String,
@@ -127,7 +127,7 @@ pub enum Ore {
     /// In models an include line.
     In {
         /// ps collects the file paths of any further makefile to include.
-        ps: Vec<String>,
+        ps: Vec<&'a str>,
     },
 
     /// Ex models a general macro expression.
@@ -140,7 +140,7 @@ pub enum Ore {
 /// Gem provides tokens enriched
 /// with parsing location information.
 #[derive(Debug, PartialEq)]
-pub struct Gem {
+pub struct Gem<'a> {
     /// o denotes the offset
     /// of the opening byte
     /// of this AST node from some stream source.
@@ -151,10 +151,10 @@ pub struct Gem {
     pub l: usize,
 
     /// n denotes a content node.
-    pub n: Ore,
+    pub n: Ore<'a>,
 }
 
-impl Traceable for Gem {
+impl Traceable for Gem<'_> {
     /// set_offset applies the given offset.
     fn set_offset(&mut self, offset: usize) {
         self.o = offset;
@@ -178,7 +178,7 @@ impl Traceable for Gem {
 
 /// Mk models a makefile AST.
 #[derive(Debug, PartialEq)]
-pub struct Mk {
+pub struct Mk<'a> {
     /// offset denotes the offset
     /// of the opening byte
     /// of this AST node from some stream source.
@@ -189,24 +189,24 @@ pub struct Mk {
     pub l: usize,
 
     /// ns denotes child nodes.
-    pub ns: Vec<Gem>,
+    pub ns: Vec<Gem<'a>>,
 }
 
-impl Mk {
+impl Mk<'_> {
     /// new constructs a makefile AST.
     pub fn new(ns: Vec<Gem>) -> Mk {
         Mk { o: 0, l: 1, ns }
     }
 }
 
-impl Default for Mk {
+impl Default for Mk<'_> {
     /// default generates a basic makefile AST.
     fn default() -> Self {
         Mk::new(Vec::new())
     }
 }
 
-impl Traceable for Mk {
+impl Traceable for Mk<'_> {
     /// set_offset applies the given offset.
     fn set_offset(&mut self, offset: usize) {
         self.o = offset;
@@ -240,17 +240,15 @@ parser! {
         /// eof matches the end of a file.
         rule eof() = quiet!{![_]} / expected!("EOF")
 
-        rule line_ending() -> String =
+        rule line_ending() =
             quiet!{
-                s:$"\n" {
-                    s.to_string()
-                }
+                "\n"
             } / expected!("LF")
 
-        rule macro_escaped_newline() -> String =
+        rule macro_escaped_newline() -> &'static str =
             quiet!{
                 ("\\" line_ending() _) {
-                    " ".to_string()
+                    " "
                 }
             } / expected!("escaped LF")
 
@@ -262,65 +260,51 @@ parser! {
         /// __ matches required whitespace, without allowing escaped newlines.
         rule __ = quiet!{(" " / "\t")+} / expected!("whitespace")
 
-        rule escaped_non_line_ending() -> String =
+        rule escaped_non_line_ending() -> &'input str =
             quiet!{
-                s:$("\\" [^ (' ' | '\t' | '\r' | '\n')]) {
-                    s.to_string()
-                }
+                $("\\" [^ (' ' | '\t' | '\r' | '\n')])
             } / expected!("c-style escape")
 
-        rule comment() -> String =
+        rule comment() =
             quiet!{
-                ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof())) {
-                    String::new()
-                }
+                ("#" ([^ ('\r' | '\n')]*) (line_ending() / eof()))
             } / expected!("comment")
 
-        rule macro_expansion() -> String =
+        rule macro_expansion() -> &'input str =
             quiet!{
-                s:$(("$(" macro_name() ")") / ("${" macro_name() "}")) {
-                    s.to_string()
-                }
+                $(("$(" macro_name() ")") / ("${" macro_name() "}"))
             } / expected!("macro expansion")
 
-        rule non_special_target_literal() -> String =
+        rule non_special_target_literal() -> &'input str =
             quiet!{
                 s:$([^ (' ' | '\t' | ':' | ';' | '=' | '#' | '\r' | '\n' | '\\')]+) {?
                     if SPECIAL_TARGETS.contains(s) {
                         Err("special target")
                     } else {
-                        Ok(s.to_string())
+                        Ok(s)
                     }
                 }
             } / expected!("target")
 
-        rule target() -> String =
-            s:$(non_special_target_literal() / macro_expansion()) {
-                s.to_string()
-            }
+        rule target() -> &'input str =
+            $(non_special_target_literal() / macro_expansion())
 
-        rule wait_prerequisite() -> String =
+        rule wait_prerequisite() -> &'input str =
             quiet!{
-                s:$(".WAIT") {
-                    s.to_string()
-                }
+                $(".WAIT")
             } / expected!("wait prerequisite marker")
 
-        rule prerequisite() -> String =
-            s:$(non_special_target_literal() / wait_prerequisite() / macro_expansion()) {
-                s.to_string()
-            }
+        rule prerequisite() -> &'input str =
+            $(non_special_target_literal() / wait_prerequisite() / macro_expansion())
 
-        rule simple_command() -> String =
+        rule simple_command() -> &'input str =
             quiet!{
-                s:$([^ ('\r' | '\n' | '\\')]+ escaped_non_line_ending()* [^ ('\r' | '\n' | '\\')]*) {
-                    s.to_string()
-                }
+                $([^ ('\r' | '\n' | '\\')]+ escaped_non_line_ending()* [^ ('\r' | '\n' | '\\')]*)
             } / expected!("command")
 
-        rule command_escaped_newline() -> String =
+        rule command_escaped_newline() -> &'input str =
             s:$("\\" line_ending()) "\t"*<0,1> {
-                s.to_string()
+                s
             }
 
         rule multiline_command() -> String =
@@ -329,9 +313,7 @@ parser! {
             }
 
         rule compound_make_command() -> String =
-            s:(simple_command() / multiline_command()) {
-                s.to_string()
-            }
+            (s:simple_command() { s.to_string() } / multiline_command())
 
         rule make_command() -> String =
             strings:(compound_make_command()+) {
@@ -347,15 +329,15 @@ parser! {
 
         rule indented_command() -> String =
             (comment() / line_ending())* "\t" s:make_command() (line_ending()+ / eof()) {
-                s.to_string()
+                s
             }
 
-        rule with_prerequisites() -> (Vec<String>, Vec<String>) =
+        rule with_prerequisites() -> (Vec<&'input str>, Vec<String>) =
             ps:(prerequisite() ++ _) _ inline_commands:(inline_command()*<0, 1>) ((comment() / line_ending())+ / eof()) indented_commands:(indented_command()*) {
                 (ps, [inline_commands, indented_commands].concat())
             }
 
-        rule with_prerequisites_without_commands() -> (Vec<String>, Vec<String>) =
+        rule with_prerequisites_without_commands() -> (Vec<&'input str>, Vec<String>) =
             ps:(prerequisite() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 (ps, Vec::new())
             }
@@ -370,53 +352,47 @@ parser! {
                 indented_commands
             }
 
-        rule without_prerequisites() -> (Vec<String>, Vec<String>) =
+        rule without_prerequisites() -> (Vec<&'input str>, Vec<String>) =
             cs:(commands_with_inline() / commands_without_inline()) {
                 (Vec::new(), cs)
             }
 
-        rule without_prerequisites_without_commands() -> (Vec<String>, Vec<String>) =
+        rule without_prerequisites_without_commands() -> (Vec<&'input str>, Vec<String>) =
             ((comment() / line_ending())+ / eof()) {
                 (Vec::new(), Vec::new())
             }
 
-        rule special_unit_target() -> String =
+        rule special_unit_target() -> &'input str =
             quiet!{
-                s:$("." ("POSIX" / "NOTPARALLEL" / "WAIT")) {
-                    s.to_string()
-                }
+                $("." ("POSIX" / "NOTPARALLEL" / "WAIT"))
             } / expected!("target")
 
-        rule special_unit_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+        rule special_unit_rule() -> (Vec<&'input str>, (Vec<&'input str>, Vec<String>)) =
             t:special_unit_target() _ ":" _ pcs:without_prerequisites_without_commands() {
-                (vec![t.to_string()], pcs)
+                (vec![t], pcs)
             }
 
-        rule special_commands_target() -> String =
+        rule special_commands_target() -> &'input str =
             quiet!{
-                s:$("." ("DEFAULT" / "SCCS_GET")) {
-                    s.to_string()
-                }
+                $("." ("DEFAULT" / "SCCS_GET"))
             } / expected!("target")
 
-        rule special_commands_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+        rule special_commands_rule() -> (Vec<&'input str>, (Vec<&'input str>, Vec<String>)) =
             t:special_commands_target() _ ":" _ pcs:without_prerequisites() {
-                (vec![t.to_string()], pcs)
+                (vec![t], pcs)
             }
 
-        rule special_config_target() -> String =
+        rule special_config_target() -> &'input str =
             quiet!{
-                s:$("." ("IGNORE" / "PHONY" / "PRECIOUS" / "SILENT" / "SUFFIXES")) {
-                    s.to_string()
-                }
+                $("." ("IGNORE" / "PHONY" / "PRECIOUS" / "SILENT" / "SUFFIXES"))
             } / expected!("target")
 
-        rule special_target_config_rule() -> (Vec<String>, (Vec<String>, Vec<String>)) =
+        rule special_target_config_rule() -> (Vec<&'input str>, (Vec<&'input str>, Vec<String>)) =
             t:special_config_target() _ ":" _ pcs:(with_prerequisites_without_commands() / without_prerequisites_without_commands()) {
-                (vec![t.to_string()], pcs)
+                (vec![t], pcs)
             }
 
-        rule special_target_rule() -> Gem =
+        rule special_target_rule() -> Gem<'input> =
             (comment() / line_ending())* p:position!() tpcs:(special_unit_rule() / special_commands_rule() / special_target_config_rule()) {
                 let (ts, (ps, cs)) = tpcs;
 
@@ -431,7 +407,7 @@ parser! {
                 }
             }
 
-        rule make_rule() -> Gem =
+        rule make_rule() -> Gem<'input> =
             (comment() / line_ending())* p:position!() ts:(target() ++ _) _ ":" _ pcs:(with_prerequisites() / without_prerequisites()) {
                 let (ps, cs) = pcs;
 
@@ -446,23 +422,19 @@ parser! {
                 }
             }
 
-        rule macro_name_literal() -> String =
+        rule macro_name_literal() -> &'input str =
             quiet!{
-                s:$(['.' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z']+) {
-                    s.to_string()
-                }
+                $(['.' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z']+)
             } / expected!("macro name literal")
 
-        rule macro_name() -> String =
+        rule macro_name() -> &'input str =
             comment()* s:$(macro_name_literal() / macro_expansion()) {
-                s.to_string()
+                s
             }
 
-        rule macro_value_literal() -> String =
+        rule macro_value_literal() -> &'input str =
             quiet!{
-                s:$([^ ('\r' | '\n' | '\\' | '#')]+) {
-                    s.to_string()
-                }
+                $([^ ('\r' | '\n' | '\\' | '#')]+)
             } / expected!("macro value literal")
 
         rule multiline_macro_value() -> String =
@@ -471,23 +443,19 @@ parser! {
             }
 
         rule compound_macro_value() -> String =
-            s:(macro_value_literal() / multiline_macro_value() / escaped_non_line_ending()) {
-                s.to_string()
-            }
+            (s:macro_value_literal() { s.to_string() } / multiline_macro_value() / s:escaped_non_line_ending() { s.to_string() })
 
         rule macro_value() -> String =
             strings:(compound_macro_value()*) ((comment() / line_ending())+ / eof()) {
                 strings.join("")
             }
 
-        rule assignment_operator() -> String =
+        rule assignment_operator() -> &'input str =
             quiet!{
-                s:$(("+" / "!" / "?" / ":::" / "::")*<0,1> "=") {
-                    s.to_string()
-                }
+                $(("+" / "!" / "?" / ":::" / "::")*<0,1> "=")
             } / expected!("assignment operator")
 
-        rule macro_definition() -> Gem =
+        rule macro_definition() -> Gem<'input> =
             (comment() / line_ending())* p:position!() n:macro_name() _ assignment_operator() _ v:macro_value() {
                 Gem {
                     o: p,
@@ -499,26 +467,20 @@ parser! {
                 }
             }
 
-        rule include_value_literal() -> String =
+        rule include_value_literal() -> &'input str =
             quiet!{
-                s:$([^ ('"' | ' ' | '\r' | '\n' | '\\' | '#')]+) {
-                    s.to_string()
-                }
+                $([^ ('"' | ' ' | '\r' | '\n' | '\\' | '#')]+)
             } / expected!("include value literal")
 
-        rule include_value() -> String =
-            s:$(include_value_literal() / macro_expansion()) {
-                s.to_string()
-            }
+        rule include_value() -> &'input str =
+            $(include_value_literal() / macro_expansion())
 
-        rule include_opening() -> String =
+        rule include_opening() =
             quiet!{
-                s:$("-include" / "include") {
-                    s.to_string()
-                }
+                ("-include" / "include")
             } / expected!("include opening")
 
-        rule include() -> Gem =
+        rule include() -> Gem<'input> =
             (comment() / line_ending())* p:position!() include_opening() __ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 Gem {
                     o: p,
@@ -529,23 +491,23 @@ parser! {
                 }
             }
 
-        rule general_expression() -> Gem =
-            (comment() / line_ending())* p:position!() expression:macro_expansion() args:(macro_value()?) {
+        rule general_expression() -> Gem<'input> =
+            (comment() / line_ending())* p:position!() expression:macro_expansion() remainder:(macro_value()?) {
                 Gem {
                     o: p,
                     l: 0,
                     n: Ore::Ex {
-                        e: format!("{}{}", expression, args.unwrap_or(String::new())),
+                        e: format!("{}{}", expression, remainder.unwrap_or(String::new())),
                     },
                 }
             }
 
-        rule node() -> Gem =
+        rule node() -> Gem<'input> =
             n:(special_target_rule() / make_rule() / include() / macro_definition() / general_expression()) {
                 n
             }
 
-        pub rule parse() -> Mk =
+        pub rule parse() -> Mk<'input> =
             (comment() / line_ending())* ns:(node()*) (comment() / line_ending())* {
                 Mk::new(ns)
             }
@@ -553,7 +515,7 @@ parser! {
 }
 
 /// parse_posix generates a makefile AST from a string.
-pub fn parse_posix(pth: &str, s: &str) -> Result<Mk, String> {
+pub fn parse_posix<'a>(pth: &str, s: &'a str) -> Result<Mk<'a>, String> {
     let mut ast: Mk = parser::parse(s).map_err(|err| {
         let loc: peg::str::LineCol = err.location;
 
@@ -621,10 +583,10 @@ fn test_grammar() {
             continue;
         }
 
-        let pth_string: String = pth.display().to_string();
+        let pth_display: path::Display = pth.display();
         let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
-        assert!(parse_posix(&pth_string, makefile_str)
-            .map_err(|err| format!("unable to parse {}: {}", &pth_string, err))
+        assert!(parse_posix(&pth_display.to_string(), makefile_str)
+            .map_err(|err| format!("unable to parse {}: {}", &pth_display, err))
             .is_ok());
     }
 
@@ -646,7 +608,7 @@ fn test_grammar() {
         assert!(
             parse_posix(&pth_string, makefile_str).is_err(),
             "failed to reject {}",
-            &pth_string
+            pth_string
         );
     }
 }
@@ -661,11 +623,7 @@ fn test_whitespace() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::In {
-            ps: vec![
-                "foo.mk".to_string(),
-                "bar.mk".to_string(),
-                "baz.mk".to_string(),
-            ]
+            ps: vec!["foo.mk", "bar.mk", "baz.mk",]
         }]
     );
 
@@ -677,7 +635,7 @@ fn test_whitespace() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
-            n: "BLANK".to_string(),
+            n: "BLANK",
             v: String::new(),
         }]
     );
@@ -690,7 +648,7 @@ fn test_whitespace() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
-            n: "C".to_string(),
+            n: "C",
             v: "c ".to_string(),
         }]
     );
@@ -703,15 +661,15 @@ fn test_whitespace() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Ru {
-            ps: vec![
-                "a-1.txt".to_string(),
-                "b-1.txt".to_string(),
-                "c-1.txt".to_string(),
-            ],
             ts: vec![
-                "a-2.txt".to_string(),
-                "b-2.txt".to_string(),
-                "c-2.txt".to_string(),
+                "a-2.txt",
+                "b-2.txt",
+                "c-2.txt",
+            ],
+            ps: vec![
+                "a-1.txt",
+                "b-1.txt",
+                "c-1.txt",
             ],
             cs: vec![
                 "cp a-1.txt a-2.txt".to_string(),
@@ -730,9 +688,7 @@ fn test_whitespace() {
             .into_iter()
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
-        vec![Ore::In {
-            ps: vec!["abc".to_string()]
-        }]
+        vec![Ore::In { ps: vec!["abc"] }]
     );
 
     assert!(parse_posix("-", "includeabc\n").is_err());
@@ -750,9 +706,7 @@ fn test_comments() {
         .into_iter()
         .map(|e| e.n)
         .collect::<Vec<Ore>>(),
-        vec![Ore::In {
-            ps: vec!["foo.mk".to_string()]
-        }]
+        vec![Ore::In { ps: vec!["foo.mk"] }]
     );
 
     assert_eq!(
@@ -763,7 +717,7 @@ fn test_comments() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
-            n: "C".to_string(),
+            n: "C",
             v: "c".to_string(),
         }]
     );
@@ -776,8 +730,8 @@ fn test_comments() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Ru {
-            ps: vec!["foo.c".to_string()],
-            ts: vec!["foo".to_string()],
+            ts: vec!["foo"],
+            ps: vec!["foo.c"],
             cs: vec!["gcc -o foo foo.c".to_string()],
         }]
     );
@@ -791,7 +745,7 @@ fn test_offsets_and_line_numbers() {
             o: 11,
             l: 2,
             n: Ore::Mc {
-                n: "A".to_string(),
+                n: "A",
                 v: "apple".to_string(),
             }
         }]
@@ -808,7 +762,7 @@ fn test_c_family_escape_preservation() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Ru {
-            ts: vec!["all".to_string()],
+            ts: vec!["all"],
             ps: Vec::new(),
             cs: vec!["printf \"Hello World!\\\n\"".to_string()],
         }]
@@ -822,7 +776,7 @@ fn test_c_family_escape_preservation() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
-            n: "MSG".to_string(),
+            n: "MSG",
             v: "\"Hello World!\\n\"".to_string(),
         }]
     );
@@ -838,7 +792,7 @@ fn test_multiline_expressions() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
-            n: "FULL_NAME".to_string(),
+            n: "FULL_NAME",
             v: "Alice Liddell".to_string(),
         }]
     );
@@ -851,8 +805,8 @@ fn test_multiline_expressions() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::Ru {
-            ps: vec!["foo.c".to_string()],
-            ts: vec!["foo".to_string()],
+            ts: vec!["foo"],
+            ps: vec!["foo.c"],
             cs: vec!["gcc\\\n-o foo\\\nfoo.c".to_string()],
         }]
     );
@@ -868,16 +822,8 @@ fn test_multiline_expressions() {
         .map(|e| e.n)
         .collect::<Vec<Ore>>(),
         vec![Ore::Ru {
-            ps: vec![
-                "test-1".to_string(),
-                "test-2".to_string(),
-                "test-3".to_string(),
-            ],
-            ts: vec![
-                "report-1".to_string(),
-                "report-2".to_string(),
-                "report-3".to_string(),
-            ],
+            ts: vec!["report-1", "report-2", "report-3",],
+            ps: vec!["test-1", "test-2", "test-3",],
             cs: Vec::new(),
         }]
     );

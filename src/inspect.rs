@@ -11,30 +11,33 @@ use std::fmt;
 use std::fs;
 use std::path;
 
+/// DEFAULT_BUILD_SYSTEM is assumed (POSIX) make.
+pub static DEFAULT_BUILD_SYSTEM: &str = "make";
+
 lazy_static::lazy_static! {
     /// LOWER_FILENAMES_TO_IMPLEMENTATIONS maps common filenames to make implementation flavors.
-    pub static ref LOWER_FILENAMES_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
-        ("bsdmakefile".to_string(), "bmake".to_string()),
-        ("gnumakefile".to_string(), "gmake".to_string()),
-        ("makefile".to_string(), "make".to_string()),
-    ].into_iter().collect::<HashMap<String, String>>();
+    pub static ref LOWER_FILENAMES_TO_IMPLEMENTATIONS: HashMap<&'static str, &'static str> = vec![
+        ("bsdmakefile", "bmake"),
+        ("gnumakefile", "gmake"),
+        ("makefile", "make"),
+    ].into_iter().collect::<HashMap<&'static str, &'static str>>();
 
     /// LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS maps common file extensions to make implementation flavors.
-    pub static ref LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
-        ("bsdmakefile".to_string(), "bmake".to_string()),
-        ("gnumakefile".to_string(), "gmake".to_string()),
-        ("makefile".to_string(), "make".to_string()),
-        ("mk".to_string(), "make".to_string()),
-    ].into_iter().collect::<HashMap<String, String>>();
+    pub static ref LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS: HashMap<&'static str, &'static str> = vec![
+        ("bsdmakefile", "bmake"),
+        ("gnumakefile", "gmake"),
+        ("makefile", "make"),
+        ("mk", "make"),
+    ].into_iter().collect::<HashMap<&'static str, &'static str>>();
 
     /// LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS maps common filenames to build systems
     /// that may generate makefiles as intermediate build artifacts.
-    pub static ref LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: HashMap<String, String> = vec![
-        ("cmakelists.txt".to_string(), "cmake".to_string()),
-        ("configure".to_string(), "autotools".to_string()),
-        (".gyp".to_string(), "gyp".to_string()),
-        ("makefile.pl".to_string(), "perl".to_string()),
-    ].into_iter().collect::<HashMap<String, String>>();
+    pub static ref LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: HashMap<&'static str, &'static str> = vec![
+        ("cmakelists.txt", "cmake"),
+        ("configure", "autotools"),
+        (".gyp", "gyp"),
+        ("makefile.pl", "perl"),
+    ].into_iter().collect::<HashMap<&'static str, &'static str>>();
 
     /// INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
     /// for inclusion into other makefiles.
@@ -62,7 +65,7 @@ pub struct Metadata {
     /// build_system denotes a common build system,
     /// such as (POSIX) "make", "bmake", "gmake",
     /// "autotools", "cmake", "perl", etc.
-    pub build_system: String,
+    pub build_system: &'static str,
 
     /// is_machine_generated denotes whether the file is likely to have been
     /// written by an automated process, as a secondary artifact
@@ -90,7 +93,7 @@ impl Metadata {
             path: String::new(),
             filename: String::new(),
             is_makefile: false,
-            build_system: String::new(),
+            build_system: DEFAULT_BUILD_SYSTEM,
             is_machine_generated: false,
             is_include_file: false,
             is_empty: true,
@@ -110,8 +113,11 @@ impl Default for Metadata {
 impl fmt::Display for Metadata {
     /// fmt renders a Metadata point for console use.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let json: String = serde_json::to_string(&self).map_err(|_| fmt::Error)?;
-        write!(f, "{}", json)
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(&self).map_err(|_| fmt::Error)?
+        )
     }
 }
 
@@ -153,22 +159,22 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         .to_string();
     let file_extension_lower: String = file_extension.to_lowercase();
 
-    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower)
-        && !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower)
+    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower.as_str())
+        && !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower.as_str())
     {
         return Ok(metadata);
     }
 
     if let Some(implementation) =
-        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower)
+        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower.as_str())
     {
         metadata.is_makefile = true;
-        metadata.build_system = implementation.to_string();
+        metadata.build_system = implementation;
     }
 
-    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower) {
+    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower.as_str()) {
         metadata.is_makefile = true;
-        metadata.build_system = implementation.to_string();
+        metadata.build_system = implementation;
     }
 
     if !metadata.is_makefile || metadata.build_system != "make" {
@@ -181,7 +187,7 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         return Ok(metadata);
     }
 
-    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower) {
+    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower.as_str()) {
         let parent_dir: &path::Path = parent_dir_option.unwrap();
 
         for sibling_entry_result in parent_dir
@@ -198,10 +204,10 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
                 .to_lowercase();
 
             if let Some(parent_build_system) =
-                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string)
+                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string.as_str())
             {
                 metadata.is_machine_generated = true;
-                metadata.build_system = parent_build_system.to_string();
+                metadata.build_system = parent_build_system;
                 return Ok(metadata);
             }
         }
@@ -228,10 +234,10 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
                 .to_lowercase();
 
             if let Some(grandparent_build_system) =
-                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string)
+                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string.as_str())
             {
                 metadata.is_machine_generated = true;
-                metadata.build_system = grandparent_build_system.to_string();
+                metadata.build_system = grandparent_build_system;
                 return Ok(metadata);
             }
         }
