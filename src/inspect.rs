@@ -11,33 +11,42 @@ use std::fmt;
 use std::fs;
 use std::path;
 
-/// DEFAULT_BUILD_SYSTEM is assumed (POSIX) make.
-pub static DEFAULT_BUILD_SYSTEM: &str = "make";
-
 lazy_static::lazy_static! {
+    /// DEFAULT_BUILD_SYSTEM is assumed (POSIX) make.
+    pub static ref DEFAULT_BUILD_SYSTEM: String = "make".to_string();
+
     /// LOWER_FILENAMES_TO_IMPLEMENTATIONS maps common filenames to make implementation flavors.
-    pub static ref LOWER_FILENAMES_TO_IMPLEMENTATIONS: HashMap<&'static str, &'static str> = vec![
+    pub static ref LOWER_FILENAMES_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
         ("bsdmakefile", "bmake"),
         ("gnumakefile", "gmake"),
         ("makefile", "make"),
-    ].into_iter().collect::<HashMap<&'static str, &'static str>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<String, String>>();
 
     /// LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS maps common file extensions to make implementation flavors.
-    pub static ref LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS: HashMap<&'static str, &'static str> = vec![
+    pub static ref LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
         ("bsdmakefile", "bmake"),
         ("gnumakefile", "gmake"),
         ("makefile", "make"),
         ("mk", "make"),
-    ].into_iter().collect::<HashMap<&'static str, &'static str>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<String, String>>();
 
     /// LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS maps common filenames to build systems
     /// that may generate makefiles as intermediate build artifacts.
-    pub static ref LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: HashMap<&'static str, &'static str> = vec![
+    pub static ref LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: HashMap<String, String> = vec![
         ("cmakelists.txt", "cmake"),
         ("configure", "autotools"),
         (".gyp", "gyp"),
         ("makefile.pl", "perl"),
-    ].into_iter().collect::<HashMap<&'static str, &'static str>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<String, String>>();
 
     /// INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
     /// for inclusion into other makefiles.
@@ -65,7 +74,7 @@ pub struct Metadata {
     /// build_system denotes a common build system,
     /// such as (POSIX) "make", "bmake", "gmake",
     /// "autotools", "cmake", "perl", etc.
-    pub build_system: &'static str,
+    pub build_system: String,
 
     /// is_machine_generated denotes whether the file is likely to have been
     /// written by an automated process, as a secondary artifact
@@ -93,7 +102,7 @@ impl Metadata {
             path: String::new(),
             filename: String::new(),
             is_makefile: false,
-            build_system: DEFAULT_BUILD_SYSTEM,
+            build_system: DEFAULT_BUILD_SYSTEM.to_string(),
             is_machine_generated: false,
             is_include_file: false,
             is_empty: true,
@@ -158,22 +167,22 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         .to_string()
         .to_lowercase();
 
-    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower.as_str())
-        && !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower.as_str())
+    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower)
+        && !LOWER_FILENAMES_TO_IMPLEMENTATIONS.contains_key(&filename_lower)
     {
         return Ok(metadata);
     }
 
-    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower.as_str()) {
+    if let Some(implementation) = LOWER_FILENAMES_TO_IMPLEMENTATIONS.get(&filename_lower) {
         metadata.is_makefile = true;
-        metadata.build_system = implementation;
+        metadata.build_system = implementation.to_string();
     }
 
     if let Some(implementation) =
-        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower.as_str())
+        LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.get(&file_extension_lower)
     {
         metadata.is_makefile = true;
-        metadata.build_system = implementation;
+        metadata.build_system = implementation.to_string();
     }
 
     if !metadata.is_makefile || metadata.build_system != "make" {
@@ -186,7 +195,7 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         return Ok(metadata);
     }
 
-    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower.as_str()) {
+    if !LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS.contains_key(&file_extension_lower) {
         let parent_dir: &path::Path = parent_dir_option.unwrap();
 
         for sibling_entry_result in parent_dir
@@ -203,10 +212,10 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
                 .to_lowercase();
 
             if let Some(parent_build_system) =
-                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string.as_str())
+                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&sibling_string)
             {
                 metadata.is_machine_generated = true;
-                metadata.build_system = parent_build_system;
+                metadata.build_system = parent_build_system.to_string();
                 return Ok(metadata);
             }
         }
@@ -233,10 +242,10 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
                 .to_lowercase();
 
             if let Some(grandparent_build_system) =
-                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string.as_str())
+                LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS.get(&aunt_string)
             {
                 metadata.is_machine_generated = true;
-                metadata.build_system = grandparent_build_system;
+                metadata.build_system = grandparent_build_system.to_string();
                 return Ok(metadata);
             }
         }

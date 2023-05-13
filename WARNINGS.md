@@ -923,6 +923,49 @@ Special targets like `.POSIX` and `.PHONY` are important, but they may be elided
 * Rename makefiles intended for inclusion to `*.include.mk`.
 * Avoid declaring `.POSIX:` in makefiles for specific implementations like `GNUmakefile`.
 
+## RESERVED_TARGET
+
+> Targets and prerequisites consisting of a leading `<period>` followed by the uppercase letters "POSIX" and then any other characters are reserved for future standardization. Targets and prerequisites consisting of a leading `<period>` followed by one or more uppercase letters, that are not described above, are reserved for implementation extensions.
+
+Other than certain special targets, POSIX reserves targets and prerequisites of the form `.(A-Z)`... for either future POSIX use, or for implementation-specific extensions.
+
+Generally, such targets are non-portable. However, the user may have simply mistyped a well-known POSIX special target name. Note that typos may trigger parse errors.
+
+### Fail
+
+```make
+.POSIXX:
+```
+
+```make
+.TEST:
+	echo "Hello World!"
+```
+
+```make
+test: .TEST-UNIT .TEST-INTEGRATION
+```
+
+### Pass
+
+```make
+.POSIX:
+```
+
+```make
+foo: foo.c
+	gcc -o foo foo.c
+
+test: foo
+	./foo
+```
+
+```make
+test: test-unit test-integration
+```
+
+### Mitigation
+
 # Undefined Behavior (UB)
 
 Linter warnings concerning UB level portability issues tend to carry **higher** risk compared to other warnings. This is a consequence of the POSIX standard not specifying any particular error handling (or error detection) semantic for make implementations to follow.
