@@ -132,7 +132,7 @@ impl fmt::Display for Metadata {
 /// whether the makefile is likely to use extensions beyond pure POSIX,
 /// and whether the makefile is likely to be machine generated.
 ///
-/// May present some false positives for nnmake makefiles,
+/// May present some false positives for nmake makefiles,
 /// which are not in the POSIX make family.
 ///
 /// May present some false negatives for makefile assets
