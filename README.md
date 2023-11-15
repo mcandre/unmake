@@ -119,6 +119,7 @@ Some projects using `unmake` to safeguard their makefiles:
 * [ninja](https://ninja-build.org/), a fast build system without conditionals
 * [nmake](https://learn.microsoft.com/en-us/cpp/build/reference/nmake-reference?view=msvc-170), a make-adjacent build system for .NET projects
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
+* [remake](https://github.com/rocky/remake), a fork of GNU make that adds features like an interactive debugger
 * [Shake](https://shakebuild.com/), a task runner for Haskell projects
 * [ShellCheck](https://www.shellcheck.net/), a linter for POSIX sh family shell scripts
 * [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
