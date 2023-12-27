@@ -95,7 +95,7 @@ For more details on developing crit itself, see [DEVELOPMENT.md](DEVELOPMENT.md)
 
 # LICENSE
 
-FreeBSD
+BSD-2-Clause
 
 # MORE EXAMPLES
 
