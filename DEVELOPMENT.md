@@ -9,7 +9,7 @@
 
 ## Recommended
 
-* [ASDF](https://asdf-vm.com/) 0.10 (run `asdf reshim` after each Rust application binary installation)
+* [ASDF](https://asdf-vm.com/) 0.10 (run `asdf reshim` after provisioning)
 * [direnv](https://direnv.net/) 2
 * [cargo-cache](https://crates.io/crates/cargo-cache)
 * [tree](https://en.wikipedia.org/wiki/Tree_(command))
