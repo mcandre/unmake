@@ -917,7 +917,7 @@ pub fn test_simplify_minus() {
 }
 
 pub static STRICT_POSIX: &str =
-    "STRICT_POSIX: lead makefiles with the \".POSIX:\" compliance marker, or else rename include files to *.include.mk";
+    "STRICT_POSIX: lead makefiles with the \".POSIX:\" compliance marker, or else rename include files like *.include.mk";
 
 /// check_strict_posix reports STRICT_POSIX violations.
 fn check_strict_posix(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {

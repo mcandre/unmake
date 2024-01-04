@@ -11,6 +11,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::path;
+use std::process;
 
 lazy_static::lazy_static! {
     /// DIRECTORY_EXCLUSIONS
@@ -32,6 +33,12 @@ fn main() {
     opts.optopt("i", "inspect", "summarize file details", "<makefile>");
     opts.optflag("d", "debug", "emit additional logs");
     opts.optflag("h", "help", "print usage info");
+    opts.optflag("l", "list", "list makefile paths");
+    opts.optflag(
+        "n",
+        "dry-run",
+        "process makefiles through external build tools",
+    );
     opts.optflag("v", "version", "print version info");
 
     let usage: String = opts.usage(&brief);
@@ -47,6 +54,8 @@ fn main() {
     }
 
     let debug: bool = optmatches.opt_present("d");
+    let list_makefile_paths: bool = optmatches.opt_present("l");
+    let process_dry_run: bool = optmatches.opt_present("n");
 
     if optmatches.opt_present("i") {
         let pth_string = optmatches.opt_str("i").die(&usage);
@@ -64,6 +73,9 @@ fn main() {
 
     let mut found_quirk = false;
     let mut ws: Vec<warnings::Warning> = Vec::new();
+
+    let cwd: std::path::PathBuf =
+        env::current_dir().die("error: unable to query current working directory");
 
     let mut action = |p: &path::Path| {
         let pth_string: String = p.display().to_string();
@@ -93,6 +105,60 @@ fn main() {
             return;
         }
 
+        if list_makefile_paths {
+            println!("{}", pth_string);
+            return;
+        }
+
+        if process_dry_run && !metadata.is_include_file {
+            let dir: &std::path::Path = p
+                .parent()
+                .map(|e| match e.display().to_string().as_str() {
+                    "" => cwd.as_path(),
+                    _ => e,
+                })
+                .unwrap_or(cwd.as_path());
+
+            let dry_run_output: process::Output = process::Command::new(&metadata.build_system)
+                .args(["-nf", &metadata.filename])
+                .current_dir(dir)
+                .output()
+                .die(
+                    &format!(
+                        "error: unable to run build tool: {}",
+                        &metadata.build_system
+                    )
+                    .to_string(),
+                );
+
+            if !dry_run_output.status.success() {
+                found_quirk = true;
+                println!("{}", pth_string);
+                print!(
+                    "{}",
+                    String::from_utf8(dry_run_output.stdout).unwrap_or(
+                        format!(
+                            "error: unable to decode {} stdout stream",
+                            &metadata.build_system
+                        )
+                        .to_string()
+                    )
+                );
+                eprint!(
+                    "{}",
+                    String::from_utf8(dry_run_output.stderr).unwrap_or(
+                        format!(
+                            "error: unable to decode {} stderr stream",
+                            &metadata.build_system
+                        )
+                        .to_string()
+                    )
+                );
+            }
+
+            return;
+        }
+
         if metadata.build_system != "make" {
             if debug {
                 eprintln!(
@@ -113,6 +179,7 @@ fn main() {
         }
 
         let makefile_str: &str = &makefile_str_result.unwrap();
+
         let ws2_result: Result<Vec<warnings::Warning>, String> =
             warnings::lint(&metadata, makefile_str);
 

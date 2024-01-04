@@ -28,6 +28,7 @@ fn rustfmt() {
 /// Run unmake
 fn unmake() {
     tinyrick::exec!("unmake", &["makefile"]);
+    tinyrick::exec!("unmake", &["-n", "makefile"]);
 }
 
 /// Lint, and then install artifacts

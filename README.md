@@ -23,7 +23,7 @@ $ cd fixtures/parse-valid
 $ unmake .
 warning: ./Makefile: MAKEFILE_PRECEDENCE: lowercase Makefile to makefile for launch speed
 warning: ./boilerplate-ats.mk:4: SIMPLIFY_AT: replace individual at (@) signs with .SILENT target declaration(s)
-warning: ./missing-posix.mk:1: STRICT_POSIX: lead makefiles with the ".POSIX:" compliance marker, or else rename include files to *.include.mk
+warning: ./missing-posix.mk:1: STRICT_POSIX: lead makefiles with the ".POSIX:" compliance marker, or else rename include files like *.include.mk
 ...
 ```
 
@@ -43,7 +43,7 @@ In fact, the two checks *complement* each other. `make -n` checks for dry-run ru
 
 When recursing over directories, `unmake` skips symlinks.
 
-`unmake` skips many implementation-specific files such as `GNUmakefile`.
+`unmake`'s linter rules skip many implementation-specific files such as `GNUmakefile`.
 
 `unmake` skips many *machine-generated* makefiles. For example, makefiles produced by autotools; Perl; and cmake when using the Unix Makefile generator (both in-source builds and out-of-source builds).
 
@@ -56,6 +56,30 @@ To investigate makefiles in more detail, see the `--debug` or `--inspect` comman
 `unmake` can identify low level makefile quirks, such as invalid syntax.
 
 See [SYNTAX.md](SYNTAX.md) for more information.
+
+# DRY RUN INTEGRITY CHECK
+
+`-n` / `--dry-run` performs passthrough dry run validation with external make implementation tools, e.g. `bmake -nf`, `gmake -nf`, `make -nf`, etc.
+
+**Per POSIX, rule commands prefixed with plus (`+`) may continue to execute in dry run mode.**
+
+A few benefits of unmake dry run checks:
+
+* Catch POSIX make *superset* parse errors (e.g. GNU and BSD)
+* Catch semantic errors, such as missing target definitions
+* Automatically skip common machine generated makefiles from cmake, Perl, etc.
+* Less fuss than manual `find` \ `xargs` snippets
+* Reduce log noise
+
+The unmake dry run option aggressively assumes that most makefiles are buildable, top level project configurations, as opposed to make include files named like `include.mk`, `*.include.mk`, etc.
+
+# LIST MAKEFILES
+
+`-l` / `--list` emits paths of any matching makefiles that unmake finds in the given file paths.
+
+This is useful for feeding large make projects into external linters. Unfortunately, many linters are poorly designed, lacking directory recursion and automatic file type identification. As a stopgap, unmake can perform these duties, exporting a subset of makefiles within a large project, through `xargs`, to an external linter.
+
+Like `-n` / `--dry-run`, the list option automatically skips common machine generated makefiles.
 
 # WARNINGS
 

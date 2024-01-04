@@ -1,0 +1,2 @@
+.POSIX:
+OS = "UNIX"

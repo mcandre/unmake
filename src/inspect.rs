@@ -45,9 +45,9 @@ lazy_static::lazy_static! {
     .map(|(k, v)| (k.to_string(), v.to_string()))
     .collect::<HashMap<String, String>>();
 
-    /// INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
+    /// LOWER_INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
     /// for inclusion into other makefiles.
-    pub static ref INCLUDE_FILENAME_PATTERN: regex::Regex = regex::Regex::new(r"^(sys\.mk|(.*\.include\.mk))$").unwrap();
+    pub static ref LOWER_INCLUDE_FILENAME_PATTERN: regex::Regex = regex::Regex::new(r"^sys\.mk|(.*\.)?include\.(bsdmakefile|gnumakefile|makefile|mk)$").unwrap();
 }
 
 /// Metadata collects information about a file path
@@ -79,7 +79,7 @@ pub struct Metadata {
     pub is_machine_generated: bool,
 
     /// is_include_file denotes whether the makefile is detected as an include file.
-    /// For example, "sys.mk" or "*.include.mk"
+    /// For example, "sys.mk", "include.mk", "*.include.mk", "include.GNUmakefile", "*.include.GNUmakefile", etc.
     pub is_include_file: bool,
 
     /// is_empty denotes whether the file contains any data or not.
@@ -182,6 +182,15 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
         metadata.build_system = implementation.to_string();
     }
 
+    metadata.is_include_file =
+        LOWER_INCLUDE_FILENAME_PATTERN.is_match(&metadata.filename.to_lowercase());
+
+    let byte_len: u64 = fs::metadata(&pth_abs)
+        .map_err(|err| format!("error: {}: {}", pth_abs.display(), err))?
+        .len();
+
+    metadata.is_empty = byte_len == 0;
+
     if !metadata.is_makefile || metadata.build_system != "make" {
         return Ok(metadata);
     }
@@ -247,14 +256,6 @@ pub fn analyze(pth: &path::Path) -> Result<Metadata, String> {
             }
         }
     }
-
-    metadata.is_include_file = INCLUDE_FILENAME_PATTERN.is_match(&metadata.filename);
-
-    let byte_len: u64 = fs::metadata(&pth_abs)
-        .map_err(|err| format!("error: {}: {}", pth_abs.display(), err))?
-        .len();
-
-    metadata.is_empty = byte_len == 0;
 
     if !metadata.is_empty {
         let makefile_str: &str = &fs::read_to_string(&pth_abs)
