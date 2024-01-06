@@ -110,7 +110,18 @@ fn main() {
             return;
         }
 
-        if process_dry_run && !metadata.is_include_file {
+        if process_dry_run {
+            if metadata.is_include_file {
+                if debug {
+                    eprintln!(
+                        "debug: skipping include makefile for dry run analysis: {}",
+                        pth_string
+                    );
+                }
+
+                return;
+            }
+
             let dir: &std::path::Path = p
                 .parent()
                 .map(|e| match e.display().to_string().as_str() {
