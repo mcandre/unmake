@@ -111,7 +111,7 @@ $ cargo install --force --path .
 
 ## Recommended
 
-* [jq](https://stedolan.github.io/jq/)
+* POSIX compatible [make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html)
 
 # CONTRIBUTING
 
