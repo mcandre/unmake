@@ -34,6 +34,7 @@ fn main() {
     opts.optflag("d", "debug", "emit additional logs");
     opts.optflag("h", "help", "print usage info");
     opts.optflag("l", "list", "list makefile paths");
+    opts.optflag("", "print0", "null delimit paths");
     opts.optflag(
         "n",
         "dry-run",
@@ -55,6 +56,7 @@ fn main() {
 
     let debug: bool = optmatches.opt_present("d");
     let list_makefile_paths: bool = optmatches.opt_present("l");
+    let null_delimit_paths: bool = optmatches.opt_present("print0");
     let process_dry_run: bool = optmatches.opt_present("n");
 
     if optmatches.opt_present("i") {
@@ -106,7 +108,12 @@ fn main() {
         }
 
         if list_makefile_paths {
-            println!("{}", pth_string);
+            if null_delimit_paths {
+                print!("{}\0", pth_string);
+            } else {
+                println!("{}", pth_string);
+            }
+
             return;
         }
 

@@ -79,7 +79,9 @@ The unmake dry run option aggressively assumes that most makefiles are buildable
 
 This is useful for feeding large make projects into external linters. Unfortunately, many linters are poorly designed, lacking directory recursion and automatic file type identification. As a stopgap, unmake can perform these duties, exporting a subset of makefiles within a large project, through `xargs`, to an external linter.
 
-Like `-n` / `--dry-run`, the list option automatically skips common machine generated makefiles.
+Like dry run, the list option automatically skips common machine generated makefiles.
+
+When piping unmake makefile lists through xargs, we recommend adding a `--print0` flag to unmake, and adding a `-0` flag to xargs. This informs both programs to transfer data in null delimited form, as a precaution against errors related to any spaces in file paths.
 
 # WARNINGS
 
@@ -111,6 +113,7 @@ $ cargo install --force --path .
 
 ## Recommended
 
+* GNU or BSD [findutils](https://en.wikipedia.org/wiki/Find_(Unix))
 * POSIX compatible [make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html)
 
 # CONTRIBUTING
