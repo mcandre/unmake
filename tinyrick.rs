@@ -67,23 +67,12 @@ fn banner() -> String {
     format!("{}-{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
-/// Compress binaries.
+/// archive bundles executables.
 fn archive() {
-    let b: &str = &banner();
-
-    let archive_basename: &str = &format!("{}.zip", b);
-    let archive_path: &path::Path = path::Path::new(archive_basename);
-
-    let archive_str: &str = &archive_path.display().to_string();
-
-    let binary_artifacts_dir_str: &str =
-        &path::Path::new(".crit").join("bin").display().to_string();
-
-    assert!(tinyrick::exec_mut!("zip", &["-r", archive_str, b])
-        .current_dir(binary_artifacts_dir_str)
-        .status()
-        .unwrap()
-        .success());
+    tinyrick_extras::archive(
+        path::Path::new(".crit").join("bin").display().to_string(),
+        banner(),
+    );
 }
 
 /// Prepare cross-platform release media.

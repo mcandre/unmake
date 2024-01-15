@@ -4,7 +4,7 @@
 * POSIX compatible [make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html)
 * [rustup](https://rustup.rs/) 1.25.2+
 * [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
-* [zip](https://en.wikipedia.org/wiki/ZIP_(file_format))
+* POSIX compatible [tar](https://pubs.opengroup.org/onlinepubs/7908799/xcu/tar.html)
 * Provision additional dev tools with `make`
 
 ## Recommended
@@ -17,6 +17,9 @@
 * [cargo-cache](https://crates.io/crates/cargo-cache)
 * [tree](https://en.wikipedia.org/wiki/Tree_(command))
 * [GNU time](https://www.gnu.org/software/time/)
+* a UNIX environment, such as macOS, Linux, BSD, [WSL](https://learn.microsoft.com/en-us/windows/wsl/), etc.
+
+Non-UNIX environments may produce subtle adverse effects when linting or generating application ports.
 
 # INSTALL BINARIES FROM SOURCE
 
