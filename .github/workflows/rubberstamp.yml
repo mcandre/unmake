@@ -1,0 +1,30 @@
+---
+#
+# Rubberstamp
+# https://github.com/mcandre/rubberstamp
+#
+name: "Rubberstamp"
+on: # yamllint disable-line rule:truthy
+  schedule:
+  # Once every 15 minutes
+  # - cron: "*/15 * * * *"
+  # Once a month
+  - cron: "0 0 * */1 *"
+jobs:
+  Audit:
+    runs-on: "ubuntu-22.04"
+    steps:
+    - uses: "actions/checkout@v4"
+    - run: "sudo apt-get update"
+    - run: "sudo apt-get install -y git"
+    - run: "date -u >.rubberstamp"
+    - run: "git remote set-url origin \"git@github.com:${RUBBERSTAMP_GH_REPO}.git\""
+      env:
+        RUBBERSTAMP_GH_REPO: "${{ github.repository }}"
+    - run: "git remote get-url origin"
+    - run: "git config --global user.email 'rubberstamp@rubberstamp.test'"
+    - run: "git config --global user.name 'Rubberstamp'"
+    - run: "git commit -am 'rubberstamp'"
+    - run: "echo \"$SSH_KEY\" >/tmp/key && chmod 0600 /tmp/key && git -c 'core.sshCommand=ssh -i /tmp/key' push"
+      env:
+        SSH_KEY: "${{ secrets.SSH_KEY }}"
