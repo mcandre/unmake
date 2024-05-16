@@ -6,8 +6,8 @@
 name: "Rubberstamp"
 on: # yamllint disable-line rule:truthy
   schedule:
-  # Once every 15 minutes
-  # - cron: "*/15 * * * *"
+  # Once every 5 minutes
+  # - cron: "*/5 * * * *"
   # Once a month
   - cron: "0 0 * */1 *"
 jobs:
@@ -24,6 +24,7 @@ jobs:
     - run: "git remote get-url origin"
     - run: "git config --global user.email 'rubberstamp@rubberstamp.test'"
     - run: "git config --global user.name 'Rubberstamp'"
+    - run: "git add .rubberstamp"
     - run: "git commit -am 'rubberstamp'"
     - run: "echo \"$SSH_KEY\" >/tmp/key && chmod 0600 /tmp/key && git -c 'core.sshCommand=ssh -i /tmp/key' push"
       env:
