@@ -1,0 +1,6 @@
+- id: unmake
+  name: unmake
+  description: Validate your Makefile with unmake
+  entry: unmake
+  language: rust
+  types: [text]
