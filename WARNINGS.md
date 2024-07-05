@@ -246,7 +246,7 @@ test-2:
 
 ### Mitigation
 
-* Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
+* Use `.WAIT` as an optional pseudo-prerequisite synchronization marker
 * Avoid declaring `.WAIT` as a target.
 
 ## PHONY_NOP
@@ -286,14 +286,14 @@ clean:
 
 ### Mitigation
 
-* Use `.WAIT` as an optional pseudo-prerequisite syncronization marker
+* Use `.WAIT` as an optional pseudo-prerequisite synchronization marker
 * Avoid declaring `.WAIT` as a target.
 
 ## REDUNDANT_NOTPARALLEL_WAIT
 
 The `.WAIT` pseudo-prerequisite disables asynchronous processing between prerequisites of a specific rule.
 
-`.NOTPARALLEL:` disables asyncronous processing for all prerequisites in all rules.
+`.NOTPARALLEL:` disables asynchronous processing for all prerequisites in all rules.
 
 Using both of these special targets simultaneously is unnecessary.
 
