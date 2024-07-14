@@ -5,11 +5,13 @@
 #
 name: "Rubberstamp"
 on: # yamllint disable-line rule:truthy
+  # POSIX cron format
+  # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/crontab.html
   schedule:
   # Once every 5 minutes
   # - cron: "*/5 * * * *"
   # Once a month
-  - cron: "0 0 * */1 *"
+  - cron: "0 0 1 * *"
 jobs:
   Audit:
     runs-on: "ubuntu-22.04"
