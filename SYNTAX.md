@@ -480,14 +480,14 @@ clean:
 
 ```make
 provision :
-	pip install bashate safety
+	pip install bashate yamllint
 ```
 
 ```make
 provision :
 	pip install \
 		bashate \
-		safety
+		yamllint
 ```
 
 ```make
