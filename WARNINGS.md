@@ -43,7 +43,7 @@ When make is requested to perform these logical, top-level targets, then make ne
 
 You may write logical target declarations as whitespace delimited prerequisites in a single `.PHONY:` rule, or distribute logical target declarations among multiple `.PHONY:` rules.
 
-As well, aggregate targets like `port: cross-compile archive`, that do not have any commands, are usually not actual filenames themselves. Aggregate, commandless targets are also logical targets. Which means that they should also have an entry as a prerequisite in a `.PHONY:` special rule.
+As well, aggregate targets like `port: cross-compile archive`, that do not have any commands, are usually not actual filenames themselves. Aggregate, commandless targets are also logical targets. Which means that they should also have an entry as a prerequisite in a `.PHONY:` special rule. However, make sometimes infers target trees based on common C filename patterns. So we cannot reliably warn on potentially `.PHONY` worthy empty-command targets until a complete inferred rule system is implemented.
 
 Due to the variance in artifact names, `unmake` cannot automate checking for all possible targets deserving `.PHONY` declarations. Neither `make` nor `unmake` knows this application-specific information. The makefile maintainer should supply this information, and configure any needed `.PHONY` declarations accordingly.
 
@@ -67,14 +67,6 @@ test-2:
 ```make
 clean:
 	-rm -rf bin
-```
-
-```make
-empty:;
-```
-
-```make
-port: cross-compile archive
 ```
 
 ### Pass
@@ -116,7 +108,15 @@ empty:;
 port: cross-compile archive
 ```
 
-If `cross-compile` and `archive` are also logical targets, then they should be declared `.PHONY` as well.
+```make
+empty:;
+```
+
+```make
+port: cross-compile archive
+```
+
+If the hypothetical `cross-compile` and `archive` targets are themselves merely logical targets rather than filenames, then they should be declared `.PHONY` as well.
 
 ### Mitigation
 

@@ -1394,13 +1394,13 @@ fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
 
     gems.iter()
         .filter(|e| match &e.n {
-            ast::Ore::Ru { ps: _, ts, cs }
+            ast::Ore::Ru { ps: _, ts, cs: _ }
                 if !ts.iter().any(|e2| ast::SPECIAL_TARGETS.contains(e2))
                     && ts.iter().any(|e2| !marked_phony_targets.contains(e2)) =>
             {
                 ts.iter().any(|e2| {
                     LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN.is_match(e2.to_lowercase().as_str())
-                }) || cs.is_empty()
+                })
             }
             _ => false,
         })
@@ -1494,7 +1494,7 @@ pub fn test_phony_target() {
     .contains(&PHONY_TARGET.to_string()));
 
     assert!(
-        lint(&mock_md("-"), ".POSIX:\nport: cross-compile archive\n")
+        !lint(&mock_md("-"), ".POSIX:\nport: cross-compile archive\n")
             .unwrap()
             .into_iter()
             .map(|e| e.message)
@@ -1512,7 +1512,7 @@ pub fn test_phony_target() {
     .collect::<Vec<String>>()
     .contains(&PHONY_TARGET.to_string()));
 
-    assert!(lint(&mock_md("-"), ".POSIX:\nempty:;\n")
+    assert!(!lint(&mock_md("-"), ".POSIX:\nempty:;\n")
         .unwrap()
         .into_iter()
         .map(|e| e.message)
