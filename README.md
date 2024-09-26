@@ -118,7 +118,7 @@ $ cargo install --force --path .
 
 # CONTRIBUTING
 
-For more details on developing crit itself, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For more details on developing unmake itself, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 # LICENSE
 
@@ -142,11 +142,14 @@ Some projects using `unmake` to safeguard their makefiles:
 * [Grunt](https://gruntjs.com/), Node.js task runners
 * [invoke](https://pypi.org/project/invoke/), a task runner for Python projects
 * [lake](https://luarocks.org/modules/steved/lake), a task runner for Lua projects
+* [linters](https://github.com/mcandre/linters), a wiki of common programming language linters and SAST tools
 * [mage](https://magefile.org/), a task runner for Go projects
 * [ninja](https://ninja-build.org/), a fast build system without conditionals
 * [nmake](https://learn.microsoft.com/en-us/cpp/build/reference/nmake-reference?view=msvc-170), a make-adjacent build system for .NET projects
+* [periscope](https://github.com/mcandre/periscope), warns on unscoped NPM packages.
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
 * [Shake](https://shakebuild.com/), a task runner for Haskell projects
 * [ShellCheck](https://www.shellcheck.net/), a linter for POSIX sh family shell scripts
 * [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
+* [stank](https://github.com/mcandre/stank), a collection of shell script linter utilities
 * [tinyrick](https://github.com/mcandre/tinyrick), a task runner for Rust projects
