@@ -14,7 +14,7 @@ on: # yamllint disable-line rule:truthy
   - cron: "0 0 1 * *"
 jobs:
   Audit:
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-24.04"
     steps:
     - uses: "actions/checkout@v4"
     - run: "sudo apt-get update"
