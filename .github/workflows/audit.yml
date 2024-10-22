@@ -12,5 +12,5 @@ jobs:
     - uses: "actions/checkout@v4"
     - run: "sudo apt-get update"
     - run: "sudo apt-get install -y cargo make"
-    - run: "make"
+    - run: "make -j 4 crates"
     - run: "tinyrick audit"

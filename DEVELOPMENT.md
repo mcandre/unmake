@@ -1,11 +1,11 @@
 # BUILDTIME REQUIREMENTS
 
 * [Docker](https://www.docker.com/) 20.10.12+
-* POSIX compatible [make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html)
+* [GNU](https://www.gnu.org/software/make/) / [BSD](https://man.freebsd.org/cgi/man.cgi?make(1)) make
 * [rustup](https://rustup.rs/) 1.25.2+
 * [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
 * POSIX compatible [tar](https://pubs.opengroup.org/onlinepubs/7908799/xcu/tar.html)
-* Provision additional dev tools with `make`
+* Provision additional dev tools with `make -j 4`
 
 ## Recommended
 
