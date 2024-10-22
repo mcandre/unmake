@@ -1,0 +1,21 @@
+---
+name: "Test-Futureproof-OS"
+on: # yamllint disable-line rule:truthy
+  push:
+  pull_request:
+  # POSIX cron format
+  # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/crontab.html
+  schedule:
+  # Once every 5 minutes
+  # - cron: "*/5 * * * *"
+  # Once a day
+  - cron: "0 0 * * *"
+jobs:
+  Test-Futureproof-OS:
+    runs-on: "ubuntu-latest"
+    steps:
+    - uses: "actions/checkout@v4"
+    - run: "sudo apt-get update"
+    - run: "sudo apt-get install -y cargo make"
+    - run: "make"
+    - run: "tinyrick test"
