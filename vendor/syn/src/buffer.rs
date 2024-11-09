@@ -5,11 +5,6 @@
 // Syn, and caution should be used when editing it. The public-facing interface
 // is 100% safe but the implementation is fragile internally.
 
-#[cfg(all(
-    not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
-    feature = "proc-macro"
-))]
-use crate::proc_macro as pm;
 use crate::Lifetime;
 use proc_macro2::extra::DelimSpan;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
@@ -60,12 +55,9 @@ impl TokenBuffer {
 
     /// Creates a `TokenBuffer` containing all the tokens from the input
     /// `proc_macro::TokenStream`.
-    #[cfg(all(
-        not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
-        feature = "proc-macro"
-    ))]
+    #[cfg(feature = "proc-macro")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "proc-macro")))]
-    pub fn new(stream: pm::TokenStream) -> Self {
+    pub fn new(stream: proc_macro::TokenStream) -> Self {
         Self::new2(stream.into())
     }
 
@@ -136,11 +128,11 @@ impl<'a> Cursor<'a> {
         // past it, unless `ptr == scope`, which means that we're at the edge of
         // our cursor's scope. We should only have `ptr != scope` at the exit
         // from None-delimited groups entered with `ignore_none`.
-        while let Entry::End(_) = *ptr {
+        while let Entry::End(_) = unsafe { &*ptr } {
             if ptr == scope {
                 break;
             }
-            ptr = ptr.add(1);
+            ptr = unsafe { ptr.add(1) };
         }
 
         Cursor {
@@ -162,7 +154,7 @@ impl<'a> Cursor<'a> {
     /// If the cursor is looking at an `Entry::Group`, the bumped cursor will
     /// point at the first token in the group (with the same scope end).
     unsafe fn bump_ignore_group(self) -> Cursor<'a> {
-        Cursor::create(self.ptr.offset(1), self.scope)
+        unsafe { Cursor::create(self.ptr.offset(1), self.scope) }
     }
 
     /// While the cursor is looking at a `None`-delimited group, move it to look
@@ -397,7 +389,7 @@ impl<'a> PartialEq for Cursor<'a> {
 impl<'a> PartialOrd for Cursor<'a> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if same_buffer(*self, *other) {
-            Some(self.ptr.cmp(&other.ptr))
+            Some(cmp_assuming_same_buffer(*self, *other))
         } else {
             None
         }
@@ -421,7 +413,6 @@ fn start_of_buffer(cursor: Cursor) -> *const Entry {
     }
 }
 
-#[cfg(any(feature = "full", feature = "derive"))]
 pub(crate) fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
     a.ptr.cmp(&b.ptr)
 }

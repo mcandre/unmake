@@ -14,6 +14,8 @@ use crate::iter::LineColIterator;
 use crate::raw::BorrowedRawDeserializer;
 #[cfg(all(feature = "raw_value", feature = "std"))]
 use crate::raw::OwnedRawDeserializer;
+#[cfg(all(feature = "raw_value", feature = "std"))]
+use alloc::string::String;
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;
 
@@ -81,7 +83,7 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
 
-    /// Assumes the previous byte was a hex escape sequnce ('\u') in a string.
+    /// Assumes the previous byte was a hex escape sequence ('\u') in a string.
     /// Parses next hexadecimal sequence.
     #[doc(hidden)]
     fn decode_hex_escape(&mut self) -> Result<u16>;

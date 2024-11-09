@@ -185,14 +185,9 @@ pub mod discouraged;
 use crate::buffer::{Cursor, TokenBuffer};
 use crate::error;
 use crate::lookahead;
-#[cfg(all(
-    not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
-    feature = "proc-macro"
-))]
-use crate::proc_macro;
 use crate::punctuated::Punctuated;
 use crate::token::Token;
-use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
 use std::cell::Cell;
 use std::fmt::{self, Debug, Display};
 #[cfg(feature = "extra-traits")]
@@ -516,8 +511,8 @@ impl<'a> ParseBuffer<'a> {
     ///
     /// - `input.peek(Token![struct])`
     /// - `input.peek(Token![==])`
-    /// - `input.peek(Ident)`&emsp;*(does not accept keywords)*
-    /// - `input.peek(Ident::peek_any)`
+    /// - `input.peek(syn::Ident)`&emsp;*(does not accept keywords)*
+    /// - `input.peek(syn::Ident::peek_any)`
     /// - `input.peek(Lifetime)`
     /// - `input.peek(token::Brace)`
     ///
@@ -1099,6 +1094,58 @@ impl<'a> ParseBuffer<'a> {
     ///
     /// Cursors are immutable so no operations you perform against the cursor
     /// will affect the state of this parse stream.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use proc_macro2::TokenStream;
+    /// use syn::buffer::Cursor;
+    /// use syn::parse::{ParseStream, Result};
+    ///
+    /// // Run a parser that returns T, but get its output as TokenStream instead of T.
+    /// // This works without T needing to implement ToTokens.
+    /// fn recognize_token_stream<T>(
+    ///     recognizer: fn(ParseStream) -> Result<T>,
+    /// ) -> impl Fn(ParseStream) -> Result<TokenStream> {
+    ///     move |input| {
+    ///         let begin = input.cursor();
+    ///         recognizer(input)?;
+    ///         let end = input.cursor();
+    ///         Ok(tokens_between(begin, end))
+    ///     }
+    /// }
+    ///
+    /// // Collect tokens between two cursors as a TokenStream.
+    /// fn tokens_between(begin: Cursor, end: Cursor) -> TokenStream {
+    ///     assert!(begin <= end);
+    ///
+    ///     let mut cursor = begin;
+    ///     let mut tokens = TokenStream::new();
+    ///     while cursor < end {
+    ///         let (token, next) = cursor.token_tree().unwrap();
+    ///         tokens.extend(std::iter::once(token));
+    ///         cursor = next;
+    ///     }
+    ///     tokens
+    /// }
+    ///
+    /// fn main() {
+    ///     use quote::quote;
+    ///     use syn::parse::{Parse, Parser};
+    ///     use syn::Token;
+    ///
+    ///     // Parse syn::Type as a TokenStream, surrounded by angle brackets.
+    ///     fn example(input: ParseStream) -> Result<TokenStream> {
+    ///         let _langle: Token![<] = input.parse()?;
+    ///         let ty = recognize_token_stream(syn::Type::parse)(input)?;
+    ///         let _rangle: Token![>] = input.parse()?;
+    ///         Ok(ty)
+    ///     }
+    ///
+    ///     let tokens = quote! { <fn() -> u8> };
+    ///     println!("{}", example.parse2(tokens).unwrap());
+    /// }
+    /// ```
     pub fn cursor(&self) -> Cursor<'a> {
         self.cell.get()
     }
@@ -1198,10 +1245,7 @@ pub trait Parser: Sized {
     ///
     /// This function will check that the input is fully parsed. If there are
     /// any unparsed tokens at the end of the stream, an error is returned.
-    #[cfg(all(
-        not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
-        feature = "proc-macro"
-    ))]
+    #[cfg(feature = "proc-macro")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "proc-macro")))]
     fn parse(self, tokens: proc_macro::TokenStream) -> Result<Self::Output> {
         self.parse2(proc_macro2::TokenStream::from(tokens))
@@ -1222,7 +1266,6 @@ pub trait Parser: Sized {
 
     // Not public API.
     #[doc(hidden)]
-    #[cfg(any(feature = "full", feature = "derive"))]
     fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Result<Self::Output> {
         let _ = scope;
         self.parse2(tokens)
@@ -1254,7 +1297,6 @@ where
         }
     }
 
-    #[cfg(any(feature = "full", feature = "derive"))]
     fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Result<Self::Output> {
         let buf = TokenBuffer::new2(tokens);
         let cursor = buf.begin();
@@ -1270,7 +1312,6 @@ where
     }
 }
 
-#[cfg(any(feature = "full", feature = "derive"))]
 pub(crate) fn parse_scoped<F: Parser>(f: F, scope: Span, tokens: TokenStream) -> Result<F::Output> {
     f.__parse_scoped(scope, tokens)
 }

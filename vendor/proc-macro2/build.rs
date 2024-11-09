@@ -1,11 +1,5 @@
 // rustc-cfg emitted by the build script:
 //
-// "use_proc_macro"
-//     Link to extern crate proc_macro. Available on any compiler and any target
-//     except wasm32. Requires "proc-macro" Cargo cfg to be enabled (default is
-//     enabled). On wasm32 we never link to proc_macro even if "proc-macro" cfg
-//     is enabled.
-//
 // "wrap_proc_macro"
 //     Wrap types from libproc_macro rather than polyfilling the whole API.
 //     Enabled on rustc 1.29+ as long as procmacro2_semver_exempt is not set,
@@ -41,21 +35,14 @@
 //     1.57+.
 
 use std::env;
-use std::process::{self, Command};
+use std::ffi::OsString;
+use std::path::Path;
+use std::process::{self, Command, Stdio};
 use std::str;
+use std::u32;
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-
-    let version = match rustc_version() {
-        Some(version) => version,
-        None => return,
-    };
-
-    if version.minor < 31 {
-        eprintln!("Minimum supported rustc version is 1.31");
-        process::exit(1);
-    }
+    let rustc = rustc_minor_version().unwrap_or(u32::MAX);
 
     let docs_rs = env::var_os("DOCS_RS").is_some();
     let semver_exempt = cfg!(procmacro2_semver_exempt) || docs_rs;
@@ -68,124 +55,148 @@ fn main() {
         println!("cargo:rustc-cfg=span_locations");
     }
 
-    if version.minor < 32 {
-        println!("cargo:rustc-cfg=no_libprocmacro_unwind_safe");
-    }
-
-    if version.minor < 34 {
-        println!("cargo:rustc-cfg=no_try_from");
-    }
-
-    if version.minor < 39 {
-        println!("cargo:rustc-cfg=no_bind_by_move_pattern_guard");
-    }
-
-    if version.minor < 44 {
-        println!("cargo:rustc-cfg=no_lexerror_display");
-    }
-
-    if version.minor < 45 {
-        println!("cargo:rustc-cfg=no_hygiene");
-    }
-
-    if version.minor < 47 {
-        println!("cargo:rustc-cfg=no_ident_new_raw");
-    }
-
-    if version.minor < 54 {
-        println!("cargo:rustc-cfg=no_literal_from_str");
-    }
-
-    if version.minor < 55 {
-        println!("cargo:rustc-cfg=no_group_open_close");
-    }
-
-    if version.minor < 57 {
+    if rustc < 57 {
         println!("cargo:rustc-cfg=no_is_available");
     }
 
-    if version.minor < 66 {
+    if rustc < 66 {
         println!("cargo:rustc-cfg=no_source_text");
     }
 
-    let target = env::var("TARGET").unwrap();
-    if !enable_use_proc_macro(&target) {
+    if !cfg!(feature = "proc-macro") {
+        println!("cargo:rerun-if-changed=build.rs");
         return;
     }
 
-    println!("cargo:rustc-cfg=use_proc_macro");
+    println!("cargo:rerun-if-changed=build/probe.rs");
 
-    if version.nightly || !semver_exempt {
+    let proc_macro_span;
+    let consider_rustc_bootstrap;
+    if compile_probe(false) {
+        // This is a nightly or dev compiler, so it supports unstable features
+        // regardless of RUSTC_BOOTSTRAP. No need to rerun build script if
+        // RUSTC_BOOTSTRAP is changed.
+        proc_macro_span = true;
+        consider_rustc_bootstrap = false;
+    } else if let Some(rustc_bootstrap) = env::var_os("RUSTC_BOOTSTRAP") {
+        if compile_probe(true) {
+            // This is a stable or beta compiler for which the user has set
+            // RUSTC_BOOTSTRAP to turn on unstable features. Rerun build script
+            // if they change it.
+            proc_macro_span = true;
+            consider_rustc_bootstrap = true;
+        } else if rustc_bootstrap == "1" {
+            // This compiler does not support the proc macro Span API in the
+            // form that proc-macro2 expects. No need to pay attention to
+            // RUSTC_BOOTSTRAP.
+            proc_macro_span = false;
+            consider_rustc_bootstrap = false;
+        } else {
+            // This is a stable or beta compiler for which RUSTC_BOOTSTRAP is
+            // set to restrict the use of unstable features by this crate.
+            proc_macro_span = false;
+            consider_rustc_bootstrap = true;
+        }
+    } else {
+        // Without RUSTC_BOOTSTRAP, this compiler does not support the proc
+        // macro Span API in the form that proc-macro2 expects, but try again if
+        // the user turns on unstable features.
+        proc_macro_span = false;
+        consider_rustc_bootstrap = true;
+    }
+
+    if proc_macro_span || !semver_exempt {
         println!("cargo:rustc-cfg=wrap_proc_macro");
     }
 
-    if version.nightly
-        && feature_allowed("proc_macro_span")
-        && feature_allowed("proc_macro_span_shrink")
-    {
+    if proc_macro_span {
         println!("cargo:rustc-cfg=proc_macro_span");
     }
 
-    if semver_exempt && version.nightly {
+    if semver_exempt && proc_macro_span {
         println!("cargo:rustc-cfg=super_unstable");
+    }
+
+    if consider_rustc_bootstrap {
+        println!("cargo:rerun-if-env-changed=RUSTC_BOOTSTRAP");
     }
 }
 
-fn enable_use_proc_macro(target: &str) -> bool {
-    // wasm targets don't have the `proc_macro` crate, disable this feature.
-    if target.contains("wasm32") {
+fn compile_probe(rustc_bootstrap: bool) -> bool {
+    if env::var_os("RUSTC_STAGE").is_some() {
+        // We are running inside rustc bootstrap. This is a highly non-standard
+        // environment with issues such as:
+        //
+        //     https://github.com/rust-lang/cargo/issues/11138
+        //     https://github.com/rust-lang/rust/issues/114839
+        //
+        // Let's just not use nightly features here.
         return false;
     }
 
-    // Otherwise, only enable it if our feature is actually enabled.
-    cfg!(feature = "proc-macro")
+    let rustc = cargo_env_var("RUSTC");
+    let out_dir = cargo_env_var("OUT_DIR");
+    let probefile = Path::new("build").join("probe.rs");
+
+    // Make sure to pick up Cargo rustc configuration.
+    let mut cmd = if let Some(wrapper) = env::var_os("RUSTC_WRAPPER") {
+        let mut cmd = Command::new(wrapper);
+        // The wrapper's first argument is supposed to be the path to rustc.
+        cmd.arg(rustc);
+        cmd
+    } else {
+        Command::new(rustc)
+    };
+
+    if !rustc_bootstrap {
+        cmd.env_remove("RUSTC_BOOTSTRAP");
+    }
+
+    cmd.stderr(Stdio::null())
+        .arg("--edition=2021")
+        .arg("--crate-name=proc_macro2")
+        .arg("--crate-type=lib")
+        .arg("--emit=dep-info,metadata")
+        .arg("--out-dir")
+        .arg(out_dir)
+        .arg(probefile);
+
+    if let Some(target) = env::var_os("TARGET") {
+        cmd.arg("--target").arg(target);
+    }
+
+    // If Cargo wants to set RUSTFLAGS, use that.
+    if let Ok(rustflags) = env::var("CARGO_ENCODED_RUSTFLAGS") {
+        if !rustflags.is_empty() {
+            for arg in rustflags.split('\x1f') {
+                cmd.arg(arg);
+            }
+        }
+    }
+
+    match cmd.status() {
+        Ok(status) => status.success(),
+        Err(_) => false,
+    }
 }
 
-struct RustcVersion {
-    minor: u32,
-    nightly: bool,
-}
-
-fn rustc_version() -> Option<RustcVersion> {
-    let rustc = env::var_os("RUSTC")?;
+fn rustc_minor_version() -> Option<u32> {
+    let rustc = cargo_env_var("RUSTC");
     let output = Command::new(rustc).arg("--version").output().ok()?;
     let version = str::from_utf8(&output.stdout).ok()?;
-    let nightly = version.contains("nightly") || version.contains("dev");
     let mut pieces = version.split('.');
     if pieces.next() != Some("rustc 1") {
         return None;
     }
-    let minor = pieces.next()?.parse().ok()?;
-    Some(RustcVersion { minor, nightly })
+    pieces.next()?.parse().ok()
 }
 
-fn feature_allowed(feature: &str) -> bool {
-    // Recognized formats:
-    //
-    //     -Z allow-features=feature1,feature2
-    //
-    //     -Zallow-features=feature1,feature2
-
-    let flags_var;
-    let flags_var_string;
-    let flags = if let Some(encoded_rustflags) = env::var_os("CARGO_ENCODED_RUSTFLAGS") {
-        flags_var = encoded_rustflags;
-        flags_var_string = flags_var.to_string_lossy();
-        flags_var_string.split('\x1f')
-    } else {
-        return true;
-    };
-
-    for mut flag in flags {
-        if flag.starts_with("-Z") {
-            flag = &flag["-Z".len()..];
-        }
-        if flag.starts_with("allow-features=") {
-            flag = &flag["allow-features=".len()..];
-            return flag.split(',').any(|allowed| allowed == feature);
-        }
-    }
-
-    // No allow-features= flag, allowed by default.
-    true
+fn cargo_env_var(key: &str) -> OsString {
+    env::var_os(key).unwrap_or_else(|| {
+        eprintln!(
+            "Environment variable ${} is not set during execution of build script",
+            key,
+        );
+        process::exit(1);
+    })
 }

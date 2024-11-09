@@ -32,16 +32,21 @@ https://crates.io/crates/tinyrick_extras
 
 https://docs.rs/tinyrick_extras/latest/tinyrick_extras/
 
+# LICENSE
+
+BSD-2-Clause
+
 # RUNTIME REQUIREMENTS
 
-* [Rust](https://www.rust-lang.org/en-US/) 1.68.2+
+* [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
 
 ## Recommended
 
 * [ASDF](https://asdf-vm.com/) 0.10 (run `asdf reshim` after each Rust application binary installation)
-* [direnv](https://direnv.net/) 2
 * [cargo-cache](https://crates.io/crates/cargo-cache)
 * [crit](https://github.com/mcandre/crit) ports Rust applications
+* [direnv](https://direnv.net/) 2
+* POSIX compatible [tar](https://pubs.opengroup.org/onlinepubs/7908799/xcu/tar.html)
 
 # CONTRIBUTING
 

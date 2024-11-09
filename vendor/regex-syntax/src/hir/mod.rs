@@ -88,6 +88,9 @@ pub enum ErrorKind {
     /// This error occurs when translating a pattern that could match a byte
     /// sequence that isn't UTF-8 and `utf8` was enabled.
     InvalidUtf8,
+    /// This error occurs when one uses a non-ASCII byte for a line terminator,
+    /// but where Unicode mode is enabled and UTF-8 mode is disabled.
+    InvalidLineTerminator,
     /// This occurs when an unrecognized Unicode property name could not
     /// be found.
     UnicodePropertyNotFound,
@@ -120,6 +123,7 @@ impl core::fmt::Display for ErrorKind {
         let msg = match *self {
             UnicodeNotAllowed => "Unicode not allowed here",
             InvalidUtf8 => "pattern can match invalid UTF-8",
+            InvalidLineTerminator => "invalid line terminator, must be ASCII",
             UnicodePropertyNotFound => "Unicode property not found",
             UnicodePropertyValueNotFound => "Unicode property value not found",
             UnicodePerlClassNotFound => {
@@ -180,7 +184,7 @@ impl core::fmt::Display for ErrorKind {
 /// matches.
 ///
 /// For empty matches, those can occur at any position. It is the
-/// repsonsibility of the regex engine to determine whether empty matches are
+/// responsibility of the regex engine to determine whether empty matches are
 /// permitted between the code units of a single codepoint.
 ///
 /// # Stack space
@@ -355,7 +359,13 @@ impl Hir {
 
     /// Creates a repetition HIR expression.
     #[inline]
-    pub fn repetition(rep: Repetition) -> Hir {
+    pub fn repetition(mut rep: Repetition) -> Hir {
+        // If the sub-expression of a repetition can only match the empty
+        // string, then we force its maximum to be at most 1.
+        if rep.sub.properties().maximum_len() == Some(0) {
+            rep.min = cmp::min(rep.min, 1);
+            rep.max = rep.max.map(|n| cmp::min(n, 1)).or(Some(1));
+        }
         // The regex 'a{0}' is always equivalent to the empty regex. This is
         // true even when 'a' is an expression that never matches anything
         // (like '\P{any}').
@@ -547,7 +557,7 @@ impl Hir {
         // We rebuild the alternation by simplifying it. We proceed similarly
         // as the concatenation case. But in this case, there's no literal
         // simplification happening. We're just flattening alternations.
-        let mut new = vec![];
+        let mut new = Vec::with_capacity(subs.len());
         for sub in subs {
             let (kind, props) = sub.into_parts();
             match kind {
@@ -642,6 +652,12 @@ impl Hir {
                 cls.push(ClassBytesRange::new(b'\0', b'\xFF'));
                 Hir::class(Class::Bytes(cls))
             }
+            Dot::AnyCharExcept(ch) => {
+                let mut cls =
+                    ClassUnicode::new([ClassUnicodeRange::new(ch, ch)]);
+                cls.negate();
+                Hir::class(Class::Unicode(cls))
+            }
             Dot::AnyCharExceptLF => {
                 let mut cls = ClassUnicode::empty();
                 cls.push(ClassUnicodeRange::new('\0', '\x09'));
@@ -654,6 +670,12 @@ impl Hir {
                 cls.push(ClassUnicodeRange::new('\x0B', '\x0C'));
                 cls.push(ClassUnicodeRange::new('\x0E', '\u{10FFFF}'));
                 Hir::class(Class::Unicode(cls))
+            }
+            Dot::AnyByteExcept(byte) => {
+                let mut cls =
+                    ClassBytes::new([ClassBytesRange::new(byte, byte)]);
+                cls.negate();
+                Hir::class(Class::Bytes(cls))
             }
             Dot::AnyByteExceptLF => {
                 let mut cls = ClassBytes::empty();
@@ -775,12 +797,17 @@ impl core::fmt::Debug for Literal {
 /// The high-level intermediate representation of a character class.
 ///
 /// A character class corresponds to a set of characters. A character is either
-/// defined by a Unicode scalar value or a byte. Unicode characters are used
-/// by default, while bytes are used when Unicode mode (via the `u` flag) is
-/// disabled.
+/// defined by a Unicode scalar value or a byte.
 ///
 /// A character class, regardless of its character type, is represented by a
 /// sequence of non-overlapping non-adjacent ranges of characters.
+///
+/// There are no guarantees about which class variant is used. Generally
+/// speaking, the Unicode variat is used whenever a class needs to contain
+/// non-ASCII Unicode scalar values. But the Unicode variant can be used even
+/// when Unicode mode is disabled. For example, at the time of writing, the
+/// regex `(?-u:a|\xc2\xa0)` will compile down to HIR for the Unicode class
+/// `[a\u00A0]` due to optimizations.
 ///
 /// Note that `Bytes` variant may be produced even when it exclusively matches
 /// valid UTF-8. This is because a `Bytes` variant represents an intention by
@@ -1304,8 +1331,9 @@ impl ClassUnicodeRange {
     }
 }
 
-/// A set of characters represented by arbitrary bytes (where one byte
-/// corresponds to one character).
+/// A set of characters represented by arbitrary bytes.
+///
+/// Each byte corresponds to one character.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClassBytes {
     set: IntervalSet<ClassBytesRange>,
@@ -1607,6 +1635,42 @@ pub enum Look {
     WordUnicode = 1 << 8,
     /// Match a Unicode-aware negation of a word boundary.
     WordUnicodeNegate = 1 << 9,
+    /// Match the start of an ASCII-only word boundary. That is, this matches a
+    /// position at either the beginning of the haystack or where the previous
+    /// character is not a word character and the following character is a word
+    /// character.
+    WordStartAscii = 1 << 10,
+    /// Match the end of an ASCII-only word boundary. That is, this matches
+    /// a position at either the end of the haystack or where the previous
+    /// character is a word character and the following character is not a word
+    /// character.
+    WordEndAscii = 1 << 11,
+    /// Match the start of a Unicode word boundary. That is, this matches a
+    /// position at either the beginning of the haystack or where the previous
+    /// character is not a word character and the following character is a word
+    /// character.
+    WordStartUnicode = 1 << 12,
+    /// Match the end of a Unicode word boundary. That is, this matches a
+    /// position at either the end of the haystack or where the previous
+    /// character is a word character and the following character is not a word
+    /// character.
+    WordEndUnicode = 1 << 13,
+    /// Match the start half of an ASCII-only word boundary. That is, this
+    /// matches a position at either the beginning of the haystack or where the
+    /// previous character is not a word character.
+    WordStartHalfAscii = 1 << 14,
+    /// Match the end half of an ASCII-only word boundary. That is, this
+    /// matches a position at either the end of the haystack or where the
+    /// following character is not a word character.
+    WordEndHalfAscii = 1 << 15,
+    /// Match the start half of a Unicode word boundary. That is, this matches
+    /// a position at either the beginning of the haystack or where the
+    /// previous character is not a word character.
+    WordStartHalfUnicode = 1 << 16,
+    /// Match the end half of a Unicode word boundary. That is, this matches
+    /// a position at either the end of the haystack or where the following
+    /// character is not a word character.
+    WordEndHalfUnicode = 1 << 17,
 }
 
 impl Look {
@@ -1628,6 +1692,14 @@ impl Look {
             Look::WordAsciiNegate => Look::WordAsciiNegate,
             Look::WordUnicode => Look::WordUnicode,
             Look::WordUnicodeNegate => Look::WordUnicodeNegate,
+            Look::WordStartAscii => Look::WordEndAscii,
+            Look::WordEndAscii => Look::WordStartAscii,
+            Look::WordStartUnicode => Look::WordEndUnicode,
+            Look::WordEndUnicode => Look::WordStartUnicode,
+            Look::WordStartHalfAscii => Look::WordEndHalfAscii,
+            Look::WordEndHalfAscii => Look::WordStartHalfAscii,
+            Look::WordStartHalfUnicode => Look::WordEndHalfUnicode,
+            Look::WordEndHalfUnicode => Look::WordStartHalfUnicode,
         }
     }
 
@@ -1636,28 +1708,36 @@ impl Look {
     /// constructor is guaranteed to return the same look-around variant that
     /// one started with within a semver compatible release of this crate.
     #[inline]
-    pub const fn as_repr(self) -> u16 {
+    pub const fn as_repr(self) -> u32 {
         // AFAIK, 'as' is the only way to zero-cost convert an int enum to an
         // actual int.
-        self as u16
+        self as u32
     }
 
     /// Given the underlying representation of a `Look` value, return the
     /// corresponding `Look` value if the representation is valid. Otherwise
     /// `None` is returned.
     #[inline]
-    pub const fn from_repr(repr: u16) -> Option<Look> {
+    pub const fn from_repr(repr: u32) -> Option<Look> {
         match repr {
-            0b00_0000_0001 => Some(Look::Start),
-            0b00_0000_0010 => Some(Look::End),
-            0b00_0000_0100 => Some(Look::StartLF),
-            0b00_0000_1000 => Some(Look::EndLF),
-            0b00_0001_0000 => Some(Look::StartCRLF),
-            0b00_0010_0000 => Some(Look::EndCRLF),
-            0b00_0100_0000 => Some(Look::WordAscii),
-            0b00_1000_0000 => Some(Look::WordAsciiNegate),
-            0b01_0000_0000 => Some(Look::WordUnicode),
-            0b10_0000_0000 => Some(Look::WordUnicodeNegate),
+            0b00_0000_0000_0000_0001 => Some(Look::Start),
+            0b00_0000_0000_0000_0010 => Some(Look::End),
+            0b00_0000_0000_0000_0100 => Some(Look::StartLF),
+            0b00_0000_0000_0000_1000 => Some(Look::EndLF),
+            0b00_0000_0000_0001_0000 => Some(Look::StartCRLF),
+            0b00_0000_0000_0010_0000 => Some(Look::EndCRLF),
+            0b00_0000_0000_0100_0000 => Some(Look::WordAscii),
+            0b00_0000_0000_1000_0000 => Some(Look::WordAsciiNegate),
+            0b00_0000_0001_0000_0000 => Some(Look::WordUnicode),
+            0b00_0000_0010_0000_0000 => Some(Look::WordUnicodeNegate),
+            0b00_0000_0100_0000_0000 => Some(Look::WordStartAscii),
+            0b00_0000_1000_0000_0000 => Some(Look::WordEndAscii),
+            0b00_0001_0000_0000_0000 => Some(Look::WordStartUnicode),
+            0b00_0010_0000_0000_0000 => Some(Look::WordEndUnicode),
+            0b00_0100_0000_0000_0000 => Some(Look::WordStartHalfAscii),
+            0b00_1000_0000_0000_0000 => Some(Look::WordEndHalfAscii),
+            0b01_0000_0000_0000_0000 => Some(Look::WordStartHalfUnicode),
+            0b10_0000_0000_0000_0000 => Some(Look::WordEndHalfUnicode),
             _ => None,
         }
     }
@@ -1682,6 +1762,14 @@ impl Look {
             Look::WordAsciiNegate => 'B',
             Look::WordUnicode => '𝛃',
             Look::WordUnicodeNegate => '𝚩',
+            Look::WordStartAscii => '<',
+            Look::WordEndAscii => '>',
+            Look::WordStartUnicode => '〈',
+            Look::WordEndUnicode => '〉',
+            Look::WordStartHalfAscii => '◁',
+            Look::WordEndHalfAscii => '▷',
+            Look::WordStartHalfUnicode => '◀',
+            Look::WordEndHalfUnicode => '▶',
         }
     }
 }
@@ -1766,6 +1854,18 @@ pub enum Dot {
     ///
     /// This is equivalent to `(?s-u:.)` and also `(?-u:[\x00-\xFF])`.
     AnyByte,
+    /// Matches the UTF-8 encoding of any Unicode scalar value except for the
+    /// `char` given.
+    ///
+    /// This is equivalent to using `(?u-s:.)` with the line terminator set
+    /// to a particular ASCII byte. (Because of peculiarities in the regex
+    /// engines, a line terminator must be a single byte. It follows that when
+    /// UTF-8 mode is enabled, this single byte must also be a Unicode scalar
+    /// value. That is, ti must be ASCII.)
+    ///
+    /// (This and `AnyCharExceptLF` both exist because of legacy reasons.
+    /// `AnyCharExceptLF` will be dropped in the next breaking change release.)
+    AnyCharExcept(char),
     /// Matches the UTF-8 encoding of any Unicode scalar value except for `\n`.
     ///
     /// This is equivalent to `(?u-s:.)` and also `[\p{any}--\n]`.
@@ -1775,6 +1875,17 @@ pub enum Dot {
     ///
     /// This is equivalent to `(?uR-s:.)` and also `[\p{any}--\r\n]`.
     AnyCharExceptCRLF,
+    /// Matches any byte value except for the `u8` given.
+    ///
+    /// This is equivalent to using `(?-us:.)` with the line terminator set
+    /// to a particular ASCII byte. (Because of peculiarities in the regex
+    /// engines, a line terminator must be a single byte. It follows that when
+    /// UTF-8 mode is enabled, this single byte must also be a Unicode scalar
+    /// value. That is, ti must be ASCII.)
+    ///
+    /// (This and `AnyByteExceptLF` both exist because of legacy reasons.
+    /// `AnyByteExceptLF` will be dropped in the next breaking change release.)
+    AnyByteExcept(u8),
     /// Matches any byte value except for `\n`.
     ///
     /// This is equivalent to `(?-su:.)` and also `(?-u:[[\x00-\xFF]--\n])`.
@@ -2410,10 +2521,10 @@ impl Properties {
             inner.look_set_prefix = p.look_set_prefix();
             inner.look_set_suffix = p.look_set_suffix();
         }
-        // If the static captures len of the sub-expression is not known or is
-        // zero, then it automatically propagates to the repetition, regardless
-        // of the repetition. Otherwise, it might change, but only when the
-        // repetition can match 0 times.
+        // If the static captures len of the sub-expression is not known or
+        // is greater than zero, then it automatically propagates to the
+        // repetition, regardless of the repetition. Otherwise, it might
+        // change, but only when the repetition can match 0 times.
         if rep.min == 0
             && inner.static_explicit_captures_len.map_or(false, |len| len > 0)
         {
@@ -2481,16 +2592,24 @@ impl Properties {
             props.literal = props.literal && p.is_literal();
             props.alternation_literal =
                 props.alternation_literal && p.is_alternation_literal();
-            if let Some(ref mut minimum_len) = props.minimum_len {
+            if let Some(minimum_len) = props.minimum_len {
                 match p.minimum_len() {
                     None => props.minimum_len = None,
-                    Some(len) => *minimum_len += len,
+                    Some(len) => {
+                        // We use saturating arithmetic here because the
+                        // minimum is just a lower bound. We can't go any
+                        // higher than what our number types permit.
+                        props.minimum_len =
+                            Some(minimum_len.saturating_add(len));
+                    }
                 }
             }
-            if let Some(ref mut maximum_len) = props.maximum_len {
+            if let Some(maximum_len) = props.maximum_len {
                 match p.maximum_len() {
                     None => props.maximum_len = None,
-                    Some(len) => *maximum_len += len,
+                    Some(len) => {
+                        props.maximum_len = maximum_len.checked_add(len)
+                    }
                 }
             }
         }
@@ -2541,7 +2660,7 @@ pub struct LookSet {
     /// range of `u16` values to be represented. For example, even if the
     /// current implementation only makes use of the 10 least significant bits,
     /// it may use more bits in a future semver compatible release.
-    pub bits: u16,
+    pub bits: u32,
 }
 
 impl LookSet {
@@ -2644,13 +2763,22 @@ impl LookSet {
     pub fn contains_word_unicode(self) -> bool {
         self.contains(Look::WordUnicode)
             || self.contains(Look::WordUnicodeNegate)
+            || self.contains(Look::WordStartUnicode)
+            || self.contains(Look::WordEndUnicode)
+            || self.contains(Look::WordStartHalfUnicode)
+            || self.contains(Look::WordEndHalfUnicode)
     }
 
     /// Returns true if and only if this set contains any ASCII word boundary
     /// or negated ASCII word boundary assertions.
     #[inline]
     pub fn contains_word_ascii(self) -> bool {
-        self.contains(Look::WordAscii) || self.contains(Look::WordAsciiNegate)
+        self.contains(Look::WordAscii)
+            || self.contains(Look::WordAsciiNegate)
+            || self.contains(Look::WordStartAscii)
+            || self.contains(Look::WordEndAscii)
+            || self.contains(Look::WordStartHalfAscii)
+            || self.contains(Look::WordEndHalfAscii)
     }
 
     /// Returns an iterator over all of the look-around assertions in this set.
@@ -2729,29 +2857,31 @@ impl LookSet {
         *self = self.intersect(other);
     }
 
-    /// Return a `LookSet` from the slice given as a native endian 16-bit
+    /// Return a `LookSet` from the slice given as a native endian 32-bit
     /// integer.
     ///
     /// # Panics
     ///
-    /// This panics if `slice.len() < 2`.
+    /// This panics if `slice.len() < 4`.
     #[inline]
     pub fn read_repr(slice: &[u8]) -> LookSet {
-        let bits = u16::from_ne_bytes(slice[..2].try_into().unwrap());
+        let bits = u32::from_ne_bytes(slice[..4].try_into().unwrap());
         LookSet { bits }
     }
 
-    /// Write a `LookSet` as a native endian 16-bit integer to the beginning
+    /// Write a `LookSet` as a native endian 32-bit integer to the beginning
     /// of the slice given.
     ///
     /// # Panics
     ///
-    /// This panics if `slice.len() < 2`.
+    /// This panics if `slice.len() < 4`.
     #[inline]
     pub fn write_repr(self, slice: &mut [u8]) {
         let raw = self.bits.to_ne_bytes();
         slice[0] = raw[0];
         slice[1] = raw[1];
+        slice[2] = raw[2];
+        slice[3] = raw[3];
     }
 }
 
@@ -2784,9 +2914,9 @@ impl Iterator for LookSetIter {
             return None;
         }
         // We'll never have more than u8::MAX distinct look-around assertions,
-        // so 'repr' will always fit into a u16.
-        let repr = u16::try_from(self.set.bits.trailing_zeros()).unwrap();
-        let look = Look::from_repr(1 << repr)?;
+        // so 'bit' will always fit into a u16.
+        let bit = u16::try_from(self.set.bits.trailing_zeros()).unwrap();
+        let look = Look::from_repr(1 << bit)?;
         self.set = self.set.remove(look);
         Some(look)
     }
@@ -3708,7 +3838,7 @@ mod tests {
         assert_eq!(0, set.iter().count());
 
         let set = LookSet::full();
-        assert_eq!(10, set.iter().count());
+        assert_eq!(18, set.iter().count());
 
         let set =
             LookSet::empty().insert(Look::StartLF).insert(Look::WordUnicode);
@@ -3726,6 +3856,6 @@ mod tests {
         let res = format!("{:?}", LookSet::empty());
         assert_eq!("∅", res);
         let res = format!("{:?}", LookSet::full());
-        assert_eq!("Az^$rRbB𝛃𝚩", res);
+        assert_eq!("Az^$rRbB𝛃𝚩<>〈〉◁▷◀▶", res);
     }
 }

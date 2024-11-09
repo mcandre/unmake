@@ -46,6 +46,26 @@ pub fn crit(args: Vec<String>) {
         .success());
 }
 
+/// Compress binaries.
+///
+/// artifacts_path denotes a build directory root,
+/// where a software project houses porting artifacts.
+///
+/// port_basename denotes an archive directory root within the artifacts_path,
+/// generally of the form "<app-name>-<version>".
+pub fn archive(artifacts_path: String, port_basename: String) {
+    let artifacts_path_str: &str = &artifacts_path;
+    let port_basename_str: &str = &port_basename;
+    let archive_basename: &str = &format!("{}.tgz", port_basename_str);
+    assert!(
+        tinyrick::exec_mut!("tar", &["czf", archive_basename, port_basename_str])
+            .current_dir(artifacts_path_str)
+            .status()
+            .unwrap()
+            .success()
+    );
+}
+
 /// Uninstall artifacts
 pub fn uninstall_binaries() {
     tinyrick::exec!("cargo", &["uninstall"]);

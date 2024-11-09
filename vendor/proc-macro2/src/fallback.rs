@@ -4,12 +4,15 @@ use crate::parse::{self, Cursor};
 use crate::rcvec::{RcVec, RcVecBuilder, RcVecIntoIter, RcVecMut};
 use crate::{Delimiter, Spacing, TokenTree};
 #[cfg(all(span_locations, not(fuzzing)))]
+use alloc::collections::BTreeMap;
+#[cfg(all(span_locations, not(fuzzing)))]
 use core::cell::RefCell;
 #[cfg(span_locations)]
 use core::cmp;
 use core::fmt::{self, Debug, Display, Write};
-use core::iter::FromIterator;
 use core::mem::ManuallyDrop;
+#[cfg(span_locations)]
+use core::ops::Range;
 use core::ops::RangeBounds;
 use core::ptr;
 use core::str::FromStr;
@@ -44,7 +47,7 @@ impl LexError {
         self.span
     }
 
-    fn call_site() -> Self {
+    pub(crate) fn call_site() -> Self {
         LexError {
             span: Span::call_site(),
         }
@@ -71,7 +74,6 @@ impl TokenStream {
 fn push_token_from_proc_macro(mut vec: RcVecMut<TokenTree>, token: TokenTree) {
     // https://github.com/dtolnay/proc-macro2/issues/235
     match token {
-        #[cfg(not(no_bind_by_move_pattern_guard))]
         TokenTree::Literal(crate::Literal {
             #[cfg(wrap_proc_macro)]
                 inner: crate::imp::Literal::Fallback(literal),
@@ -80,20 +82,6 @@ fn push_token_from_proc_macro(mut vec: RcVecMut<TokenTree>, token: TokenTree) {
             ..
         }) if literal.repr.starts_with('-') => {
             push_negative_literal(vec, literal);
-        }
-        #[cfg(no_bind_by_move_pattern_guard)]
-        TokenTree::Literal(crate::Literal {
-            #[cfg(wrap_proc_macro)]
-                inner: crate::imp::Literal::Fallback(literal),
-            #[cfg(not(wrap_proc_macro))]
-                inner: literal,
-            ..
-        }) => {
-            if literal.repr.starts_with('-') {
-                push_negative_literal(vec, literal);
-            } else {
-                vec.push(TokenTree::Literal(crate::Literal::_new_fallback(literal)));
-            }
         }
         _ => vec.push(token),
     }
@@ -165,9 +153,9 @@ fn get_cursor(src: &str) -> Cursor {
 
     // Create a dummy file & add it to the source map
     #[cfg(not(fuzzing))]
-    SOURCE_MAP.with(|cm| {
-        let mut cm = cm.borrow_mut();
-        let span = cm.add_file(src);
+    SOURCE_MAP.with(|sm| {
+        let mut sm = sm.borrow_mut();
+        let span = sm.add_file(src);
         Cursor {
             rest: src,
             off: span.lo,
@@ -233,7 +221,7 @@ impl Debug for TokenStream {
     }
 }
 
-#[cfg(use_proc_macro)]
+#[cfg(feature = "proc-macro")]
 impl From<proc_macro::TokenStream> for TokenStream {
     fn from(inner: proc_macro::TokenStream) -> Self {
         inner
@@ -243,7 +231,7 @@ impl From<proc_macro::TokenStream> for TokenStream {
     }
 }
 
-#[cfg(use_proc_macro)]
+#[cfg(feature = "proc-macro")]
 impl From<TokenStream> for proc_macro::TokenStream {
     fn from(inner: TokenStream) -> Self {
         inner
@@ -321,7 +309,6 @@ impl SourceFile {
     }
 
     pub fn is_real(&self) -> bool {
-        // XXX(nika): Support real files in the future?
         false
     }
 }
@@ -338,14 +325,21 @@ impl Debug for SourceFile {
 #[cfg(all(span_locations, not(fuzzing)))]
 thread_local! {
     static SOURCE_MAP: RefCell<SourceMap> = RefCell::new(SourceMap {
-        // NOTE: We start with a single dummy file which all call_site() and
-        // def_site() spans reference.
+        // Start with a single dummy file which all call_site() and def_site()
+        // spans reference.
         files: vec![FileInfo {
             source_text: String::new(),
             span: Span { lo: 0, hi: 0 },
             lines: vec![0],
+            char_index_to_byte_offset: BTreeMap::new(),
         }],
     });
+}
+
+#[cfg(span_locations)]
+pub(crate) fn invalidate_current_thread_spans() {
+    #[cfg(not(fuzzing))]
+    SOURCE_MAP.with(|sm| sm.borrow_mut().files.truncate(1));
 }
 
 #[cfg(all(span_locations, not(fuzzing)))]
@@ -353,6 +347,7 @@ struct FileInfo {
     source_text: String,
     span: Span,
     lines: Vec<usize>,
+    char_index_to_byte_offset: BTreeMap<usize, usize>,
 }
 
 #[cfg(all(span_locations, not(fuzzing)))]
@@ -360,7 +355,7 @@ impl FileInfo {
     fn offset_line_column(&self, offset: usize) -> LineColumn {
         assert!(self.span_within(Span {
             lo: offset as u32,
-            hi: offset as u32
+            hi: offset as u32,
         }));
         let offset = offset - self.span.lo as usize;
         match self.lines.binary_search(&offset) {
@@ -379,10 +374,44 @@ impl FileInfo {
         span.lo >= self.span.lo && span.hi <= self.span.hi
     }
 
-    fn source_text(&self, span: Span) -> String {
-        let lo = (span.lo - self.span.lo) as usize;
-        let hi = (span.hi - self.span.lo) as usize;
-        self.source_text[lo..hi].to_owned()
+    fn byte_range(&mut self, span: Span) -> Range<usize> {
+        let lo_char = (span.lo - self.span.lo) as usize;
+
+        // Look up offset of the largest already-computed char index that is
+        // less than or equal to the current requested one. We resume counting
+        // chars from that point.
+        let (&last_char_index, &last_byte_offset) = self
+            .char_index_to_byte_offset
+            .range(..=lo_char)
+            .next_back()
+            .unwrap_or((&0, &0));
+
+        let lo_byte = if last_char_index == lo_char {
+            last_byte_offset
+        } else {
+            let total_byte_offset = match self.source_text[last_byte_offset..]
+                .char_indices()
+                .nth(lo_char - last_char_index)
+            {
+                Some((additional_offset, _ch)) => last_byte_offset + additional_offset,
+                None => self.source_text.len(),
+            };
+            self.char_index_to_byte_offset
+                .insert(lo_char, total_byte_offset);
+            total_byte_offset
+        };
+
+        let trunc_lo = &self.source_text[lo_byte..];
+        let char_len = (span.hi - span.lo) as usize;
+        lo_byte..match trunc_lo.char_indices().nth(char_len) {
+            Some((offset, _ch)) => lo_byte + offset,
+            None => self.source_text.len(),
+        }
+    }
+
+    fn source_text(&mut self, span: Span) -> String {
+        let byte_range = self.byte_range(span);
+        self.source_text[byte_range].to_owned()
     }
 }
 
@@ -421,7 +450,6 @@ impl SourceMap {
     fn add_file(&mut self, src: &str) -> Span {
         let (len, lines) = lines_offsets(src);
         let lo = self.next_start_pos();
-        // XXX(nika): Should we bother doing a checked cast or checked add here?
         let span = Span {
             lo,
             hi: lo + (len as u32),
@@ -431,6 +459,8 @@ impl SourceMap {
             source_text: src.to_owned(),
             span,
             lines,
+            // Populated lazily by source_text().
+            char_index_to_byte_offset: BTreeMap::new(),
         });
 
         span
@@ -458,6 +488,15 @@ impl SourceMap {
         }
         unreachable!("Invalid span with no related FileInfo!");
     }
+
+    fn fileinfo_mut(&mut self, span: Span) -> &mut FileInfo {
+        for file in &mut self.files {
+            if file.span_within(span) {
+                return file;
+            }
+        }
+        unreachable!("Invalid span with no related FileInfo!");
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -479,7 +518,6 @@ impl Span {
         Span { lo: 0, hi: 0 }
     }
 
-    #[cfg(not(no_hygiene))]
     pub fn mixed_site() -> Self {
         Span::call_site()
     }
@@ -508,11 +546,26 @@ impl Span {
         };
 
         #[cfg(not(fuzzing))]
-        SOURCE_MAP.with(|cm| {
-            let cm = cm.borrow();
-            let path = cm.filepath(*self);
+        SOURCE_MAP.with(|sm| {
+            let sm = sm.borrow();
+            let path = sm.filepath(*self);
             SourceFile { path }
         })
+    }
+
+    #[cfg(span_locations)]
+    pub fn byte_range(&self) -> Range<usize> {
+        #[cfg(fuzzing)]
+        return 0..0;
+
+        #[cfg(not(fuzzing))]
+        {
+            if self.is_call_site() {
+                0..0
+            } else {
+                SOURCE_MAP.with(|sm| sm.borrow_mut().fileinfo_mut(*self).byte_range(*self))
+            }
+        }
     }
 
     #[cfg(span_locations)]
@@ -521,9 +574,9 @@ impl Span {
         return LineColumn { line: 0, column: 0 };
 
         #[cfg(not(fuzzing))]
-        SOURCE_MAP.with(|cm| {
-            let cm = cm.borrow();
-            let fi = cm.fileinfo(*self);
+        SOURCE_MAP.with(|sm| {
+            let sm = sm.borrow();
+            let fi = sm.fileinfo(*self);
             fi.offset_line_column(self.lo as usize)
         })
     }
@@ -534,31 +587,11 @@ impl Span {
         return LineColumn { line: 0, column: 0 };
 
         #[cfg(not(fuzzing))]
-        SOURCE_MAP.with(|cm| {
-            let cm = cm.borrow();
-            let fi = cm.fileinfo(*self);
+        SOURCE_MAP.with(|sm| {
+            let sm = sm.borrow();
+            let fi = sm.fileinfo(*self);
             fi.offset_line_column(self.hi as usize)
         })
-    }
-
-    #[cfg(procmacro2_semver_exempt)]
-    pub fn before(&self) -> Span {
-        Span {
-            #[cfg(span_locations)]
-            lo: self.lo,
-            #[cfg(span_locations)]
-            hi: self.lo,
-        }
-    }
-
-    #[cfg(procmacro2_semver_exempt)]
-    pub fn after(&self) -> Span {
-        Span {
-            #[cfg(span_locations)]
-            lo: self.hi,
-            #[cfg(span_locations)]
-            hi: self.hi,
-        }
     }
 
     #[cfg(not(span_locations))]
@@ -575,10 +608,10 @@ impl Span {
         };
 
         #[cfg(not(fuzzing))]
-        SOURCE_MAP.with(|cm| {
-            let cm = cm.borrow();
+        SOURCE_MAP.with(|sm| {
+            let sm = sm.borrow();
             // If `other` is not within the same FileInfo as us, return None.
-            if !cm.fileinfo(*self).span_within(other) {
+            if !sm.fileinfo(*self).span_within(other) {
                 return None;
             }
             Some(Span {
@@ -603,7 +636,7 @@ impl Span {
             if self.is_call_site() {
                 None
             } else {
-                Some(SOURCE_MAP.with(|cm| cm.borrow().fileinfo(*self).source_text(*self)))
+                Some(SOURCE_MAP.with(|sm| sm.borrow_mut().fileinfo_mut(*self).source_text(*self)))
             }
         }
     }
@@ -749,22 +782,32 @@ pub(crate) struct Ident {
 }
 
 impl Ident {
-    fn _new(string: &str, raw: bool, span: Span) -> Self {
-        validate_ident(string, raw);
+    #[track_caller]
+    pub fn new_checked(string: &str, span: Span) -> Self {
+        validate_ident(string);
+        Ident::new_unchecked(string, span)
+    }
 
+    pub fn new_unchecked(string: &str, span: Span) -> Self {
         Ident {
             sym: string.to_owned(),
             span,
-            raw,
+            raw: false,
         }
     }
 
-    pub fn new(string: &str, span: Span) -> Self {
-        Ident::_new(string, false, span)
+    #[track_caller]
+    pub fn new_raw_checked(string: &str, span: Span) -> Self {
+        validate_ident_raw(string);
+        Ident::new_raw_unchecked(string, span)
     }
 
-    pub fn new_raw(string: &str, span: Span) -> Self {
-        Ident::_new(string, true, span)
+    pub fn new_raw_unchecked(string: &str, span: Span) -> Self {
+        Ident {
+            sym: string.to_owned(),
+            span,
+            raw: true,
+        }
     }
 
     pub fn span(&self) -> Span {
@@ -784,12 +827,13 @@ pub(crate) fn is_ident_continue(c: char) -> bool {
     unicode_ident::is_xid_continue(c)
 }
 
-fn validate_ident(string: &str, raw: bool) {
+#[track_caller]
+fn validate_ident(string: &str) {
     if string.is_empty() {
         panic!("Ident is not allowed to be empty; use Option<Ident>");
     }
 
-    if string.bytes().all(|digit| digit >= b'0' && digit <= b'9') {
+    if string.bytes().all(|digit| b'0' <= digit && digit <= b'9') {
         panic!("Ident cannot be a number; use Literal instead");
     }
 
@@ -810,14 +854,17 @@ fn validate_ident(string: &str, raw: bool) {
     if !ident_ok(string) {
         panic!("{:?} is not a valid Ident", string);
     }
+}
 
-    if raw {
-        match string {
-            "_" | "super" | "self" | "Self" | "crate" => {
-                panic!("`r#{}` cannot be a raw identifier", string);
-            }
-            _ => {}
+#[track_caller]
+fn validate_ident_raw(string: &str) {
+    validate_ident(string);
+
+    match string {
+        "_" | "super" | "self" | "Self" | "crate" => {
+            panic!("`r#{}` cannot be a raw identifier", string);
         }
+        _ => {}
     }
 }
 
@@ -850,6 +897,7 @@ impl Display for Ident {
     }
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl Debug for Ident {
     // Ident(proc_macro), Ident(r#union)
     #[cfg(not(span_locations))]
@@ -1039,27 +1087,26 @@ impl Literal {
 
         #[cfg(span_locations)]
         {
-            use crate::convert::usize_to_u32;
             use core::ops::Bound;
 
             let lo = match range.start_bound() {
                 Bound::Included(start) => {
-                    let start = usize_to_u32(*start)?;
+                    let start = u32::try_from(*start).ok()?;
                     self.span.lo.checked_add(start)?
                 }
                 Bound::Excluded(start) => {
-                    let start = usize_to_u32(*start)?;
+                    let start = u32::try_from(*start).ok()?;
                     self.span.lo.checked_add(start)?.checked_add(1)?
                 }
                 Bound::Unbounded => self.span.lo,
             };
             let hi = match range.end_bound() {
                 Bound::Included(end) => {
-                    let end = usize_to_u32(*end)?;
+                    let end = u32::try_from(*end).ok()?;
                     self.span.lo.checked_add(end)?.checked_add(1)?
                 }
                 Bound::Excluded(end) => {
-                    let end = usize_to_u32(*end)?;
+                    let end = u32::try_from(*end).ok()?;
                     self.span.lo.checked_add(end)?
                 }
                 Bound::Unbounded => self.span.hi,

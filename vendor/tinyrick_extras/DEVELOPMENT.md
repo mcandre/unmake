@@ -4,13 +4,16 @@ tinyrick_extras' own compilation process is compatible with standard cargo. We w
 
 # BUILDTIME REQUIREMENTS
 
-* [Rust](https://www.rust-lang.org/en-US/) 1.68.2+ with `rustup component add clippy rustfmt` and `cargo install cargo-audit@0.17.5 tinyrick@0.0.9`
+* POSIX compatible [make](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/make.html)
+* [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
+* Provision additional dev tools with `make`
 
 ## Recommended
 
-* [ASDF](https://asdf-vm.com/) 0.10 (run `asdf reshim` after each Rust application binary installation)
-* [direnv](https://direnv.net/) 2
+* [ASDF](https://asdf-vm.com/) 0.10 (run `asdf reshim` after provisioning)
 * [cargo-cache](https://crates.io/crates/cargo-cache)
+* [direnv](https://direnv.net/) 2
+* POSIX compatible [tar](https://pubs.opengroup.org/onlinepubs/7908799/xcu/tar.html)
 
 # SECURITY AUDIT
 

@@ -39,11 +39,21 @@ https://crates.io/crates/tinyrick
 
 # API DOCUMENTATION
 
-https://docs.rs/tinyrick/
+https://docs.rs/tinyrick/latest/tinyrick/
+
+# LICENSE
+
+BSD-2-Clause
 
 # RUNTIME REQUIREMENTS
 
-* [Rust](https://www.rust-lang.org/en-US/) 1.30+
+* [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
+
+## Recommended
+
+* [ASDF](https://asdf-vm.com/) 0.10 (run `asdf reshim` after each Rust application binary installation)
+* [direnv](https://direnv.net/) 2
+* [cargo-cache](https://crates.io/crates/cargo-cache)
 
 # SETUP
 
@@ -53,29 +63,29 @@ Write some tasks in a `tinyrick.rs` build configuration script at the top-level 
 
 ```rust
 fn banner() {
-  println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 }
 
 fn test() {
-  tinyrick::exec!("cargo", &["test"]);
+    tinyrick::exec!("cargo", &["test"]);
 }
 
 fn build() {
-  tinyrick::deps(test);
-  tinyrick::exec!("cargo", &["build", "--release"]);
+    tinyrick::deps(test);
+    tinyrick::exec!("cargo", &["build", "--release"]);
 }
 
 fn publish() {
-  tinyrick::exec!("cargo", &["publish"]);
+    tinyrick::exec!("cargo", &["publish"]);
 }
 
 fn clean() {
-  tinyrick::exec!("cargo", &["clean"]);
+    tinyrick::exec!("cargo", &["clean"]);
 }
 
 fn main() {
-  tinyrick::phony!(clean);
-  tinyrick::wubba_lubba_dub_dub!(build; banner, test, publish, clean);
+    tinyrick::phony!(clean);
+    tinyrick::wubba_lubba_dub_dub!(build; banner, test, publish, clean);
 }
 ```
 
@@ -90,7 +100,7 @@ description = "hyperadvanced derpmobiles"
 version = "3.1.4"
 
 [dependencies]
-tinyrick = { version = "0.0.9", optional = true }
+tinyrick = { version = "0.0.14", optional = true }
 
 [features]
 letmeout = ["tinyrick"]
@@ -144,9 +154,28 @@ Whenever possible, use regular Rust code, as in the `banner()` example. There's 
 
 For more details on developing tinyrick itself, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-# CREDITS
+# SEE ALSO
 
 * Inspired by the excellent [mage](https://magefile.org/) build system for Go projects
+* [bb](https://github.com/mcandre/bb), a build system for (g)awk projects
+* [cargo](https://doc.rust-lang.org/cargo/reference/build-scripts.html) custom build scripts, primarily for generating Rust source files from other languages
+* [cmake](https://cmake.org/) for C/C++ projects
+* [dale](https://github.com/mcandre/dale) builds D projects
+* [GNU autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html), a build system for Linux C/C++ projects
+* [Gradle](https://gradle.org/), a build system for JVM projects
+* [invoke](https://pypi.org/project/invoke/), a Python task runner
+* [jelly](https://github.com/mcandre/jelly), a JSON task runner
+* [lake](https://luarocks.org/modules/steved/lake), a Lua task runner
+* [Leiningen](https://leiningen.org/) + [lein-exec](https://github.com/kumarshantanu/lein-exec), a Clojure task runner
+* [lichen](https://github.com/mcandre/lichen), a sed task runner
+* [POSIX make](https://pubs.opengroup.org/onlinepubs/009695299/utilities/make.html), a task runner standard for C/C++ and various other software projects
+* [mian](https://github.com/mcandre/mian), a task runner for (Chicken) Scheme Lisp
+* [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
+* [Rebar3](https://www.rebar3.org/), a build system for Erlang projects
+* [rez](https://github.com/mcandre/rez) builds C/C++ projects
+* [sbt](https://www.scala-sbt.org/index.html), a build system for Scala projects
+* [Shake](https://shakebuild.com/), a task runner for Haskell projects
+* [yao](https://github.com/mcandre/yao), a task runner for Common LISP projects
 
 # EVEN MORE EXAMPLES
 

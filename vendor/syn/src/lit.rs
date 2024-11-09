@@ -18,7 +18,7 @@ ast_enum_of_structs! {
     ///
     /// This type is a [syntax tree enum].
     ///
-    /// [syntax tree enum]: crate::Expr#syntax-tree-enums
+    /// [syntax tree enum]: crate::expr::Expr#syntax-tree-enums
     #[non_exhaustive]
     pub enum Lit {
         /// A UTF-8 string literal: `"foo"`.
@@ -225,10 +225,21 @@ impl LitStr {
 
         // Parse string literal into a token stream with every span equal to the
         // original literal's span.
+        let span = self.span();
         let mut tokens = TokenStream::from_str(&self.value())?;
-        tokens = respan_token_stream(tokens, self.span());
+        tokens = respan_token_stream(tokens, span);
 
-        parser.parse2(tokens)
+        let result = crate::parse::parse_scoped(parser, span, tokens)?;
+
+        let suffix = self.suffix();
+        if !suffix.is_empty() {
+            return Err(Error::new(
+                self.span(),
+                format!("unexpected suffix `{}` on string literal", suffix),
+            ));
+        }
+
+        Ok(result)
     }
 
     pub fn span(&self) -> Span {
@@ -544,139 +555,118 @@ impl LitBool {
 
 #[cfg(feature = "extra-traits")]
 mod debug_impls {
-    use super::*;
+    use crate::lit::{LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr};
     use std::fmt::{self, Debug};
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitStr {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitStr {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitStr")
+        }
+    }
+
+    impl LitStr {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("token", &format_args!("{}", self.repr.token))
+                .finish()
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitByteStr {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitByteStr {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitByteStr")
+        }
+    }
+
+    impl LitByteStr {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("token", &format_args!("{}", self.repr.token))
+                .finish()
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitByte {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitByte {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitByte")
+        }
+    }
+
+    impl LitByte {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("token", &format_args!("{}", self.repr.token))
+                .finish()
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitChar {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitChar {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitChar")
+        }
+    }
+
+    impl LitChar {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("token", &format_args!("{}", self.repr.token))
+                .finish()
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitInt {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitInt {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitInt")
+        }
+    }
+
+    impl LitInt {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("token", &format_args!("{}", self.repr.token))
+                .finish()
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitFloat {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitFloat {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitFloat")
+        }
+    }
+
+    impl LitFloat {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("token", &format_args!("{}", self.repr.token))
+                .finish()
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitBool {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            impl LitBool {
-                pub(crate) fn debug(
-                    &self,
-                    formatter: &mut fmt::Formatter,
-                    name: &str,
-                ) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
-                        .field("value", &self.value)
-                        .finish()
-                }
-            }
             self.debug(formatter, "LitBool")
+        }
+    }
+
+    impl LitBool {
+        pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            formatter
+                .debug_struct(name)
+                .field("value", &self.value)
+                .finish()
         }
     }
 }
@@ -748,10 +738,12 @@ macro_rules! lit_extra_traits {
         }
 
         #[cfg(feature = "parsing")]
-        #[doc(hidden)]
-        #[allow(non_snake_case)]
-        pub fn $ty(marker: lookahead::TokenMarker) -> $ty {
-            match marker {}
+        pub_if_not_doc! {
+            #[doc(hidden)]
+            #[allow(non_snake_case)]
+            pub fn $ty(marker: lookahead::TokenMarker) -> $ty {
+                match marker {}
+            }
         }
     };
 }
@@ -764,38 +756,45 @@ lit_extra_traits!(LitInt);
 lit_extra_traits!(LitFloat);
 
 #[cfg(feature = "parsing")]
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub fn LitBool(marker: lookahead::TokenMarker) -> LitBool {
-    match marker {}
+pub_if_not_doc! {
+    #[doc(hidden)]
+    #[allow(non_snake_case)]
+    pub fn LitBool(marker: lookahead::TokenMarker) -> LitBool {
+        match marker {}
+    }
 }
 
-ast_enum! {
-    /// The style of a string literal, either plain quoted or a raw string like
-    /// `r##"data"##`.
-    pub enum StrStyle #no_visit {
-        /// An ordinary string like `"data"`.
-        Cooked,
-        /// A raw string like `r##"data"##`.
-        ///
-        /// The unsigned integer is the number of `#` symbols used.
-        Raw(usize),
+/// The style of a string literal, either plain quoted or a raw string like
+/// `r##"data"##`.
+#[doc(hidden)] // https://github.com/dtolnay/syn/issues/1566
+pub enum StrStyle {
+    /// An ordinary string like `"data"`.
+    Cooked,
+    /// A raw string like `r##"data"##`.
+    ///
+    /// The unsigned integer is the number of `#` symbols used.
+    Raw(usize),
+}
+
+#[cfg(feature = "parsing")]
+pub_if_not_doc! {
+    #[doc(hidden)]
+    #[allow(non_snake_case)]
+    pub fn Lit(marker: lookahead::TokenMarker) -> Lit {
+        match marker {}
     }
 }
 
 #[cfg(feature = "parsing")]
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub fn Lit(marker: lookahead::TokenMarker) -> Lit {
-    match marker {}
-}
-
-#[cfg(feature = "parsing")]
 pub(crate) mod parsing {
-    use super::*;
     use crate::buffer::Cursor;
-    use crate::parse::{Parse, ParseStream, Result};
-    use proc_macro2::Punct;
+    use crate::error::Result;
+    use crate::lit::{
+        value, Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitFloatRepr, LitInt,
+        LitIntRepr, LitStr,
+    };
+    use crate::parse::{Parse, ParseStream};
+    use proc_macro2::{Literal, Punct};
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
     impl Parse for Lit {
@@ -948,7 +947,7 @@ pub(crate) mod parsing {
 
 #[cfg(feature = "printing")]
 mod printing {
-    use super::*;
+    use crate::lit::{LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr};
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
 
@@ -1003,8 +1002,12 @@ mod printing {
 }
 
 mod value {
-    use super::*;
     use crate::bigint::BigInt;
+    use crate::lit::{
+        Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitFloatRepr, LitInt, LitIntRepr,
+        LitRepr, LitStr,
+    };
+    use proc_macro2::{Literal, Span};
     use std::char;
     use std::ops::{Index, RangeFrom};
 
@@ -1079,6 +1082,7 @@ mod value {
                 // c"...", cr"...", cr#"..."#
                 // TODO: add a Lit::CStr variant?
                 b'c' => return Lit::Verbatim(token),
+                b'(' if repr == "(/*ERROR*/)" => return Lit::Verbatim(token),
                 _ => {}
             }
 
@@ -1166,7 +1170,7 @@ mod value {
                         b'x' => {
                             let (byte, rest) = backslash_x(s);
                             s = rest;
-                            assert!(byte <= 0x80, "Invalid \\x byte in string literal");
+                            assert!(byte <= 0x7F, "Invalid \\x byte in string literal");
                             char::from_u32(u32::from(byte)).unwrap()
                         }
                         b'u' => {
@@ -1273,8 +1277,7 @@ mod value {
                         b'"' => b'"',
                         b'\r' | b'\n' => loop {
                             let byte = byte(v, 0);
-                            let ch = char::from_u32(u32::from(byte)).unwrap();
-                            if ch.is_whitespace() {
+                            if matches!(byte, b' ' | b'\t' | b'\n' | b'\r') {
                                 v = &v[1..];
                             } else {
                                 continue 'outer;

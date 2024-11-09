@@ -19,6 +19,7 @@ type Result<T> = core::result::Result<T, Error>;
 #[derive(Clone, Debug)]
 pub struct TranslatorBuilder {
     utf8: bool,
+    line_terminator: u8,
     flags: Flags,
 }
 
@@ -31,7 +32,11 @@ impl Default for TranslatorBuilder {
 impl TranslatorBuilder {
     /// Create a new translator builder with a default c onfiguration.
     pub fn new() -> TranslatorBuilder {
-        TranslatorBuilder { utf8: true, flags: Flags::default() }
+        TranslatorBuilder {
+            utf8: true,
+            line_terminator: b'\n',
+            flags: Flags::default(),
+        }
     }
 
     /// Build a translator using the current configuration.
@@ -40,6 +45,7 @@ impl TranslatorBuilder {
             stack: RefCell::new(vec![]),
             flags: Cell::new(self.flags),
             utf8: self.utf8,
+            line_terminator: self.line_terminator,
         }
     }
 
@@ -60,6 +66,31 @@ impl TranslatorBuilder {
     /// that split a codepoint).
     pub fn utf8(&mut self, yes: bool) -> &mut TranslatorBuilder {
         self.utf8 = yes;
+        self
+    }
+
+    /// Sets the line terminator for use with `(?u-s:.)` and `(?-us:.)`.
+    ///
+    /// Namely, instead of `.` (by default) matching everything except for `\n`,
+    /// this will cause `.` to match everything except for the byte given.
+    ///
+    /// If `.` is used in a context where Unicode mode is enabled and this byte
+    /// isn't ASCII, then an error will be returned. When Unicode mode is
+    /// disabled, then any byte is permitted, but will return an error if UTF-8
+    /// mode is enabled and it is a non-ASCII byte.
+    ///
+    /// In short, any ASCII value for a line terminator is always okay. But a
+    /// non-ASCII byte might result in an error depending on whether Unicode
+    /// mode or UTF-8 mode are enabled.
+    ///
+    /// Note that if `R` mode is enabled then it always takes precedence and
+    /// the line terminator will be treated as `\r` and `\n` simultaneously.
+    ///
+    /// Note also that this *doesn't* impact the look-around assertions
+    /// `(?m:^)` and `(?m:$)`. That's usually controlled by additional
+    /// configuration in the regex engine itself.
+    pub fn line_terminator(&mut self, byte: u8) -> &mut TranslatorBuilder {
+        self.line_terminator = byte;
         self
     }
 
@@ -120,6 +151,8 @@ pub struct Translator {
     flags: Cell<Flags>,
     /// Whether we're allowed to produce HIR that can match arbitrary bytes.
     utf8: bool,
+    /// The line terminator to use for `.`.
+    line_terminator: u8,
 }
 
 impl Translator {
@@ -304,7 +337,7 @@ impl<'t, 'p> Visitor for TranslatorI<'t, 'p> {
 
     fn visit_pre(&mut self, ast: &Ast) -> Result<()> {
         match *ast {
-            Ast::Class(ast::Class::Bracketed(_)) => {
+            Ast::ClassBracketed(_) => {
                 if self.flags().unicode() {
                     let cls = hir::ClassUnicode::empty();
                     self.push(HirFrame::ClassUnicode(cls));
@@ -321,14 +354,14 @@ impl<'t, 'p> Visitor for TranslatorI<'t, 'p> {
                     .unwrap_or_else(|| self.flags());
                 self.push(HirFrame::Group { old_flags });
             }
-            Ast::Concat(ref x) if x.asts.is_empty() => {}
             Ast::Concat(_) => {
                 self.push(HirFrame::Concat);
             }
-            Ast::Alternation(ref x) if x.asts.is_empty() => {}
-            Ast::Alternation(_) => {
+            Ast::Alternation(ref x) => {
                 self.push(HirFrame::Alternation);
-                self.push(HirFrame::AlternationBranch);
+                if !x.asts.is_empty() {
+                    self.push(HirFrame::AlternationBranch);
+                }
             }
             _ => {}
         }
@@ -353,29 +386,20 @@ impl<'t, 'p> Visitor for TranslatorI<'t, 'p> {
                 // consistency sake.
                 self.push(HirFrame::Expr(Hir::empty()));
             }
-            Ast::Literal(ref x) => {
-                match self.ast_literal_to_scalar(x)? {
-                    Either::Right(byte) => self.push_byte(byte),
-                    Either::Left(ch) => {
-                        if !self.flags().unicode() && ch.len_utf8() > 1 {
-                            return Err(self
-                                .error(x.span, ErrorKind::UnicodeNotAllowed));
-                        }
-                        match self.case_fold_char(x.span, ch)? {
-                            None => self.push_char(ch),
-                            Some(expr) => self.push(HirFrame::Expr(expr)),
-                        }
-                    }
-                }
-                // self.push(HirFrame::Expr(self.hir_literal(x)?));
-            }
-            Ast::Dot(span) => {
-                self.push(HirFrame::Expr(self.hir_dot(span)?));
+            Ast::Literal(ref x) => match self.ast_literal_to_scalar(x)? {
+                Either::Right(byte) => self.push_byte(byte),
+                Either::Left(ch) => match self.case_fold_char(x.span, ch)? {
+                    None => self.push_char(ch),
+                    Some(expr) => self.push(HirFrame::Expr(expr)),
+                },
+            },
+            Ast::Dot(ref span) => {
+                self.push(HirFrame::Expr(self.hir_dot(**span)?));
             }
             Ast::Assertion(ref x) => {
                 self.push(HirFrame::Expr(self.hir_assertion(x)?));
             }
-            Ast::Class(ast::Class::Perl(ref x)) => {
+            Ast::ClassPerl(ref x) => {
                 if self.flags().unicode() {
                     let cls = self.hir_perl_unicode_class(x)?;
                     let hcls = hir::Class::Unicode(cls);
@@ -386,11 +410,11 @@ impl<'t, 'p> Visitor for TranslatorI<'t, 'p> {
                     self.push(HirFrame::Expr(Hir::class(hcls)));
                 }
             }
-            Ast::Class(ast::Class::Unicode(ref x)) => {
+            Ast::ClassUnicode(ref x) => {
                 let cls = hir::Class::Unicode(self.hir_unicode_class(x)?);
                 self.push(HirFrame::Expr(Hir::class(cls)));
             }
-            Ast::Class(ast::Class::Bracketed(ref ast)) => {
+            Ast::ClassBracketed(ref ast) => {
                 if self.flags().unicode() {
                     let mut cls = self.pop().unwrap().unwrap_class_unicode();
                     self.unicode_fold_and_negate(
@@ -841,8 +865,8 @@ impl<'t, 'p> TranslatorI<'t, 'p> {
             })?;
             Ok(Some(Hir::class(hir::Class::Unicode(cls))))
         } else {
-            if c.len_utf8() > 1 {
-                return Err(self.error(span, ErrorKind::UnicodeNotAllowed));
+            if !c.is_ascii() {
+                return Ok(None);
             }
             // If case folding won't do anything, then don't bother trying.
             match c {
@@ -862,10 +886,38 @@ impl<'t, 'p> TranslatorI<'t, 'p> {
     }
 
     fn hir_dot(&self, span: Span) -> Result<Hir> {
-        if !self.flags().unicode() && self.trans().utf8 {
+        let (utf8, lineterm, flags) =
+            (self.trans().utf8, self.trans().line_terminator, self.flags());
+        if utf8 && (!flags.unicode() || !lineterm.is_ascii()) {
             return Err(self.error(span, ErrorKind::InvalidUtf8));
         }
-        Ok(Hir::dot(self.flags().dot()))
+        let dot = if flags.dot_matches_new_line() {
+            if flags.unicode() {
+                hir::Dot::AnyChar
+            } else {
+                hir::Dot::AnyByte
+            }
+        } else {
+            if flags.unicode() {
+                if flags.crlf() {
+                    hir::Dot::AnyCharExceptCRLF
+                } else {
+                    if !lineterm.is_ascii() {
+                        return Err(
+                            self.error(span, ErrorKind::InvalidLineTerminator)
+                        );
+                    }
+                    hir::Dot::AnyCharExcept(char::from(lineterm))
+                }
+            } else {
+                if flags.crlf() {
+                    hir::Dot::AnyByteExceptCRLF
+                } else {
+                    hir::Dot::AnyByteExcept(lineterm)
+                }
+            }
+        };
+        Ok(Hir::dot(dot))
     }
 
     fn hir_assertion(&self, asst: &ast::Assertion) -> Result<Hir> {
@@ -902,6 +954,34 @@ impl<'t, 'p> TranslatorI<'t, 'p> {
                 hir::Look::WordUnicodeNegate
             } else {
                 hir::Look::WordAsciiNegate
+            }),
+            ast::AssertionKind::WordBoundaryStart
+            | ast::AssertionKind::WordBoundaryStartAngle => {
+                Hir::look(if unicode {
+                    hir::Look::WordStartUnicode
+                } else {
+                    hir::Look::WordStartAscii
+                })
+            }
+            ast::AssertionKind::WordBoundaryEnd
+            | ast::AssertionKind::WordBoundaryEndAngle => {
+                Hir::look(if unicode {
+                    hir::Look::WordEndUnicode
+                } else {
+                    hir::Look::WordEndAscii
+                })
+            }
+            ast::AssertionKind::WordBoundaryStartHalf => {
+                Hir::look(if unicode {
+                    hir::Look::WordStartHalfUnicode
+                } else {
+                    hir::Look::WordStartHalfAscii
+                })
+            }
+            ast::AssertionKind::WordBoundaryEndHalf => Hir::look(if unicode {
+                hir::Look::WordEndHalfUnicode
+            } else {
+                hir::Look::WordEndHalfAscii
             }),
         })
     }
@@ -1124,9 +1204,8 @@ impl<'t, 'p> TranslatorI<'t, 'p> {
         match self.ast_literal_to_scalar(ast)? {
             Either::Right(byte) => Ok(byte),
             Either::Left(ch) => {
-                let cp = u32::from(ch);
-                if cp <= 0x7F {
-                    Ok(u8::try_from(cp).unwrap())
+                if ch.is_ascii() {
+                    Ok(u8::try_from(ch).unwrap())
                 } else {
                     // We can't feasibly support Unicode in
                     // byte oriented classes. Byte classes don't
@@ -1206,30 +1285,6 @@ impl Flags {
         }
         if self.crlf.is_none() {
             self.crlf = previous.crlf;
-        }
-    }
-
-    fn dot(&self) -> hir::Dot {
-        if self.dot_matches_new_line() {
-            if self.unicode() {
-                hir::Dot::AnyChar
-            } else {
-                hir::Dot::AnyByte
-            }
-        } else {
-            if self.unicode() {
-                if self.crlf() {
-                    hir::Dot::AnyCharExceptCRLF
-                } else {
-                    hir::Dot::AnyCharExceptLF
-                }
-            } else {
-                if self.crlf() {
-                    hir::Dot::AnyByteExceptCRLF
-                } else {
-                    hir::Dot::AnyByteExceptLF
-                }
-            }
         }
     }
 
@@ -1598,16 +1653,7 @@ mod tests {
         assert_eq!(t_bytes(r"(?-u)\x61"), hir_lit("a"));
         assert_eq!(t_bytes(r"(?-u)\xFF"), hir_blit(b"\xFF"));
 
-        assert_eq!(
-            t_err("(?-u)☃"),
-            TestError {
-                kind: hir::ErrorKind::UnicodeNotAllowed,
-                span: Span::new(
-                    Position::new(5, 1, 6),
-                    Position::new(8, 1, 7)
-                ),
-            }
-        );
+        assert_eq!(t("(?-u)☃"), hir_lit("☃"));
         assert_eq!(
             t_err(r"(?-u)\xFF"),
             TestError {
@@ -1685,16 +1731,7 @@ mod tests {
         );
         assert_eq!(t_bytes(r"(?i-u)\xFF"), hir_blit(b"\xFF"));
 
-        assert_eq!(
-            t_err("(?i-u)β"),
-            TestError {
-                kind: hir::ErrorKind::UnicodeNotAllowed,
-                span: Span::new(
-                    Position::new(6, 1, 7),
-                    Position::new(8, 1, 8),
-                ),
-            }
-        );
+        assert_eq!(t("(?i-u)β"), hir_lit("β"),);
     }
 
     #[test]
@@ -3489,6 +3526,15 @@ mod tests {
         assert!(!props(r"(?:z|xx)@|xx").is_alternation_literal());
     }
 
+    // This tests that the smart Hir::repetition constructors does some basic
+    // simplifications.
+    #[test]
+    fn smart_repetition() {
+        assert_eq!(t(r"a{0}"), Hir::empty());
+        assert_eq!(t(r"a{1}"), hir_lit("a"));
+        assert_eq!(t(r"\B{32111}"), hir_look(hir::Look::WordUnicodeNegate));
+    }
+
     // This tests that the smart Hir::concat constructor simplifies the given
     // exprs in a way we expect.
     #[test]
@@ -3579,5 +3625,100 @@ mod tests {
                 hir_alt(vec![hir_lit("foo"), hir_lit("foobar")]),
             ]),
         );
+    }
+
+    #[test]
+    fn regression_alt_empty_concat() {
+        use crate::ast::{self, Ast};
+
+        let span = Span::splat(Position::new(0, 0, 0));
+        let ast = Ast::alternation(ast::Alternation {
+            span,
+            asts: vec![Ast::concat(ast::Concat { span, asts: vec![] })],
+        });
+
+        let mut t = Translator::new();
+        assert_eq!(Ok(Hir::empty()), t.translate("", &ast));
+    }
+
+    #[test]
+    fn regression_empty_alt() {
+        use crate::ast::{self, Ast};
+
+        let span = Span::splat(Position::new(0, 0, 0));
+        let ast = Ast::concat(ast::Concat {
+            span,
+            asts: vec![Ast::alternation(ast::Alternation {
+                span,
+                asts: vec![],
+            })],
+        });
+
+        let mut t = Translator::new();
+        assert_eq!(Ok(Hir::fail()), t.translate("", &ast));
+    }
+
+    #[test]
+    fn regression_singleton_alt() {
+        use crate::{
+            ast::{self, Ast},
+            hir::Dot,
+        };
+
+        let span = Span::splat(Position::new(0, 0, 0));
+        let ast = Ast::concat(ast::Concat {
+            span,
+            asts: vec![Ast::alternation(ast::Alternation {
+                span,
+                asts: vec![Ast::dot(span)],
+            })],
+        });
+
+        let mut t = Translator::new();
+        assert_eq!(Ok(Hir::dot(Dot::AnyCharExceptLF)), t.translate("", &ast));
+    }
+
+    // See: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=63168
+    #[test]
+    fn regression_fuzz_match() {
+        let pat = "[(\u{6} \0-\u{afdf5}]  \0 ";
+        let ast = ParserBuilder::new()
+            .octal(false)
+            .ignore_whitespace(true)
+            .build()
+            .parse(pat)
+            .unwrap();
+        let hir = TranslatorBuilder::new()
+            .utf8(true)
+            .case_insensitive(false)
+            .multi_line(false)
+            .dot_matches_new_line(false)
+            .swap_greed(true)
+            .unicode(true)
+            .build()
+            .translate(pat, &ast)
+            .unwrap();
+        assert_eq!(
+            hir,
+            Hir::concat(vec![
+                hir_uclass(&[('\0', '\u{afdf5}')]),
+                hir_lit("\0"),
+            ])
+        );
+    }
+
+    // See: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=63155
+    #[cfg(feature = "unicode")]
+    #[test]
+    fn regression_fuzz_difference1() {
+        let pat = r"\W\W|\W[^\v--\W\W\P{Script_Extensions:Pau_Cin_Hau}\u10A1A1-\U{3E3E3}--~~~~--~~~~~~~~------~~~~~~--~~~~~~]*";
+        let _ = t(pat); // shouldn't panic
+    }
+
+    // See: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=63153
+    #[test]
+    fn regression_fuzz_char_decrement1() {
+        let pat = "w[w[^w?\rw\rw[^w?\rw[^w?\rw[^w?\rw[^w?\rw[^w?\rw[^w?\r\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0w?\rw[^w?\rw[^w?\rw[^w\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\u{1}\0]\0\0\0\0\0\0\0\0\0*\0\0\u{1}\0]\0\0-*\0][^w?\rw[^w?\rw[^w?\rw[^w?\rw[^w?\rw[^w?\rw[^w\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\u{1}\0]\0\0\0\0\0\0\0\0\0x\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\0\0\0\0*??\0\u{7f}{2}\u{10}??\0\0\0\0\0\0\0\0\0\u{3}\0\0\0}\0-*\0]\0\0\0\0\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\u{1}\0]\0\0-*\0]\0\0\0\0\0\0\0\u{1}\0]\0\u{1}\u{1}H-i]-]\0\0\0\0\u{1}\0]\0\0\0\u{1}\0]\0\0-*\0\0\0\0\u{1}9-\u{7f}]\0'|-\u{7f}]\0'|(?i-ux)[-\u{7f}]\0'\u{3}\0\0\0}\0-*\0]<D\0\0\0\0\0\0\u{1}]\0\0\0\0]\0\0-*\0]\0\0 ";
+        let _ = t(pat); // shouldn't panic
     }
 }

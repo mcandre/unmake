@@ -11,7 +11,7 @@
 
 [package]
 name = "tinyrick_extras"
-version = "0.0.6"
+version = "0.0.8"
 authors = ["Andrew Pennebaker <andrew.pennebaker@gmail.com>"]
 description = "common tasks for tinyrick projects"
 homepage = "https://github.com/mcandre/tinyrick_extras"
@@ -28,7 +28,7 @@ path = "tinyrick.rs"
 required-features = ["letmeout"]
 
 [dependencies.tinyrick]
-version = "0.0.9"
+version = "0.0.13"
 
 [features]
 letmeout = []

@@ -20,6 +20,13 @@
 //!                 ~~~~^ ~~~~^ ~~~~
 //! ```
 
+use crate::drops::{NoDrop, TrivialDrop};
+#[cfg(feature = "parsing")]
+use crate::error::Result;
+#[cfg(feature = "parsing")]
+use crate::parse::{Parse, ParseStream};
+#[cfg(feature = "parsing")]
+use crate::token::Token;
 #[cfg(feature = "extra-traits")]
 use std::fmt::{self, Debug};
 #[cfg(feature = "extra-traits")]
@@ -30,12 +37,6 @@ use std::ops::{Index, IndexMut};
 use std::option;
 use std::slice;
 use std::vec;
-
-use crate::drops::{NoDrop, TrivialDrop};
-#[cfg(feature = "parsing")]
-use crate::parse::{Parse, ParseStream, Result};
-#[cfg(feature = "parsing")]
-use crate::token::Token;
 
 /// **A punctuated sequence of syntax tree nodes of type `T` separated by
 /// punctuation of type `P`.**
@@ -368,6 +369,11 @@ where
             inner: self.inner.clone(),
             last: self.last.clone(),
         }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.inner.clone_from(&other.inner);
+        self.last.clone_from(&other.last);
     }
 }
 
@@ -1069,7 +1075,7 @@ impl<T, P> IndexMut<usize> for Punctuated<T, P> {
 
 #[cfg(feature = "printing")]
 mod printing {
-    use super::*;
+    use crate::punctuated::{Pair, Punctuated};
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
 

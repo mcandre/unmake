@@ -1,8 +1,9 @@
 //! Facility for interpreting structured content inside of an `Attribute`.
 
-use crate::ext::IdentExt;
+use crate::error::{Error, Result};
+use crate::ext::IdentExt as _;
 use crate::lit::Lit;
-use crate::parse::{Error, ParseStream, Parser, Result};
+use crate::parse::{ParseStream, Parser};
 use crate::path::{Path, PathSegment};
 use crate::punctuated::Punctuated;
 use proc_macro2::Ident;
@@ -129,7 +130,13 @@ use std::fmt::Display;
 /// }
 /// ```
 pub fn parser(logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Parser<Output = ()> {
-    |input: ParseStream| parse_nested_meta(input, logic)
+    |input: ParseStream| {
+        if input.is_empty() {
+            Ok(())
+        } else {
+            parse_nested_meta(input, logic)
+        }
+    }
 }
 
 /// Context for parsing a single property in the conventional syntax for

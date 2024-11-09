@@ -185,6 +185,7 @@ impl Error {
     /// When in doubt it's recommended to stick to `Error::new` (or
     /// `ParseStream::error`)!
     #[cfg(feature = "printing")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, message: U) -> Self {
         return new_spanned(tokens.into_token_stream(), message.to_string());
 
@@ -385,7 +386,7 @@ impl Clone for Error {
 impl Clone for ErrorMessage {
     fn clone(&self) -> Self {
         ErrorMessage {
-            span: self.span.clone(),
+            span: self.span,
             message: self.message.clone(),
         }
     }
@@ -403,7 +404,7 @@ impl std::error::Error for Error {}
 
 impl From<LexError> for Error {
     fn from(err: LexError) -> Self {
-        Error::new(err.span(), "lex error")
+        Error::new(err.span(), err)
     }
 }
 

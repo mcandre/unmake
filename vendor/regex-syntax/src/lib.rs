@@ -138,7 +138,7 @@ The following features are available:
   [Unicode's "simple loose matches" specification](https://www.unicode.org/reports/tr18/#Simple_Loose_Matches).
 * **unicode-gencat** -
   Provide the data for
-  [Uncode general categories](https://www.unicode.org/reports/tr44/tr44-24.html#General_Category_Values).
+  [Unicode general categories](https://www.unicode.org/reports/tr44/tr44-24.html#General_Category_Values).
   This includes, but is not limited to, `Decimal_Number`, `Letter`,
   `Math_Symbol`, `Number` and `Punctuation`.
 * **unicode-perl** -
@@ -157,6 +157,11 @@ The following features are available:
   [Unicode text segmentation algorithms](https://www.unicode.org/reports/tr29/).
   This enables using classes like `\p{gcb=Extend}`, `\p{wb=Katakana}` and
   `\p{sb=ATerm}`.
+* **arbitrary** -
+  Enabling this feature introduces a public dependency on the
+  [`arbitrary`](https://crates.io/crates/arbitrary)
+  crate. Namely, it implements the `Arbitrary` trait from that crate for the
+  [`Ast`](crate::ast::Ast) type. This feature is disabled by default.
 */
 
 #![no_std]
@@ -317,6 +322,9 @@ pub fn is_escapeable_character(c: char) -> bool {
         // escapeable, \< and \> will result in a parse error. Thus, we can
         // turn them into something else in the future without it being a
         // backwards incompatible change.
+        //
+        // OK, now we support \< and \>, and we need to retain them as *not*
+        // escapeable here since the escape sequence is significant.
         '<' | '>' => false,
         _ => true,
     }
@@ -364,7 +372,7 @@ pub fn try_is_word_character(
 /// Returns true if and only if the given character is an ASCII word character.
 ///
 /// An ASCII word character is defined by the following character class:
-/// `[_0-9a-zA-Z]'.
+/// `[_0-9a-zA-Z]`.
 pub fn is_word_byte(c: u8) -> bool {
     match c {
         b'_' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' => true,

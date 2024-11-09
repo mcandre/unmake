@@ -1,4 +1,9 @@
-use super::*;
+use crate::attr::Attribute;
+use crate::expr::Expr;
+use crate::item::Item;
+use crate::mac::Macro;
+use crate::pat::Pat;
+use crate::token;
 
 ast_struct! {
     /// A braced block containing Rust statements.
@@ -74,9 +79,19 @@ ast_struct! {
 
 #[cfg(feature = "parsing")]
 pub(crate) mod parsing {
-    use super::*;
-    use crate::parse::discouraged::Speculative;
-    use crate::parse::{Parse, ParseStream, Result};
+    use crate::attr::Attribute;
+    use crate::error::Result;
+    use crate::expr::{self, Expr, ExprBlock, ExprMacro};
+    use crate::ident::Ident;
+    use crate::item;
+    use crate::mac::{self, Macro};
+    use crate::parse::discouraged::Speculative as _;
+    use crate::parse::{Parse, ParseStream};
+    use crate::pat::{Pat, PatType};
+    use crate::path::Path;
+    use crate::stmt::{Block, Local, LocalInit, Stmt, StmtMacro};
+    use crate::token;
+    use crate::ty::Type;
     use proc_macro2::TokenStream;
 
     struct AllowNoSemi(bool);
@@ -180,7 +195,8 @@ pub(crate) mod parsing {
     }
 
     fn parse_stmt(input: ParseStream, allow_nosemi: AllowNoSemi) -> Result<Stmt> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let begin = input.fork();
+        let attrs = input.call(Attribute::parse_outer)?;
 
         // brace-style macros; paren and bracket macros get parsed as
         // expression statements.
@@ -199,7 +215,7 @@ pub(crate) mod parsing {
             }
         }
 
-        if input.peek(Token![let]) {
+        if input.peek(Token![let]) && !input.peek(token::Group) {
             stmt_local(input, attrs).map(Stmt::Local)
         } else if input.peek(Token![pub])
             || input.peek(Token![crate]) && !input.peek2(Token![::])
@@ -238,9 +254,7 @@ pub(crate) mod parsing {
             || input.peek(Token![macro])
             || is_item_macro
         {
-            let mut item: Item = input.parse()?;
-            attrs.extend(item.replace_attrs(Vec::new()));
-            item.replace_attrs(attrs);
+            let item = item::parsing::parse_rest_of_item(begin, attrs, input)?;
             Ok(Stmt::Item(item))
         } else {
             stmt_expr(input, allow_nosemi, attrs)
@@ -396,7 +410,8 @@ pub(crate) mod parsing {
 
 #[cfg(feature = "printing")]
 mod printing {
-    use super::*;
+    use crate::expr;
+    use crate::stmt::{Block, Local, Stmt, StmtMacro};
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
 
