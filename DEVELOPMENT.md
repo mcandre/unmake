@@ -3,7 +3,7 @@
 * [Docker](https://www.docker.com/) 20.10.12+
 * [POSIX](https://pubs.opengroup.org/onlinepubs/9799919799/) compatible [make](https://en.wikipedia.org/wiki/Make_(software))
 * [rustup](https://rustup.rs/) 1.25.2+
-* [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
+* [Rust](https://www.rust-lang.org/en-US/) 1.86.0+
 * [POSIX](https://pubs.opengroup.org/onlinepubs/9799919799/) compatible [tar](https://en.wikipedia.org/wiki/Tar_(computing))
 * Provision additional dev tools with `make [-j 4]`
 

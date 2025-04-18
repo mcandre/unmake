@@ -6,7 +6,7 @@ extern crate unmake;
 extern crate walkdir;
 
 use self::unmake::{inspect, warnings};
-use die::{die, Die};
+use die::{Die, die};
 use std::env;
 use std::fs;
 use std::io;

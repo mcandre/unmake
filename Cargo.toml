@@ -2,6 +2,7 @@
 name = "unmake"
 description = "a makefile linter"
 version = "0.0.18"
+edition = "2024"
 authors = ["Andrew Pennebaker <andrew.pennebaker@gmail.com>"]
 license = "BSD-2-Clause"
 homepage = "https://github.com/mcandre/unmake"

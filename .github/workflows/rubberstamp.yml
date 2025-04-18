@@ -1,6 +1,6 @@
 ---
 #
-# Rubberstamp
+# Rubberstamp v0.0.2
 # https://github.com/mcandre/rubberstamp
 #
 name: "Rubberstamp"
@@ -12,22 +12,28 @@ on: # yamllint disable-line rule:truthy
   # - cron: "*/5 * * * *"
   # Once a month
   - cron: "0 0 1 * *"
+  workflow_dispatch:
 jobs:
   Audit:
     runs-on: "ubuntu-24.04"
+    env:
+      RUBBERSTAMP_GH_REPO: "${{ github.repository }}"
+      SSH_KEY: "${{ secrets.SSH_KEY }}"
     steps:
     - uses: "actions/checkout@v4"
-    - run: "sudo apt-get update"
-    - run: "sudo apt-get install -y git"
-    - run: "date -u >.rubberstamp"
-    - run: "git remote set-url origin \"git@github.com:${RUBBERSTAMP_GH_REPO}.git\""
-      env:
-        RUBBERSTAMP_GH_REPO: "${{ github.repository }}"
-    - run: "git remote get-url origin"
-    - run: "git config --global user.email 'rubberstamp@rubberstamp.test'"
-    - run: "git config --global user.name 'Rubberstamp'"
-    - run: "git add .rubberstamp"
-    - run: "git commit -am 'rubberstamp'"
-    - run: "echo \"$SSH_KEY\" >/tmp/key && chmod 0600 /tmp/key && git -c 'core.sshCommand=ssh -i /tmp/key' push"
-      env:
-        SSH_KEY: "${{ secrets.SSH_KEY }}"
+    - name: "provision git"
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git
+        git config --global user.email 'rubberstamp@rubberstamp.test'
+        git config --global user.name 'Rubberstamp'
+        git config --global core.sshCommand 'ssh -i /tmp/key'
+        echo "$SSH_KEY" >/tmp/key
+        chmod 0600 /tmp/key
+        git remote set-url origin "git@github.com:${RUBBERSTAMP_GH_REPO}.git"
+    - name: "stamp"
+      run: |
+        date -u >.rubberstamp
+        git add .rubberstamp
+        git commit -m 'rubberstamp'
+        git push

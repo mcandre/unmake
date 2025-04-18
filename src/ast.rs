@@ -561,9 +561,11 @@ fn test_grammar() {
 
         let pth_display: path::Display = pth.display();
         let makefile_str: &str = &fs::read_to_string(&pth).unwrap();
-        assert!(parse_posix(&pth_display.to_string(), makefile_str)
-            .map_err(|err| format!("unable to parse {}: {}", &pth_display, err))
-            .is_ok());
+        assert!(
+            parse_posix(&pth_display.to_string(), makefile_str)
+                .map_err(|err| format!("unable to parse {}: {}", &pth_display, err))
+                .is_ok()
+        );
     }
 
     let invalid_walker = walkdir::WalkDir::new(fixtures_path.join("parse-invalid"))

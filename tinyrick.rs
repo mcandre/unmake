@@ -88,10 +88,12 @@ fn publish() {
 
 /// Clean ports
 fn clean_ports() {
-    assert!(tinyrick::exec_mut!("crit", &["-c"])
-        .status()
-        .unwrap()
-        .success());
+    assert!(
+        tinyrick::exec_mut!("crit", &["-c"])
+            .status()
+            .unwrap()
+            .success()
+    );
 }
 
 /// Clean workspaces

@@ -5,12 +5,15 @@ on: # yamllint disable-line rule:truthy
   pull_request:
   schedule:
   - cron: "0 0 * * 1"
+  workflow_dispatch:
 jobs:
   Audit:
     runs-on: "ubuntu-24.04"
     steps:
     - uses: "actions/checkout@v4"
-    - run: "sudo apt-get update"
-    - run: "sudo apt-get install -y cargo"
-    - run: "make -j 4 crates"
+    - uses: "dtolnay/rust-toolchain@stable"
+      with:
+        toolchain: "1.86.0"
+    - name: "provision auditing tools"
+      run: "make crates"
     - run: "tinyrick audit"

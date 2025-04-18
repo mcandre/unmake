@@ -3,12 +3,15 @@ name: "Lint"
 on: # yamllint disable-line rule:truthy
   push:
   pull_request:
+  workflow_dispatch:
 jobs:
   Lint:
     runs-on: "ubuntu-24.04"
     steps:
     - uses: "actions/checkout@v4"
-    - run: "sudo apt-get update"
-    - run: "sudo apt-get install -y cargo"
-    - run: "make -j 4"
+    - uses: "dtolnay/rust-toolchain@stable"
+      with:
+        toolchain: "1.86.0"
+    - name: "provision dev tools"
+      run: "make -j 4"
     - run: "tinyrick lint"
