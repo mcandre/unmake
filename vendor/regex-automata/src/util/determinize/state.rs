@@ -57,7 +57,7 @@ can only be used for adding NFA state IDs and recording some assertions.
 
 The expected flow here is to use the above builders to construct a candidate
 DFA state to check if it already exists. If it does, then there's no need to
-freeze it into a `State`. It it doesn't exist, then `StateBuilderNFA::to_state`
+freeze it into a `State`. If it doesn't exist, then `StateBuilderNFA::to_state`
 can be called to freeze the builder into an immutable `State`. In either
 case, `clear` should be called on the builder to turn it back into a
 `StateBuilderEmpty` that reuses the underlying memory.
@@ -86,7 +86,7 @@ serialized anywhere. So any kind of change can be made with reckless abandon,
 as long as everything in this module agrees.
 */
 
-use core::{convert::TryFrom, mem};
+use core::mem;
 
 use alloc::{sync::Arc, vec::Vec};
 

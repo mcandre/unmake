@@ -88,9 +88,9 @@ macro_rules! exec_mut {
         let args: &[&str] = &[];
         tinyrick::exec_mut_with_arguments!($p, args)
     }};
-    ($p : expr, $a : expr) => {{
+    ($p : expr, $a : expr) => {
         tinyrick::exec_mut_with_arguments!($p, $a)
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -100,12 +100,12 @@ macro_rules! exec_mut {
 /// Panics if the command exits with a failure status.
 #[macro_export]
 macro_rules! exec_output {
-    ($p : expr) => {{
+    ($p : expr) => {
         tinyrick::exec_mut!($p).output().unwrap()
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         tinyrick::exec_mut!($p, $a).output().unwrap()
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -115,12 +115,12 @@ macro_rules! exec_output {
 /// Panics if the command exits with a failure status.
 #[macro_export]
 macro_rules! exec_stdout {
-    ($p : expr) => {{
+    ($p : expr) => {
         tinyrick::exec_output!($p).stdout
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         tinyrick::exec_output!($p, $a).stdout
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -130,12 +130,12 @@ macro_rules! exec_stdout {
 /// Panics if the command exits with a failure status.
 #[macro_export]
 macro_rules! exec_stderr {
-    ($p : expr) => {{
+    ($p : expr) => {
         tinyrick::exec_output!($p).stderr
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         tinyrick::exec_output!($p, $a).stderr
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -145,12 +145,12 @@ macro_rules! exec_stderr {
 /// Panics if the command exits with a failure status.
 #[macro_export]
 macro_rules! exec_stdout_utf8 {
-    ($p : expr) => {{
+    ($p : expr) => {
         String::from_utf8(tinyrick::exec_stdout!($p)).unwrap()
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         String::from_utf8(tinyrick::exec_stdout!($p, $a)).unwrap()
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -160,12 +160,12 @@ macro_rules! exec_stdout_utf8 {
 /// Panics if the command exits with a failure status.
 #[macro_export]
 macro_rules! exec_stderr_utf8 {
-    ($p : expr) => {{
+    ($p : expr) => {
         String::from_utf8(tinyrick::exec_stderr!($p)).unwrap()
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         String::from_utf8(tinyrick::exec_stderr!($p, $a)).unwrap()
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -175,12 +175,12 @@ macro_rules! exec_stderr_utf8 {
 /// Panics if the command could not run to completion.
 #[macro_export]
 macro_rules! exec_status {
-    ($p : expr) => {{
+    ($p : expr) => {
         tinyrick::exec_mut!($p).status().unwrap()
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         tinyrick::exec_mut!($p, $a).status().unwrap()
-    }};
+    };
 }
 
 /// Hey genius, avoid executing commands whenever possible! Look for Rust libraries instead.
@@ -189,12 +189,12 @@ macro_rules! exec_status {
 /// Panics if the command exits with a failure status.
 #[macro_export]
 macro_rules! exec {
-    ($p : expr) => {{
+    ($p : expr) => {
         assert!(tinyrick::exec_status!($p).success());
-    }};
-    ($p : expr, $a : expr) => {{
+    };
+    ($p : expr, $a : expr) => {
         assert!(tinyrick::exec_status!($p, $a).success())
-    }};
+    };
 }
 
 /// Show registered tasks
@@ -227,29 +227,31 @@ macro_rules! list_tasks {
 #[macro_export]
 macro_rules! wubba_lubba_dub_dub {
     ($d : expr ; $($t : expr),*) => {
-        use std::env;
-        use std::process;
+        {
+            use std::env;
+            use std::process;
 
-        let arguments: Vec<String> = env::args().collect();
+            let arguments: Vec<String> = env::args().collect();
 
-        let task_names: Vec<&str> = arguments
-            .iter()
-            .skip(1)
-            .map(String::as_str)
-            .collect();
+            let task_names: Vec<&str> = arguments
+                .iter()
+                .skip(1)
+                .map(String::as_str)
+                .collect();
 
-        if task_names.is_empty() {
-            $d();
-            process::exit(0);
-        }
+            if task_names.is_empty() {
+                $d();
+                process::exit(0);
+            }
 
-        for task_name in task_names {
-            match task_name {
-                "-l" => tinyrick::list_tasks!($d $(, $t)*),
-                "--list" => tinyrick::list_tasks!($d $(, $t)*),
-                stringify!($d) => $d(),
-                $(stringify!($t) => $t(),)*
-                _ => panic!("Unknown task {}", task_name)
+            for task_name in task_names {
+                match task_name {
+                    "-l" => tinyrick::list_tasks!($d $(, $t)*),
+                    "--list" => tinyrick::list_tasks!($d $(, $t)*),
+                    stringify!($d) => $d(),
+                    $(stringify!($t) => $t(),)*
+                    _ => panic!("Unknown task {}", task_name)
+                }
             }
         }
     };

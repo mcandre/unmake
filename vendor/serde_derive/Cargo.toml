@@ -10,13 +10,21 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-rust-version = "1.56"
+edition = "2015"
+rust-version = "1.61"
 name = "serde_derive"
-version = "1.0.197"
+version = "1.0.219"
 authors = [
     "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
     "David Tolnay <dtolnay@gmail.com>",
 ]
+build = false
+exclude = ["build.rs"]
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "Macros 1.1 implementation of #[derive(Serialize, Deserialize)]"
 homepage = "https://serde.rs"
 documentation = "https://serde.rs/derive.html"
@@ -35,11 +43,22 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/serde-rs/serde"
 
 [package.metadata.docs.rs]
-rustdoc-args = ["--generate-link-to-definition"]
+rustdoc-args = [
+    "--generate-link-to-definition",
+    "--extern-html-root-url=core=https://doc.rust-lang.org",
+    "--extern-html-root-url=alloc=https://doc.rust-lang.org",
+    "--extern-html-root-url=std=https://doc.rust-lang.org",
+    "--extern-html-root-url=proc_macro=https://doc.rust-lang.org",
+]
 targets = ["x86_64-unknown-linux-gnu"]
+
+[features]
+default = []
+deserialize_in_place = []
 
 [lib]
 name = "serde_derive"
+path = "src/lib.rs"
 proc-macro = true
 
 [dependencies.proc-macro2]
@@ -53,7 +72,7 @@ features = ["proc-macro"]
 default-features = false
 
 [dependencies.syn]
-version = "2.0.46"
+version = "2.0.81"
 features = [
     "clone-impls",
     "derive",
@@ -65,7 +84,3 @@ default-features = false
 
 [dev-dependencies.serde]
 version = "1"
-
-[features]
-default = []
-deserialize_in_place = []

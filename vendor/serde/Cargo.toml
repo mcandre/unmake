@@ -13,12 +13,17 @@
 edition = "2018"
 rust-version = "1.31"
 name = "serde"
-version = "1.0.197"
+version = "1.0.219"
 authors = [
     "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
     "David Tolnay <dtolnay@gmail.com>",
 ]
 build = "build.rs"
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "A generic serialization/deserialization framework"
 homepage = "https://serde.rs"
 documentation = "https://docs.rs/serde"
@@ -43,9 +48,10 @@ features = [
     "unstable",
 ]
 rustdoc-args = [
-    "--cfg",
-    "doc_cfg",
     "--generate-link-to-definition",
+    "--extern-html-root-url=core=https://doc.rust-lang.org",
+    "--extern-html-root-url=alloc=https://doc.rust-lang.org",
+    "--extern-html-root-url=std=https://doc.rust-lang.org",
 ]
 targets = ["x86_64-unknown-linux-gnu"]
 
@@ -55,16 +61,6 @@ features = [
     "rc",
 ]
 
-[lib]
-doc-scrape-examples = false
-
-[dependencies.serde_derive]
-version = "1"
-optional = true
-
-[dev-dependencies.serde_derive]
-version = "1"
-
 [features]
 alloc = []
 default = ["std"]
@@ -73,5 +69,16 @@ rc = []
 std = []
 unstable = []
 
+[lib]
+name = "serde"
+path = "src/lib.rs"
+
+[dependencies.serde_derive]
+version = "1"
+optional = true
+
+[dev-dependencies.serde_derive]
+version = "1"
+
 [target."cfg(any())".dependencies.serde_derive]
-version = "=1.0.197"
+version = "=1.0.219"

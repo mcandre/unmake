@@ -10,9 +10,16 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
+edition = "2021"
 name = "tinyrick"
-version = "0.0.14"
+version = "0.0.15"
 authors = ["Andrew Pennebaker <andrew.pennebaker@gmail.com>"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "a freeform Rust build system"
 homepage = "https://github.com/mcandre/tinyrick"
 documentation = "https://docs.rs/tinyrick/"
@@ -21,16 +28,17 @@ license = "BSD-2-Clause"
 
 [lib]
 name = "tinyrick"
+path = "src/lib.rs"
 
 [[bin]]
 name = "tinyrick"
 path = "src/tinyrick.rs"
 
 [dependencies.die]
-version = "0.2.0"
+version = "=0.2.0"
 
 [dependencies.getopts]
-version = "0.2.21"
+version = "=0.2.21"
 
 [dependencies.lazy_static]
 version = "1.4.0"

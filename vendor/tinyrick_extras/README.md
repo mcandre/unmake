@@ -38,7 +38,8 @@ BSD-2-Clause
 
 # RUNTIME REQUIREMENTS
 
-* [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
+* [Rust](https://www.rust-lang.org/en-US/) 1.87.0+
+* [tinyrck](https://github.com/mcandre/tinyrick) 0.0.15
 
 ## Recommended
 
@@ -46,7 +47,6 @@ BSD-2-Clause
 * [cargo-cache](https://crates.io/crates/cargo-cache)
 * [crit](https://github.com/mcandre/crit) ports Rust applications
 * [direnv](https://direnv.net/) 2
-* POSIX compatible [tar](https://pubs.opengroup.org/onlinepubs/7908799/xcu/tar.html)
 
 # CONTRIBUTING
 

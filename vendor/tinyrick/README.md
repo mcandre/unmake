@@ -47,7 +47,7 @@ BSD-2-Clause
 
 # RUNTIME REQUIREMENTS
 
-* [Rust](https://www.rust-lang.org/en-US/) 1.75.0+
+* [Rust](https://www.rust-lang.org/en-US/) 1.87.0+
 
 ## Recommended
 
@@ -100,7 +100,7 @@ description = "hyperadvanced derpmobiles"
 version = "3.1.4"
 
 [dependencies]
-tinyrick = { version = "0.0.14", optional = true }
+tinyrick = { version = "0.0.15", optional = true }
 
 [features]
 letmeout = ["tinyrick"]
@@ -158,6 +158,8 @@ For more details on developing tinyrick itself, see [DEVELOPMENT.md](DEVELOPMENT
 
 * Inspired by the excellent [mage](https://magefile.org/) build system for Go projects
 * [bb](https://github.com/mcandre/bb), a build system for (g)awk projects
+* [beltaloada](https://github.com/mcandre/beltaloada), a guide to writing build systems for (POSIX) sh
+* [booty](https://github.com/mcandre/booty?tab=readme-ov-file) for JS/Node.js/altJS
 * [cargo](https://doc.rust-lang.org/cargo/reference/build-scripts.html) custom build scripts, primarily for generating Rust source files from other languages
 * [cmake](https://cmake.org/) for C/C++ projects
 * [dale](https://github.com/mcandre/dale) builds D projects

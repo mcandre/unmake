@@ -104,9 +104,9 @@
 /// # }
 /// ```
 ///
-/// [`Deserializer`]: trait.Deserializer.html
-/// [`Visitor`]: de/trait.Visitor.html
-/// [`Deserializer::deserialize_any`]: trait.Deserializer.html#tymethod.deserialize_any
+/// [`Deserializer`]: crate::Deserializer
+/// [`Visitor`]: crate::de::Visitor
+/// [`Deserializer::deserialize_any`]: crate::Deserializer::deserialize_any
 #[macro_export(local_inner_macros)]
 macro_rules! forward_to_deserialize_any {
     (<$visitor:ident: Visitor<$lifetime:tt>> $($func:ident)*) => {
@@ -123,7 +123,7 @@ macro_rules! forward_to_deserialize_any {
 macro_rules! forward_to_deserialize_any_method {
     ($func:ident<$l:tt, $v:ident>($($arg:ident : $ty:ty),*)) => {
         #[inline]
-        fn $func<$v>(self, $($arg: $ty,)* visitor: $v) -> $crate::__private::Result<$v::Value, Self::Error>
+        fn $func<$v>(self, $($arg: $ty,)* visitor: $v) -> $crate::__private::Result<$v::Value, <Self as $crate::de::Deserializer<$l>>::Error>
         where
             $v: $crate::de::Visitor<$l>,
         {

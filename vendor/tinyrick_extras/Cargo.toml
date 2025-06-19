@@ -10,17 +10,28 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
+edition = "2024"
 name = "tinyrick_extras"
-version = "0.0.8"
+version = "0.0.9"
 authors = ["Andrew Pennebaker <andrew.pennebaker@gmail.com>"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "common tasks for tinyrick projects"
 homepage = "https://github.com/mcandre/tinyrick_extras"
 documentation = "https://docs.rs/releases/search?query=tinyrick_extras"
 readme = "README.md"
 license = "BSD-2-Clause"
 
+[features]
+letmeout = []
+
 [lib]
 name = "tinyrick_extras"
+path = "src/lib.rs"
 
 [[bin]]
 name = "tinyrick"
@@ -28,7 +39,4 @@ path = "tinyrick.rs"
 required-features = ["letmeout"]
 
 [dependencies.tinyrick]
-version = "0.0.13"
-
-[features]
-letmeout = []
+version = "=0.0.15"
