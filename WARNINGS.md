@@ -47,6 +47,15 @@ As well, aggregate targets like `port: cross-compile archive`, that do not have 
 
 Due to the variance in artifact names, `unmake` cannot automate checking for all possible targets deserving `.PHONY` declarations. Neither `make` nor `unmake` knows this application-specific information. The makefile maintainer should supply this information, and configure any needed `.PHONY` declarations accordingly.
 
+makefile authors may use variables in `.PHONY` prerequisites:
+
+```make
+ALLTARGETS!=ls -a *
+.PHONY: $(ALLTARGETS)
+```
+
+The above example effectively treats every target as `.PHONY`, without resorting to boilerplate or breaking POSIX compatibility.
+
 ### Fail
 
 ```make
@@ -117,6 +126,16 @@ port: cross-compile archive
 ```
 
 If the hypothetical `cross-compile` and `archive` targets are themselves merely logical targets rather than filenames, then they should be declared `.PHONY` as well.
+
+```make
+ALLTARGETS!=ls -a *
+.PHONY: $(ALLTARGETS)
+
+all: welcome
+
+welcome:
+	echo "Hello World!"
+```
 
 ### Mitigation
 

@@ -1519,6 +1519,7 @@ fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Wa
         .filter(|e| match &e.n {
             ast::Ore::Ru { ps: _, ts, cs: _ }
                 if !ts.iter().any(|e2| ast::SPECIAL_TARGETS.contains(e2))
+                    && !marked_phony_targets.iter().any(|e2| e2.starts_with('$'))
                     && ts.iter().any(|e2| !marked_phony_targets.contains(e2)) =>
             {
                 ts.iter().any(|e2| {
@@ -1658,6 +1659,17 @@ pub fn test_phony_target() {
     // unlike some makefile linters in the past.
     assert!(
         !lint(&mock_md("-"), ".POSIX:\nPKG = curl\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&PHONY_TARGET.to_string())
+    );
+
+    // Ensure that .PHONY declarations featuring variable prerequisites
+    // do not trigger a PHONY_TARGET warning.
+    assert!(
+        !lint(&mock_md("-"), "ALLTARGETS!=ls -a *\n.PHONY: $(ALLTARGETS)\nall: welcome\nwelcome:\n\techo \"Hello World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.message)
