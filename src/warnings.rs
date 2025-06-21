@@ -1669,7 +1669,7 @@ pub fn test_phony_target() {
     // Ensure that .PHONY declarations featuring variable prerequisites
     // do not trigger a PHONY_TARGET warning.
     assert!(
-        !lint(&mock_md("-"), "ALLTARGETS!=ls -a *\n.PHONY: $(ALLTARGETS)\nall: welcome\nwelcome:\n\techo \"Hello World!\"\n")
+        !lint(&mock_md("-"), "ALLTARGETS!=ls -a\n.PHONY: $(ALLTARGETS)\nall: welcome\nwelcome:\n\techo \"Hello World!\"\n")
             .unwrap()
             .into_iter()
             .map(|e| e.message)

@@ -1,6 +1,6 @@
 .POSIX:
 .SILENT:
-ALLTARGETS!=ls -a *
+ALLTARGETS!=ls -a
 .PHONY: $(ALLTARGETS)
 
 all: welcome

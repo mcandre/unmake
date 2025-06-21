@@ -50,7 +50,7 @@ Due to the variance in artifact names, `unmake` cannot automate checking for all
 makefile authors may use variables in `.PHONY` prerequisites:
 
 ```make
-ALLTARGETS!=ls -a *
+ALLTARGETS!=ls -a
 .PHONY: $(ALLTARGETS)
 ```
 
