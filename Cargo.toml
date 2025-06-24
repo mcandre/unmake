@@ -5,7 +5,7 @@ version = "0.0.20"
 edition = "2024"
 authors = ["Andrew Pennebaker <andrew.pennebaker@gmail.com>"]
 license = "BSD-2-Clause"
-homepage = "https://github.com/mcandre/unmake"
+repository = "https://github.com/mcandre/unmake"
 documentation = "https://docs.rs/unmake/latest/unmake/"
 
 [dependencies]
