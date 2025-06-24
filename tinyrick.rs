@@ -122,6 +122,7 @@ fn main() {
         build;
         archive,
         audit,
+        cargo_check,
         clean,
         clean_cargo,
         clean_ports,
