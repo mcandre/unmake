@@ -1167,3 +1167,45 @@ all:
 * Treat the `SHELL` makefile macro as a private, internal make macro
 * Note that a distinct `SHELL` environment variable may be available to commands, apart from the `SHELL` make macro.
 * Move complex shell logic to a dedicated shell script.
+
+## NONPORTABLE_ASSIGNMENT
+
+The single colon equals (`:=`) macro assignment operator is not portable POSIX. It is an extension that risks different behavior across make implementations.
+
+Instead, select a modern, portable macro assignment operator. POSIX make supports a variety of portable assignment operators with specialized evaluation semantics for assorted use cases.
+
+### Fail
+
+```make
+CLIENT := curl --version
+```
+
+### Pass
+
+```make
+CLIENT ::= curl --version
+```
+
+```make
+CLIENT :::= curl --version
+```
+
+```make
+CLIENT ?= curl --version
+```
+
+```make
+CLIENT != curl --version
+```
+
+```make
+CLIENT += curl --version
+```
+
+```make
+CLIENT = curl --version
+```
+
+### Mitigation
+
+* Replace nonportable `:=` assignments with modern POSIX equivalents.

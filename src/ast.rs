@@ -88,6 +88,9 @@ pub enum Ore {
         /// n denotes a name for this macro.
         n: String,
 
+        /// o denotes an assignment operator.
+        o: String,
+
         /// v denotes an unexpanded value for this macro.
         v: String,
     },
@@ -424,18 +427,19 @@ parser! {
                 strings.join("")
             }
 
-        rule assignment_operator() -> &'input str =
+        rule assignment_operator() -> String =
             quiet!{
-                $(("+" / "!" / "?" / ":::" / "::")*<0,1> "=")
+                s:$(("+" / "!" / "?" / ":::" / "::" / ":")*<0,1> "=") { s.to_string() }
             } / expected!("assignment operator")
 
         rule macro_definition() -> Gem =
-            (comment() / line_ending())* p:position!() n:macro_name() _ assignment_operator() _ v:macro_value() {
+            (comment() / line_ending())* p:position!() n:macro_name() _ o:assignment_operator() _ v:macro_value() {
                 Gem {
                     o: p,
                     l: 0,
                     n: Ore::Mc {
                         n,
+                        o,
                         v,
                     },
                 }
@@ -618,6 +622,7 @@ fn test_whitespace() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "BLANK".to_string(),
+            o: "=".to_string(),
             v: String::new(),
         }]
     );
@@ -631,6 +636,7 @@ fn test_whitespace() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "C".to_string(),
+            o: "=".to_string(),
             v: "c ".to_string(),
         }]
     );
@@ -704,6 +710,7 @@ fn test_comments() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "C".to_string(),
+            o: "=".to_string(),
             v: "c".to_string(),
         }]
     );
@@ -732,6 +739,7 @@ fn test_offsets_and_line_numbers() {
             l: 2,
             n: Ore::Mc {
                 n: "A".to_string(),
+                o: "=".to_string(),
                 v: "apple".to_string(),
             }
         }]
@@ -763,6 +771,7 @@ fn test_c_family_escape_preservation() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "MSG".to_string(),
+            o: "=".to_string(),
             v: "\"Hello World!\\n\"".to_string(),
         }]
     );
@@ -779,6 +788,7 @@ fn test_multiline_expressions() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "FULL_NAME".to_string(),
+            o: "=".to_string(),
             v: "Alice Liddell".to_string(),
         }]
     );
@@ -848,7 +858,25 @@ fn test_backslash_prefixed_values() {
             .collect::<Vec<Ore>>(),
         vec![Ore::Mc {
             n: "CLIENT".to_string(),
+            o: "=".to_string(),
             v: "\\curl".to_string()
+        }]
+    );
+}
+
+#[test]
+fn test_deviant_assignment() {
+    assert_eq!(
+        parse_posix("-", "CLIENT:=curl --version")
+            .unwrap()
+            .ns
+            .into_iter()
+            .map(|e| e.n)
+            .collect::<Vec<Ore>>(),
+        vec![Ore::Mc {
+            n: "CLIENT".to_string(),
+            o: ":=".to_string(),
+            v: "curl --version".to_string(),
         }]
     );
 }

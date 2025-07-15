@@ -265,46 +265,6 @@ DIR:
 * Comment out temporarily empty rules
 * Remove extraneous rules
 
-## Assignment Operator Portability
-
-Due to incompatible semantics between different make implementations for the `:=` operator, the POSIX standard discourages this operator.
-
-### Fail
-
-```make
-M := hello
-```
-
-### Pass
-
-```make
-M = hello
-```
-
-```make
-M ::= hello
-```
-
-```make
-M :::= hello
-```
-
-```make
-M ?= hello
-```
-
-```make
-M != echo hello
-```
-
-```make
-M += hello
-```
-
-### Mitigation
-
-* Identify the desired behavior, and apply a corresponding POSIX compliant macro assignment operator.
-
 ## Incomplete macro definition
 
 Macro definitions take the form `<name> <assignment operator> [<value>]`.

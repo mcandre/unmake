@@ -64,6 +64,7 @@ lazy_static::lazy_static! {
         check_reserved_target,
         check_rule_all,
         check_final_eol,
+        check_portable_assignment,
     ];
 }
 
@@ -267,7 +268,7 @@ pub static UB_MAKEFLAGS_ASSIGNMENT: &str = "UB_MAKEFLAGS_MACRO: do not modify MA
 fn check_ub_makeflags_assignment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     gems.iter()
         .filter(|e| match &e.n {
-            ast::Ore::Mc { n, v: _ } => n == "MAKEFLAGS",
+            ast::Ore::Mc { n, o: _, v: _ } => n == "MAKEFLAGS",
             _ => false,
         })
         .map(|e| Warning {
@@ -304,7 +305,7 @@ pub static UB_SHELL_MACRO: &str = "UB_SHELL_MACRO: do not use or modify SHELL ma
 fn check_ub_shell_macro(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     gems.iter()
         .filter(|e| match &e.n {
-            ast::Ore::Mc { n, v: _ } => n == "SHELL",
+            ast::Ore::Mc { n, o: _, v: _ } => n == "SHELL",
             _ => false,
         })
         .map(|e| Warning {
@@ -408,7 +409,7 @@ pub static CURDIR_ASSIGNMENT_NOP: &str =
 fn check_curdir_assignment_nop(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     gems.iter()
         .filter(|e| match &e.n {
-            ast::Ore::Mc { n, v: _ } => n == "CURDIR",
+            ast::Ore::Mc { n, o: _, v: _ } => n == "CURDIR",
             _ => false,
         })
         .map(|e| Warning {
@@ -1891,6 +1892,90 @@ fn test_reserved_target() {
             .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&RESERVED_TARGET.to_string())
+    );
+}
+
+pub static NONPORTABLE_ASSIGNMENT: &str =
+    "NONPORTABLE_ASSIGNMENT: single colon equals (:=) assignment is nonportable";
+
+/// check_portable_assignment reports NONPORTABLE_ASSIGNMENT violations.
+fn check_portable_assignment(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::Mc { n: _, o, v: _ } => o == ":=",
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.to_string(),
+            line: e.l,
+            message: NONPORTABLE_ASSIGNMENT.to_string(),
+        })
+        .collect()
+}
+
+#[test]
+fn test_nonportable_assignment() {
+    assert!(
+        lint(&mock_md("-"), "CLIENT:=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
+    );
+
+    assert!(
+        !lint(&mock_md("-"), "CLIENT::=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
+    );
+
+    assert!(
+        !lint(&mock_md("-"), "CLIENT:::=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
+    );
+
+    assert!(
+        !lint(&mock_md("-"), "CLIENT?=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
+    );
+
+    assert!(
+        !lint(&mock_md("-"), "CLIENT!=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
+    );
+
+    assert!(
+        !lint(&mock_md("-"), "CLIENT+=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
+    );
+
+        assert!(
+        !lint(&mock_md("-"), "CLIENT=curl --version\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&NONPORTABLE_ASSIGNMENT.to_string())
     );
 }
 
