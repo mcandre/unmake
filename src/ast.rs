@@ -29,6 +29,224 @@ lazy_static::lazy_static! {
         .into_iter()
         .map(|e| e.to_string())
         .collect::<HashSet<String>>();
+
+    /// DEFAULT_RULES collects implicit rules.
+    pub static ref DEFAULT_RULES : Vec<Ore> = vec![
+        Ore::Ru{
+            ts: vec![".SCCS_GET".to_string()],
+            ps: vec![],
+            cs: vec!["sccs $(SCCSFLAGS) get $(SCCSGETFLAGS) $@".to_string()],
+        },
+        Ore::Ru{
+            ts: vec![".SUFFIXES".to_string()],
+            ps: vec![
+                ".o".to_string(),
+                ".c".to_string(),
+                ".y".to_string(),
+                ".l".to_string(),
+                ".a".to_string(),
+                ".sh".to_string(),
+                ".c~".to_string(),
+                ".y~".to_string(),
+                ".l~".to_string(),
+                ".sh~".to_string(),
+            ],
+            cs: vec![],
+        },
+        Ore::Mc{
+            n: "AR".to_string(),
+            o: "=".to_string(),
+            v: "ar".to_string(),
+        },
+        Ore::Mc{
+            n: "ARFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "-rv".to_string(),
+        },
+        Ore::Mc{
+            n: "YACC".to_string(),
+            o: "=".to_string(),
+            v: "yacc".to_string(),
+        },
+        Ore::Mc{
+            n: "YFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "".to_string(),
+        },
+        Ore::Mc{
+            n: "LEX".to_string(),
+            o: "=".to_string(),
+            v: "lex".to_string(),
+        },
+        Ore::Mc{
+            n: "LFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "".to_string(),
+        },
+        Ore::Mc{
+            n: "LDFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "".to_string(),
+        },
+        Ore::Mc{
+            n: "CC".to_string(),
+            o: "=".to_string(),
+            v: "c17".to_string(),
+        },
+        Ore::Mc{
+            n: "CFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "-O 1".to_string(),
+        },
+        Ore::Mc{
+            n: "GET".to_string(),
+            o: "=".to_string(),
+            v: "get".to_string(),
+        },
+        Ore::Mc{
+            n: "GFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "".to_string(),
+        },
+        Ore::Mc{
+            n: "SCCSFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "".to_string(),
+        },
+        Ore::Mc{
+            n: "SCCSGETFLAGS".to_string(),
+            o: "=".to_string(),
+            v: "-s".to_string(),
+        },
+        Ore::Ru{
+            ts: vec![".c".to_string()],
+            ps: vec![],
+            cs: vec!["$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<".to_string()],
+        },
+        Ore::Ru{
+            ts: vec![".sh".to_string()],
+            ps: vec![],
+            cs: vec![
+                "cp $< $@".to_string(),
+                "chmod a+x $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".c~".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.c".to_string(),
+                "$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $*.c".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".sh~".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.sh".to_string(),
+                "cp $*.sh $@".to_string(),
+                "chmod a+x $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".c.o".to_string()],
+            ps: vec![],
+            cs: vec!["$(CC) $(CFLAGS) -c $<".to_string()],
+        },
+        Ore::Ru{
+            ts: vec![".y.o".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(YACC) $(YFLAGS) $<".to_string(),
+                "$(CC) $(CFLAGS) -c y.tab.c".to_string(),
+                "rm -f y.tab.c".to_string(),
+                "mv y.tab.o $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".l.o".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(LEX) $(LFLAGS) $<".to_string(),
+                "$(CC) $(CFLAGS) -c lex.yy.c".to_string(),
+                "rm -f lex.yy.c".to_string(),
+                "mv lex.yy.o $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".y.c".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(YACC) $(YFLAGS) $<".to_string(),
+                "mv y.tab.c $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".l.c".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(LEX) $(LFLAGS) $<".to_string(),
+                "mv lex.yy.c $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".c~.o".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.c".to_string(),
+                "$(CC) $(CFLAGS) -c $*.c".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".y~.o".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.y".to_string(),
+                "$(YACC) $(YFLAGS) $*.y".to_string(),
+                "$(CC) $(CFLAGS) -c y.tab.c".to_string(),
+                "rm -f y.tab.c".to_string(),
+                "mv y.tab.o $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".l~.o".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.l".to_string(),
+                "$(LEX) $(LFLAGS) $*.l".to_string(),
+                "$(CC) $(CFLAGS) -c lex.yy.c".to_string(),
+                "rm -f lex.yy.c".to_string(),
+                "mv lex.yy.o $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".y~.c".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.y".to_string(),
+                "$(YACC) $(YFLAGS) $*.y".to_string(),
+                "mv y.tab.c $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".l~.c".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(GET) $(GFLAGS) -p $< > $*.l".to_string(),
+                "$(LEX) $(LFLAGS) $*.l".to_string(),
+                "mv lex.yy.c $@".to_string(),
+            ],
+        },
+        Ore::Ru{
+            ts: vec![".c.a".to_string()],
+            ps: vec![],
+            cs: vec![
+                "$(CC) -c $(CFLAGS) $<".to_string(),
+                "$(AR) $(ARFLAGS) $@ $*.o".to_string(),
+                "rm -f $*.o".to_string(),
+            ],
+        },
+    ];
 }
 
 /// Traceable prepares an AST entry to receive updates
