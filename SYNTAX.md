@@ -36,6 +36,7 @@ See the [fixtures](fixtures) directory for more examples.
 * At (`@`) / `.SILENT` can reduce log noise and mitigate certain types of sensitive data leaks.
 * At (`@`) / `.SILENT` are generally safe to apply to globally.
 * At (`@`), hyphen-minus (`-`), and/or plus (`+`) prefixes can be combined for the same command And prerequisites may appear in `.SILENT` and/or `.IGNORE` special targets. For example, an `uninstall` or `clean*` command is likely to appear to be simultaneously `.PHONY:`, `.SILENT:`, and `.IGNORE: <task>`.
+* Implicit rules are currently unsupported.
 
 # POSIX
 
