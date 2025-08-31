@@ -97,6 +97,9 @@ pub enum Ore {
 
     /// In models an include line.
     In {
+        /// s denotes whether the include is silent.
+        s: bool,
+
         /// ps collects the file paths of any further makefile to include.
         ps: Vec<String>,
     },
@@ -455,17 +458,32 @@ parser! {
                 s.to_string()
             }
 
-        rule include_opening() =
+        rule loud_include_opening() -> bool =
             quiet!{
-                ("-include" / "include")
+                "include" {
+                    false
+                }
+            }
+
+        rule silent_include_opening() -> bool =
+            quiet!{
+                "-include" {
+                    true
+                }
+            }
+
+        rule include_opening() -> bool =
+            quiet!{
+                loud_include_opening() / silent_include_opening()
             } / expected!("include opening")
 
         rule include() -> Gem =
-            (comment() / line_ending())* p:position!() include_opening() __ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
+            (comment() / line_ending())* p:position!() s:(include_opening()) __ ps:(include_value() ++ _) _ ((comment() / line_ending())+ / eof()) {
                 Gem {
                     o: p,
                     l: 0,
                     n: Ore::In {
+                        s,
                         ps,
                     },
                 }
@@ -605,6 +623,7 @@ fn test_whitespace() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::In {
+            s: false,
             ps: vec![
                 "foo.mk".to_string(),
                 "bar.mk".to_string(),
@@ -677,6 +696,7 @@ fn test_whitespace() {
             .map(|e| e.n)
             .collect::<Vec<Ore>>(),
         vec![Ore::In {
+            s: false,
             ps: vec!["abc".to_string()]
         }]
     );
@@ -697,6 +717,7 @@ fn test_comments() {
         .map(|e| e.n)
         .collect::<Vec<Ore>>(),
         vec![Ore::In {
+            s: false,
             ps: vec!["foo.mk".to_string()]
         }]
     );

@@ -1168,6 +1168,33 @@ all:
 * Note that a distinct `SHELL` environment variable may be available to commands, apart from the `SHELL` make macro.
 * Move complex shell logic to a dedicated shell script.
 
+## SILENT_INCLUDE
+
+> If, after proceeding as described above, the file still cannot be opened:
+>
+> * If the word include was prefixed with a <hyphen-minus> character, the file shall be ignored.
+>
+> * Otherwise, an error shall occur.
+
+Silent includes suppress error handling in the event that an include line is unable to process. Error suppressions like this risk system corruption and overcomplicate troubleshooting.
+
+### Fail
+
+```make
+-include foo.mk
+```
+
+### Pass
+
+```make
+include foo.mk
+```
+
+### Mitigation
+
+* Avoid silent include lines.
+* Delegate fancy logic into a shell script or a separate build system.
+
 ## NONPORTABLE_ASSIGNMENT
 
 The single colon equals (`:=`) macro assignment operator is not portable POSIX. It is an extension that risks different behavior across make implementations.

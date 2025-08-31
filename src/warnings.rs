@@ -42,6 +42,7 @@ lazy_static::lazy_static! {
         check_ub_ambiguous_include,
         check_ub_makeflags_assignment,
         check_ub_shell_macro,
+        check_silent_include,
         check_strict_posix,
         check_implementation_defined_target,
         check_makefile_precedence,
@@ -221,7 +222,7 @@ pub static UB_AMBIGUOUS_INCLUDE: &str =
 fn check_ub_ambiguous_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     gems.iter()
         .filter(|e| match &e.n {
-            ast::Ore::In { ps } => ps.iter().any(|e2| e2.starts_with('=')),
+            ast::Ore::In { s: _, ps } => ps.iter().any(|e2| e2.starts_with('=')),
             _ => false,
         })
         .map(|e| Warning {
@@ -335,6 +336,45 @@ fn test_ub_shell_macro() {
             .map(|e| e.message)
             .collect::<Vec<String>>()
             .contains(&UB_SHELL_MACRO.to_string())
+    );
+}
+
+pub static SILENT_INCLUDE: &str =
+    "SILENT_INCLUDE: dashed includes may obfuscate systemic errors";
+
+/// check_silent_include reports SILENT_INCLUDE violations.
+fn check_silent_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
+    gems.iter()
+        .filter(|e| match &e.n {
+            ast::Ore::In { s, ps: _ } => *s,
+            _ => false,
+        })
+        .map(|e| Warning {
+            path: metadata.path.to_string(),
+            line: e.l,
+            message: SILENT_INCLUDE.to_string(),
+        })
+        .collect()
+}
+
+#[test]
+fn test_silent_include() {
+    assert!(
+        lint(&mock_md("-"), "-include = foo.mk\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&SILENT_INCLUDE.to_string())
+    );
+
+    assert!(
+        !lint(&mock_md("-"), "include=foo.mk\n")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.message)
+            .collect::<Vec<String>>()
+            .contains(&SILENT_INCLUDE.to_string())
     );
 }
 
