@@ -1,7 +1,9 @@
 .POSIX:
 .SILENT:
-ALLTARGETS!=ls -a
-.PHONY: $(ALLTARGETS)
+.PHONY: \
+	all \
+	crates \
+	rustup-components
 
 all: crates rustup-components
 
