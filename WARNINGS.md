@@ -822,7 +822,7 @@ makefile:
 PKG = curl
 
 all:
-	apt-get install -y $(PKG)
+	apt install -y $(PKG)
 ```
 
 provision.include.mk:

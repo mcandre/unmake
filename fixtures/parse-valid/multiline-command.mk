@@ -2,5 +2,5 @@
 .PHONY: all
 
 all:
-	apt-get install -y \
+	apt install -y \
 		make

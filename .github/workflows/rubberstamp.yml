@@ -23,8 +23,8 @@ jobs:
     - uses: "actions/checkout@v4"
     - name: "provision git"
       run: |
-        sudo apt-get update
-        sudo apt-get install -y git
+        sudo apt update
+        sudo apt install -y git
         git config --global user.email 'rubberstamp@rubberstamp.test'
         git config --global user.name 'Rubberstamp'
         git config --global core.sshCommand 'ssh -i /tmp/key'
