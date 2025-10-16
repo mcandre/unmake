@@ -14,6 +14,6 @@ jobs:
     - uses: "dtolnay/rust-toolchain@stable"
       with:
         toolchain: "1.87.0"
-    - name: "provision auditing tools"
-      run: "make crates"
+    - name: "provision dev tools"
+      run: "./install"
     - run: "tinyrick audit"

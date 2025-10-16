@@ -1,5 +1,5 @@
 ---
-name: "Test-Futureproof-OS"
+name: "Test-Futureproof-Dependencies"
 on: # yamllint disable-line rule:truthy
   push:
   pull_request:
@@ -12,8 +12,8 @@ on: # yamllint disable-line rule:truthy
   - cron: "0 0 * * *"
   workflow_dispatch:
 jobs:
-  Test-Futureproof-OS:
-    runs-on: "ubuntu-24.04"
+  Test-Futureproof-Dependencies:
+    runs-on: "ubuntu-22.04"
     steps:
     - uses: "actions/checkout@v4"
     - uses: "dtolnay/rust-toolchain@stable"
@@ -21,4 +21,7 @@ jobs:
         toolchain: "1.87.0"
     - name: "provision dev tools"
       run: "./install"
-    - run: "tinyrick test"
+    - run: |
+        cargo upgrade
+        cargo update
+    - run: "make test"

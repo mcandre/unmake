@@ -74,7 +74,6 @@ fn lint() {
     tinyrick::deps(clippy);
     tinyrick::deps(doc);
     tinyrick::deps(rustfmt);
-    tinyrick::deps(unmake);
 }
 
 /// Lint, and then install artifacts
@@ -103,12 +102,6 @@ fn test() {
     tinyrick_extras::unit_test();
 }
 
-/// Run unmake
-fn unmake() {
-    tinyrick::exec!("unmake", &["makefile"]);
-    tinyrick::exec!("unmake", &["-n", "makefile"]);
-}
-
 /// Uninstall artifacts
 fn uninstall() {
     tinyrick::exec!("cargo", &["uninstall"]);
@@ -134,7 +127,6 @@ fn main() {
         publish,
         rustfmt,
         test,
-        uninstall,
-        unmake
+        uninstall
     );
 }

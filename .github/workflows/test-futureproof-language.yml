@@ -20,5 +20,5 @@ jobs:
       with:
         toolchain: "stable"
     - name: "provision dev tools"
-      run: "make -j 4 crates"
+      run: "./install"
     - run: "tinyrick test"

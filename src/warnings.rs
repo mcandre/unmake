@@ -339,8 +339,7 @@ fn test_ub_shell_macro() {
     );
 }
 
-pub static SILENT_INCLUDE: &str =
-    "SILENT_INCLUDE: dashed includes may obfuscate systemic errors";
+pub static SILENT_INCLUDE: &str = "SILENT_INCLUDE: dashed includes may obfuscate systemic errors";
 
 /// check_silent_include reports SILENT_INCLUDE violations.
 fn check_silent_include(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
@@ -2009,7 +2008,7 @@ fn test_nonportable_assignment() {
             .contains(&NONPORTABLE_ASSIGNMENT.to_string())
     );
 
-        assert!(
+    assert!(
         !lint(&mock_md("-"), "CLIENT=curl --version\n")
             .unwrap()
             .into_iter()
