@@ -22,6 +22,6 @@ jobs:
     - name: "provision dev tools"
       run: "./install"
     - run: |
-        cargo upgrade
+        cargo upgrade --verbose --incompatible
         cargo update
-    - run: "make test"
+    - run: "tinyrick test"
