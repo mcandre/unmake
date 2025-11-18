@@ -20,5 +20,5 @@ jobs:
       with:
         toolchain: "stable"
     - name: "provision dev tools"
-      run: "./install"
+      run: "make"
     - run: "tinyrick test"

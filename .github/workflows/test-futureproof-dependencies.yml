@@ -20,7 +20,7 @@ jobs:
       with:
         toolchain: "1.91.1"
     - name: "provision dev tools"
-      run: "./install"
+      run: "make"
     - run: |
         cargo upgrade --verbose --incompatible
         cargo update
