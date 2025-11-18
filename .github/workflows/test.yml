@@ -3,6 +3,7 @@ name: "Test"
 on: # yamllint disable-line rule:truthy
   push:
   pull_request:
+  workflow_dispatch:
 jobs:
   Test:
     runs-on: "ubuntu-24.04"
