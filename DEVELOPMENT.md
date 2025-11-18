@@ -5,7 +5,7 @@
 * POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
 * [rustup](https://rustup.rs/)
 * [Rust](https://www.rust-lang.org/en-US/)
-* POSIX compliant [tar](https://pubs.opengroup.org/onlinepubs/7908799/xcu/tar.html)
+* [GNU](https://www.gnu.org/software/tar/)/[BSD](https://man.freebsd.org/cgi/man.cgi?tar(1))/[Windows](https://ss64.com/nt/tar.html) tar with gzip support
 * Provision additional dev tools with `make`
 
 ## Recommended
