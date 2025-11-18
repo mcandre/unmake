@@ -674,15 +674,15 @@ fn check_redundant_silent_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) ->
     let mut marked_silent_targets: HashSet<&String> = HashSet::new();
 
     for gem in gems {
-        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
-            if ts.contains(&".SILENT".to_string()) {
-                if ps.is_empty() {
-                    has_global_silence = true;
-                }
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n
+            && ts.contains(&".SILENT".to_string())
+        {
+            if ps.is_empty() {
+                has_global_silence = true;
+            }
 
-                for p in ps {
-                    marked_silent_targets.insert(p);
-                }
+            for p in ps {
+                marked_silent_targets.insert(p);
             }
         }
     }
@@ -758,12 +758,13 @@ pub static REDUNDANT_IGNORE_MINUS: &str =
 /// check_redundant_ignore_minus reports REDUNDANT_IGNORE_MINUS violations.
 fn check_redundant_ignore_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     let mut marked_ignored_targets: HashSet<&String> = HashSet::new();
+
     for gem in gems {
-        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
-            if ts.contains(&".IGNORE".to_string()) {
-                for p in ps {
-                    marked_ignored_targets.insert(p);
-                }
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n
+            && ts.contains(&".IGNORE".to_string())
+        {
+            for p in ps {
+                marked_ignored_targets.insert(p);
             }
         }
     }
@@ -874,15 +875,15 @@ fn check_simplify_at(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<War
     let mut marked_silent_targets: HashSet<&String> = HashSet::new();
 
     for gem in gems {
-        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
-            if ts.contains(&".SILENT".to_string()) {
-                if ps.is_empty() {
-                    has_global_silence = true;
-                }
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n
+            && ts.contains(&".SILENT".to_string())
+        {
+            if ps.is_empty() {
+                has_global_silence = true;
+            }
 
-                for p in ps {
-                    marked_silent_targets.insert(p);
-                }
+            for p in ps {
+                marked_silent_targets.insert(p);
             }
         }
     }
@@ -956,15 +957,15 @@ fn check_simplify_minus(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<
     let mut marked_ignored_targets: HashSet<&String> = HashSet::new();
 
     for gem in gems {
-        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
-            if ts.contains(&".IGNORE".to_string()) {
-                if ps.is_empty() {
-                    has_global_ignore = true;
-                }
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n
+            && ts.contains(&".IGNORE".to_string())
+        {
+            if ps.is_empty() {
+                has_global_ignore = true;
+            }
 
-                for p in ps {
-                    marked_ignored_targets.insert(p);
-                }
+            for p in ps {
+                marked_ignored_targets.insert(p);
             }
         }
     }
@@ -1545,12 +1546,13 @@ pub static PHONY_TARGET: &str = "PHONY_TARGET: mark common artifactless rules as
 /// check_phony_target reports PHONY_TARGET violations.
 fn check_phony_target(metadata: &inspect::Metadata, gems: &[ast::Gem]) -> Vec<Warning> {
     let mut marked_phony_targets: HashSet<&String> = HashSet::new();
+
     for gem in gems {
-        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n {
-            if ts.contains(&".PHONY".to_string()) {
-                for p in ps {
-                    marked_phony_targets.insert(p);
-                }
+        if let ast::Ore::Ru { ps, ts, cs: _ } = &gem.n
+            && ts.contains(&".PHONY".to_string())
+        {
+            for p in ps {
+                marked_phony_targets.insert(p);
             }
         }
     }
