@@ -154,5 +154,6 @@ Some projects using `unmake` to safeguard their makefiles:
 * [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
 * [stank](https://github.com/mcandre/stank), a collection of shell script linter utilities
 * [tinyrick](https://github.com/mcandre/tinyrick), a task runner for Rust projects
+* [todolint](https://github.com/mcandre/todolint), a SAST tool based on code comments
 
 Note that the GNU and BSD implementations of `make` support `-j [4]` options for accelerating workflows using parallelism. Strict *POSIX* compliance helps to ensure that makefiles are portable, able to run with GNU, BSD, and other make implementations.
