@@ -7,7 +7,7 @@ all:
 		cargo-audit \
 		cargo-cache \
 		cargo-edit \
-		crit@0.0.10 \
+		crit@0.0.11 \
 		tinyrick@0.0.17
 	cargo install --force \
 		cross \
