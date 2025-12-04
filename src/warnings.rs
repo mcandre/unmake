@@ -2,42 +2,43 @@
 
 use crate::ast;
 use crate::inspect;
+
 use std::collections::HashSet;
 use std::fmt;
+use std::sync;
 
-lazy_static::lazy_static! {
-    /// WD_COMMANDS collects common commands for modifying a shell's current working directory.
-    pub static ref WD_COMMANDS: Vec<&'static str> = vec![
-        "cd",
-        "pushd",
-        "popd",
-    ];
+/// WD_COMMANDS collects common commands for modifying a shell's current working directory.
+pub static WD_COMMANDS: sync::LazyLock<Vec<&str>> =
+    sync::LazyLock::new(|| vec!["cd", "pushd", "popd"]);
 
-    /// LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN matches common artifactless target names,
-    /// specified in lowercase.
-    pub static ref LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN: regex::Regex = regex::Regex::new(
-        "^all|lint|install|uninstall|publish|(test.*)|(clean.*)$"
-    ).unwrap();
+/// LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN matches common artifactless target names,
+/// specified in lowercase.
+pub static LOWER_CONVENTIONAL_PHONY_TARGETS_PATTERN: sync::LazyLock<regex::Regex> =
+    sync::LazyLock::new(|| {
+        regex::Regex::new("^all|lint|install|uninstall|publish|(test.*)|(clean.*)$").unwrap()
+    });
 
-    /// COMMAND_PREFIX_PATTERN matches commands with prefixes.
-    pub static ref COMMAND_PREFIX_PATTERN: regex::Regex = regex::Regex::new(r"^(?P<prefix>[-+@]+)").unwrap();
+/// COMMAND_PREFIX_PATTERN matches commands with prefixes.
+pub static COMMAND_PREFIX_PATTERN: sync::LazyLock<regex::Regex> =
+    sync::LazyLock::new(|| regex::Regex::new(r"^(?P<prefix>[-+@]+)").unwrap());
 
-    /// BLANK_COMMAND_PATTERN matches empty commands.
-    ///
-    /// Empty commands are distinct from a rule without commands.
-    pub static ref BLANK_COMMAND_PATTERN: regex::Regex = regex::Regex::new(r"^[-+@]+\s*$").unwrap();
+/// BLANK_COMMAND_PATTERN matches empty commands.
+///
+/// Empty commands are distinct from a rule without commands.
+pub static BLANK_COMMAND_PATTERN: sync::LazyLock<regex::Regex> =
+    sync::LazyLock::new(|| regex::Regex::new(r"^[-+@]+\s*$").unwrap());
 
-    /// WHITESPACE_LEADING_COMMAND_PATTERN matches commands that start with whitespace.
-    pub static ref WHITESPACE_LEADING_COMMAND_PATTERN: regex::Regex = regex::Regex::new(r"^[-+@]*\s+").unwrap();
+/// WHITESPACE_LEADING_COMMAND_PATTERN matches commands that start with whitespace.
+pub static WHITESPACE_LEADING_COMMAND_PATTERN: sync::LazyLock<regex::Regex> =
+    sync::LazyLock::new(|| regex::Regex::new(r"^[-+@]*\s+").unwrap());
 
-    /// RESERVED_TARGET_PATTERN matches targets reserved either for POSIX use, or for extensions.
-    pub static ref RESERVED_TARGET_PATTERN: regex::Regex = regex::Regex::new(r"^.[A-Z]+").unwrap();
+/// RESERVED_TARGET_PATTERN matches targets reserved either for POSIX use, or for extensions.
+pub static RESERVED_TARGET_PATTERN: sync::LazyLock<regex::Regex> =
+    sync::LazyLock::new(|| regex::Regex::new(r"^.[A-Z]+").unwrap());
 
-    /// WARNING_DEFAULT_PATH assumes stdin (unimplemented).
-    static ref WARNING_DEFAULT_PATH: String = "-".to_string();
-
-    /// CHECKS collects the set of available high level makefile scans.
-    pub static ref CHECKS: Vec<Check> = vec![
+/// CHECKS collects the set of available high level makefile scans.
+pub static CHECKS: sync::LazyLock<Vec<Check>> = sync::LazyLock::new(|| {
+    vec![
         check_ub_late_posix_marker,
         check_ub_ambiguous_include,
         check_ub_makeflags_assignment,
@@ -66,8 +67,11 @@ lazy_static::lazy_static! {
         check_rule_all,
         check_final_eol,
         check_portable_assignment,
-    ];
-}
+    ]
+});
+
+/// WARNING_DEFAULT_PATH assumes stdin.
+static WARNING_DEFAULT_PATH: &str = "-";
 
 /// Check implements a linter scan.
 pub type Check = fn(&inspect::Metadata, &[ast::Gem]) -> Vec<Warning>;

@@ -1,35 +1,36 @@
 //! ast parses makefiles.
 
-extern crate lazy_static;
 extern crate peg;
 extern crate walkdir;
 
 use self::peg::parser;
+
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{Range, RangeInclusive};
+use std::sync;
 
 /// UPPERCASE_ALPHABETIC matches ASCII uppercase characters.
 pub static UPPERCASE_ALPHABETIC: RangeInclusive<char> = 'A'..='Z';
 
-lazy_static::lazy_static! {
-    /// SPECIAL_TARGETS collects POSIX special target names.
-    pub static ref SPECIAL_TARGETS: HashSet<String> = vec![
-            ".POSIX",
-            ".DEFAULT",
-            ".IGNORE",
-            ".NOTPARALLEL",
-            ".PHONY",
-            ".PRECIOUS",
-            ".SCCS_GET",
-            ".SILENT",
-            ".SUFFIXES",
-            ".WAIT",
-        ]
-        .into_iter()
-        .map(|e| e.to_string())
-        .collect::<HashSet<String>>();
-}
+/// SPECIAL_TARGETS collects POSIX special target names.
+pub static SPECIAL_TARGETS: sync::LazyLock<HashSet<String>> = sync::LazyLock::new(|| {
+    vec![
+        ".POSIX",
+        ".DEFAULT",
+        ".IGNORE",
+        ".NOTPARALLEL",
+        ".PHONY",
+        ".PRECIOUS",
+        ".SCCS_GET",
+        ".SILENT",
+        ".SUFFIXES",
+        ".WAIT",
+    ]
+    .into_iter()
+    .map(|e| e.to_string())
+    .collect::<HashSet<String>>()
+});
 
 /// Traceable prepares an AST entry to receive updates
 /// about parsing location details.

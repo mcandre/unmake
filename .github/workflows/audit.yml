@@ -15,5 +15,5 @@ jobs:
       with:
         toolchain: "1.91.1"
     - name: "provision dev tools"
-      run: "make"
-    - run: "tinyrick audit"
+      run: "make -f install.mk"
+    - run: "make audit"

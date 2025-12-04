@@ -6,7 +6,7 @@
 * [rustup](https://rustup.rs/)
 * [Rust](https://www.rust-lang.org/en-US/)
 * [GNU](https://www.gnu.org/software/tar/)/[BSD](https://man.freebsd.org/cgi/man.cgi?tar(1))/[Windows](https://ss64.com/nt/tar.html) tar with gzip support
-* Provision additional dev tools with `make`
+* Provision additional dev tools with `make -f install.mk`
 
 ## Recommended
 
@@ -20,47 +20,47 @@
 # INSTALL BINARIES FROM SOURCE
 
 ```console
-$ tinyrick install
+$ make install
 ```
 
 # UNINSTALL BINARIES
 
 ```console
-$ tinyrick uninstall
+$ make uninstall
 ```
 
 # SECURITY AUDIT
 
 ```console
-$ tinyrick audit
+$ make audit
 ```
 
 # LINT
 
 ```console
-$ tinyrick lint
+$ make lint
 ```
 
 # TEST
 
 ```console
-$ tinyrick test
+$ make test
 ```
 
 # PORT
 
 ```console
-$ tinyrick port
+$ make port
 ```
 
 # PUBLISH
 
 ```console
-$ tinyrick publish
+$ make publish
 ```
 
 # CLEAN
 
 ```console
-$ tinyrick clean
+$ make clean
 ```

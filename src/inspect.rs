@@ -1,54 +1,66 @@
 //! inspect generates metadata reports on makefiles.
 
-extern crate lazy_static;
 extern crate regex;
 extern crate serde;
 extern crate serde_json;
 
 use self::serde::{Deserialize, Serialize};
+
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::path;
+use std::sync;
 
-lazy_static::lazy_static! {
-    /// LOWER_FILENAMES_TO_IMPLEMENTATIONS maps common filenames to make implementation flavors.
-    pub static ref LOWER_FILENAMES_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
-        ("bsdmakefile", "bmake"),
-        ("gnumakefile", "gmake"),
-        ("makefile", "make"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.to_string(), v.to_string()))
-    .collect::<HashMap<String, String>>();
+/// LOWER_FILENAMES_TO_IMPLEMENTATIONS maps common filenames to make implementation flavors.
+pub static LOWER_FILENAMES_TO_IMPLEMENTATIONS: sync::LazyLock<HashMap<String, String>> =
+    sync::LazyLock::new(|| {
+        vec![
+            ("bsdmakefile", "bmake"),
+            ("gnumakefile", "gmake"),
+            ("makefile", "make"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect::<HashMap<String, String>>()
+    });
 
-    /// LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS maps common file extensions to make implementation flavors.
-    pub static ref LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS: HashMap<String, String> = vec![
-        ("bsdmakefile", "bmake"),
-        ("gnumakefile", "gmake"),
-        ("makefile", "make"),
-        ("mk", "make"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.to_string(), v.to_string()))
-    .collect::<HashMap<String, String>>();
+/// LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS maps common file extensions to make implementation flavors.
+pub static LOWER_FILE_EXTENSIONS_TO_IMPLEMENTATIONS: sync::LazyLock<HashMap<String, String>> =
+    sync::LazyLock::new(|| {
+        vec![
+            ("bsdmakefile", "bmake"),
+            ("gnumakefile", "gmake"),
+            ("makefile", "make"),
+            ("mk", "make"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect::<HashMap<String, String>>()
+    });
 
-    /// LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS maps common filenames to build systems
-    /// that may generate makefiles as intermediate build artifacts.
-    pub static ref LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: HashMap<String, String> = vec![
-        ("cmakelists.txt", "cmake"),
-        ("configure", "autotools"),
-        (".gyp", "gyp"),
-        ("makefile.pl", "perl"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.to_string(), v.to_string()))
-    .collect::<HashMap<String, String>>();
+/// LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS maps common filenames to build systems
+/// that may generate makefiles as intermediate build artifacts.
+pub static LOWER_FILENAMES_TO_PARENT_BUILD_SYSTEMS: sync::LazyLock<HashMap<String, String>> =
+    sync::LazyLock::new(|| {
+        vec![
+            ("cmakelists.txt", "cmake"),
+            ("configure", "autotools"),
+            (".gyp", "gyp"),
+            ("makefile.pl", "perl"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect::<HashMap<String, String>>()
+    });
 
-    /// LOWER_INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
-    /// for inclusion into other makefiles.
-    pub static ref LOWER_INCLUDE_FILENAME_PATTERN: regex::Regex = regex::Regex::new(r"^sys\.mk|(.*\.)?include\.(bsdmakefile|gnumakefile|makefile|mk)$").unwrap();
-}
+/// LOWER_INCLUDE_FILENAME_PATTERN matches common filenames for makefiles intended
+/// for inclusion into other makefiles.
+pub static LOWER_INCLUDE_FILENAME_PATTERN: sync::LazyLock<regex::Regex> =
+    sync::LazyLock::new(|| {
+        regex::Regex::new(r"^sys\.mk|(.*\.)?include\.(bsdmakefile|gnumakefile|makefile|mk)$")
+            .unwrap()
+    });
 
 /// Metadata collects information about a file path
 /// regarding its candidacy as a potential POSIX makefile.

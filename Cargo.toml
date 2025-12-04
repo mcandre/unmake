@@ -11,17 +11,11 @@ documentation = "https://docs.rs/unmake/latest/unmake/"
 [dependencies]
 die = "0.2.0"
 getopts = "0.2.24"
-lazy_static = "1.5.0"
 peg = "0.8.5"
 regex = "1.12.2"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-tinyrick = { version = "0.0.17", optional = true }
-tinyrick_extras = { version = "0.0.11", optional = true }
 walkdir = "2.5.0"
-
-[features]
-letmeout = ["tinyrick", "tinyrick_extras"]
 
 [lib]
 name = "unmake"
@@ -29,8 +23,3 @@ name = "unmake"
 [[bin]]
 name = "unmake"
 path = "src/bin/unmake.rs"
-
-[[bin]]
-name = "tinyrick"
-path = "tinyrick.rs"
-required-features = ["letmeout"]

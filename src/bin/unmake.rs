@@ -6,21 +6,19 @@ extern crate unmake;
 extern crate walkdir;
 
 use self::unmake::{inspect, warnings};
+
 use die::{Die, die};
+
 use std::env;
 use std::fs;
 use std::io;
 use std::path;
 use std::process;
+use std::sync;
 
-lazy_static::lazy_static! {
-    /// DIRECTORY_EXCLUSIONS
-    pub static ref DIRECTORY_EXCLUSIONS: Vec<&'static str> = vec![
-        ".git",
-        "node_modules",
-        "vendor",
-    ];
-}
+/// DIRECTORY_EXCLUSIONS collects common junk directories.
+pub static DIRECTORY_EXCLUSIONS: sync::LazyLock<Vec<&str>> =
+    sync::LazyLock::new(|| vec![".git", "node_modules", "vendor"]);
 
 /// CLI entrypoint
 fn main() {
