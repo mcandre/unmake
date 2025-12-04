@@ -27,7 +27,7 @@
 	clean-example \
 	clean-ports
 
-BANNER=unmake-0.0.23
+BANNER=unmake-0.0.24
 
 all: build
 
