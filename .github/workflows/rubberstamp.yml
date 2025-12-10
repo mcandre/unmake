@@ -1,6 +1,6 @@
 ---
 #
-# Rubberstamp v0.0.2
+# Rubberstamp v0.0.4
 # https://github.com/mcandre/rubberstamp
 #
 name: "Rubberstamp"
@@ -30,7 +30,7 @@ jobs:
         git config --global core.sshCommand 'ssh -i /tmp/key'
         echo "$SSH_KEY" >/tmp/key
         chmod 0600 /tmp/key
-        git remote set-url origin "git@github.com:${RUBBERSTAMP_GH_REPO}.git"
+        git remote set-url origin "git@github.com:$RUBBERSTAMP_GH_REPO.git"
     - name: "stamp"
       run: |
         date -u >.rubberstamp
