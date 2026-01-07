@@ -30,7 +30,7 @@
 	clean-example \
 	clean-ports
 
-VERSION=0.0.24
+VERSION=0.0.25
 BANNER=unmake-$(VERSION)
 
 all: build
