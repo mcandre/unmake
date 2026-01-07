@@ -80,7 +80,8 @@ docker-push:
 	tuggy -t n4jm4/unmake:$(VERSION) -a n4jm4/unmake --push
 
 docker-test:
-	tuggy -t n4jm4/unmake:test --load --push
+	tuggy -t n4jm4/unmake:test --load
+	tuggy -t n4jm4/unmake:test --push
 
 install:
 	cargo install --force --path .
