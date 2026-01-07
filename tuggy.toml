@@ -1,0 +1,5 @@
+# debug = true
+
+skip_platforms = [
+    "linux/mips64",
+]

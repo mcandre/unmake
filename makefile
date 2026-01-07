@@ -13,6 +13,9 @@
 	clippy \
 	crit \
 	doc \
+	docker-build \
+	docker-push \
+	docker-test \
 	install \
 	lint \
 	port \
@@ -27,7 +30,8 @@
 	clean-example \
 	clean-ports
 
-BANNER=unmake-0.0.24
+VERSION=0.0.24
+BANNER=unmake-$(VERSION)
 
 all: build
 
@@ -47,7 +51,7 @@ clean: \
 	clean-ports
 
 clean-archive:
-	rm ".crit/bin/$(BANNER).tgz"
+	rm .crit/bin/$(BANNER).tgz
 
 clean-cargo:
 	cargo clean
@@ -68,6 +72,15 @@ crit:
 
 doc:
 	cargo doc
+
+docker-build:
+	tuggy -t n4jm4/unmake:$(VERSION) --load
+
+docker-push:
+	tuggy -t n4jm4/unmake:$(VERSION) -a n4jm4/unmake --push
+
+docker-test:
+	tuggy -t n4jm4/unmake:test --load --push
 
 install:
 	cargo install --force --path .
