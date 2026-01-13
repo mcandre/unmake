@@ -97,33 +97,15 @@ https://crates.io/crates/unmake
 
 https://docs.rs/unmake/latest/unmake/
 
-# DOCKER HUB
+# INSTALLATION
 
-https://hub.docker.com/r/n4jm4/unmake
-
-# DOWNLOAD
-
-https://github.com/mcandre/unmake/releases
-
-# INSTALL FROM SOURCE
-
-```console
-$ cargo install --force --path .
-```
-
-# RUNTIME REQUIREMENTS
-
-(None)
+See [INSTALL.md](INSTALL.md).
 
 ## Recommended
 
 * a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
 * [GNU](https://www.gnu.org/)/[BSD](https://en.wikipedia.org/wiki/Berkeley_Software_Distribution) [findutils](https://en.wikipedia.org/wiki/Find_(Unix))
 * POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
-
-# CONTRIBUTING
-
-For more details on developing unmake itself, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 # LICENSE
 

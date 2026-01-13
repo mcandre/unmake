@@ -19,60 +19,60 @@
 
 # INSTALL BINARIES FROM SOURCE
 
-```console
-$ make install
+```sh
+make install
 ```
 
 # UNINSTALL BINARIES
 
-```console
-$ make uninstall
+```sh
+make uninstall
 ```
 
 # SECURITY AUDIT
 
-```console
-$ make audit
+```sh
+make audit
 ```
 
 # LINT
 
-```console
-$ make lint
+```sh
+make lint
 ```
 
 # TEST
 
-```console
-$ make test
+```sh
+make test
 ```
 
 # PORT
 
-```console
-$ make port
+```sh
+make port
 ```
 
 # PUBLISH
 
-```console
-$ make publish
+```sh
+make publish
 ```
 
 # TEST DOCKER IMAGES
 
-```console
-$ make docker-test
+```sh
+make docker-test
 ```
 
 # PUSH DOCKER IMAGES
 
-```console
-$ make docker-push
+```sh
+make docker-push
 ```
 
 # CLEAN
 
-```console
-$ make clean
+```sh
+make clean
 ```
