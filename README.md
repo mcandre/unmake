@@ -7,6 +7,8 @@
 |___|_|_|_|_|_|__,|_,_|___|
 ```
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/n4jm4/unmake)](https://hub.docker.com/r/n4jm4/unmake) [![Crates.io Downloads (latest version)](https://img.shields.io/crates/dv/unmake?label=crate%20downloads)](https://crates.io/crates/unmake) [![docs.rs](https://img.shields.io/docsrs/unmake)](https://docs.rs/unmake/latest/unmake/) [![license](https://img.shields.io/badge/license-BSD-3)](LICENSE.md) [![Donate](https://img.shields.io/badge/GUMROAD-36a9ae?style=flat&logo=gumroad&logoColor=white)](https://mcandre.gumroad.com/)
+
 # ABOUT
 
 `unmake` is a makefile linter emphasizing portability. We target the POSIX make standard.
@@ -89,14 +91,6 @@ When piping unmake makefile lists through xargs, we recommend adding a `--print0
 
 See [WARNINGS.md](WARNINGS.md) for more information.
 
-# CRATE
-
-https://crates.io/crates/unmake
-
-# API DOCUMENTATION
-
-https://docs.rs/unmake/latest/unmake/
-
 # INSTALLATION
 
 See [INSTALL.md](INSTALL.md).
@@ -106,10 +100,6 @@ See [INSTALL.md](INSTALL.md).
 * a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
 * [GNU](https://www.gnu.org/)/[BSD](https://en.wikipedia.org/wiki/Berkeley_Software_Distribution) [findutils](https://en.wikipedia.org/wiki/Find_(Unix))
 * POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
-
-# LICENSE
-
-BSD-2-Clause
 
 # MORE EXAMPLES
 
