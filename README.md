@@ -1,6 +1,6 @@
 # unmake: a makefile linter
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/n4jm4/unmake)](https://hub.docker.com/r/n4jm4/unmake) [![Crates.io Downloads (latest version)](https://img.shields.io/crates/dv/unmake?label=crate%20downloads)](https://crates.io/crates/unmake) [![docs.rs](https://img.shields.io/docsrs/unmake)](https://docs.rs/unmake/latest/unmake/) [![license](https://img.shields.io/badge/license-BSD-3)](LICENSE.md) [![Donate](https://img.shields.io/badge/GUMROAD-36a9ae?style=flat&logo=gumroad&logoColor=white)](https://mcandre.gumroad.com/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/n4jm4/unmake)](https://hub.docker.com/r/n4jm4/unmake) [![Crates.io Downloads (latest version)](https://img.shields.io/crates/dv/unmake?label=crate%20downloads)](https://crates.io/crates/unmake) [![docs.rs](https://img.shields.io/docsrs/unmake)](https://docs.rs/unmake/latest/unmake/) [![Test](https://github.com/mcandre/unmake/actions/workflows/test.yml/badge.svg)](https://github.com/mcandre/unmake/actions/workflows/test.yml) [![license](https://img.shields.io/badge/license-BSD-3)](LICENSE.md) [![Donate](https://img.shields.io/badge/GUMROAD-36a9ae?style=flat&logo=gumroad&logoColor=white)](https://mcandre.gumroad.com/)
 
 ```text
                    _
