@@ -14,7 +14,7 @@ on: # yamllint disable-line rule:truthy
   - cron: "0 0 1 * *"
   workflow_dispatch:
 jobs:
-  Audit:
+  Rubberstamp:
     runs-on: "ubuntu-24.04"
     env:
       RUBBERSTAMP_GH_REPO: "${{ github.repository }}"
