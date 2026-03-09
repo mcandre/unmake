@@ -1,0 +1,20 @@
+#!/bin/bash
+unset IFS
+set -eufo pipefail
+
+BUCKET='s3://unmake'
+VERSION="$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[0].version")"
+DEST="$BUCKET/unmake-$VERSION/"
+ARTIFACTS='.rockhopper/artifacts'
+
+# Accelerate connection timeouts
+# Reduce console noise
+aws() {
+    command aws \
+        --cli-connect-timeout 1 \
+        "$@" \
+        >/dev/null
+}
+
+aws s3 cp --recursive "$ARTIFACTS" "$DEST"
+echo "install media uploaded to \"$DEST\""
