@@ -45,38 +45,38 @@ See [makefile](makefile) for a live example of a portable dev environment provis
   <tbody>
     <tr>
       <td>Alpine Linux</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/alpine-linux/unmake-0.0.25-r1.x86_64.apk">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/alpine-linux/unmake-0.0.25-r1.aarch64.apk">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/alpine-linux/unmake-0.0.26-r1.x86_64.apk">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/alpine-linux/unmake-0.0.26-r1.aarch64.apk">ARM</a></td>
     </tr>
     <tr>
       <td>Fedora</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/fedora/unmake-0.0.25-1.x86_64.rpm">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/fedora/unmake-0.0.25-1.aarch64.rpm">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/fedora/unmake-0.0.26-1.x86_64.rpm">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/fedora/unmake-0.0.26-1.aarch64.rpm">ARM</a></td>
     </tr>
     <tr>
       <td>FreeBSD</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/freebsd-amd64/unmake-0.0.25_1.pkg">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/freebsd-amd64/unmake-0.0.26_1.pkg">Intel</a></td>
       <td></td>
     </tr>
     <tr>
       <td>macOS</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/macos/unmake-x86_64-0.0.25-1.pkg">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/macos/unmake-arm64-0.0.25-1.pkg">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/macos/unmake-x86_64-0.0.26-1.pkg">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/macos/unmake-arm64-0.0.26-1.pkg">ARM</a></td>
     </tr>
     <tr>
       <td>NetBSD</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/netbsd-x86_64/unmake-0.0.25nb1.tgz">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/netbsd-x86_64/unmake-0.0.26nb1.tgz">Intel</a></td>
       <td></td>
     </tr>
     <tr>
       <td>Ubuntu</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/ubuntu/unmake_0.0.25-1_amd64.deb">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/ubuntu/unmake_0.0.25-1_arm64.deb">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/ubuntu/unmake_0.0.26-1_amd64.deb">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/ubuntu/unmake_0.0.26-1_arm64.deb">ARM</a></td>
     </tr>
     <tr>
       <td>Windows</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/windows/unmake-0.0.25.1-x64.msi">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/windows/unmake-0.0.25.1-arm64.msi">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/windows/unmake-0.0.26.1-x64.msi">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/windows/unmake-0.0.26.1-arm64.msi">ARM</a></td>
     </tr>
   </tbody>
 </table>
