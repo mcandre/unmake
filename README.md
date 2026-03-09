@@ -81,20 +81,13 @@ See [makefile](makefile) for a live example of a portable dev environment provis
   </tbody>
 </table>
 
-# System Requirements
+# SYSTEM REQUIREMENTS
 
 ## Bitness
 
 64
 
 For more host platforms and installation methods, see our [install guide](INSTALL.md).
-
-# RUNTIME REQUIREMENTS
-
-## Recommended
-
-* a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
-* POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
 
 # NOTABLE FEATURES
 
