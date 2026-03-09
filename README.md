@@ -1,6 +1,6 @@
 # unmake: a makefile linter
 
-[![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/unmake?label=crate%20downloads)](https://crates.io/crates/unmake) [![GitHub Downloads](https://img.shields.io/github/downloads/mcandre/unmake/total?logo=github)](https://github.com/mcandre/unmake/releases) [![Docker Pulls](https://img.shields.io/docker/pulls/n4jm4/unmake)](https://hub.docker.com/r/n4jm4/unmake) [![docs.rs](https://img.shields.io/docsrs/unmake)](https://docs.rs/unmake/latest/unmake/) [![Test](https://github.com/mcandre/unmake/actions/workflows/test.yml/badge.svg)](https://github.com/mcandre/unmake/actions/workflows/test.yml) [![license](https://img.shields.io/badge/license-BSD-3)](LICENSE.md) [![Donate](https://img.shields.io/badge/-any?logo=gumroad&label=Donate&color=grey)](https://mcandre.gumroad.com/)
+[![CloudFlare R2 install media downloads](https://img.shields.io/badge/Cloudflare-F28220?style=for-the-badge&logo=Cloudflare&logoColor=white&style=flat)](#download) [![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/unmake?label=crate%20downloads)](https://crates.io/crates/unmake) [![GitHub Downloads](https://img.shields.io/github/downloads/mcandre/unmake/total?logo=github)](https://github.com/mcandre/unmake/releases) [![Docker Pulls](https://img.shields.io/docker/pulls/n4jm4/unmake)](https://hub.docker.com/r/n4jm4/unmake) [![docs.rs](https://img.shields.io/docsrs/unmake)](https://docs.rs/unmake/latest/unmake/) [![Test](https://github.com/mcandre/unmake/actions/workflows/test.yml/badge.svg)](https://github.com/mcandre/unmake/actions/workflows/test.yml) [![license](https://img.shields.io/badge/license-BSD-0)](LICENSE.md)
 
 ```text
                    _
@@ -32,6 +32,69 @@ warning: ./missing-posix.mk:1: STRICT_POSIX: lead makefiles with the ".POSIX:" c
 See `unmake -h` for more options.
 
 See [makefile](makefile) for a live example of a portable dev environment provisioning script for this Rust project.
+
+# DOWNLOAD
+
+<table>
+  <thead>
+    <tr>
+      <th>Host</th>
+      <th colspan=2>Package</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Alpine Linux</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/alpine-linux/unmake-0.0.25-r1.x86_64.apk">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/alpine-linux/unmake-0.0.25-r1.aarch64.apk">ARM</a></td>
+    </tr>
+    <tr>
+      <td>Fedora</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/fedora/unmake-0.0.25-1.x86_64.rpm">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/fedora/unmake-0.0.25-1.aarch64.rpm">ARM</a></td>
+    </tr>
+    <tr>
+      <td>FreeBSD</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/freebsd-amd64/unmake-0.0.25_1.pkg">Intel</a></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>macOS</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/macos/unmake-x86_64-0.0.25-1.pkg">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/macos/unmake-arm64-0.0.25-1.pkg">ARM</a></td>
+    </tr>
+    <tr>
+      <td>NetBSD</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/netbsd-x86_64/unmake-0.0.25nb1.tgz">Intel</a></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Ubuntu</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/ubuntu/unmake_0.0.25-1_amd64.deb">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/ubuntu/unmake_0.0.25-1_arm64.deb">ARM</a></td>
+    </tr>
+    <tr>
+      <td>Windows</td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/windows/unmake-0.0.25.1-x64.msi">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.25/windows/unmake-0.0.25.1-arm64.msi">ARM</a></td>
+    </tr>
+  </tbody>
+</table>
+
+# System Requirements
+
+## Bitness
+
+64
+
+For more host platforms and installation methods, see our [install guide](INSTALL.md).
+
+# RUNTIME REQUIREMENTS
+
+## Recommended
+
+* a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
+* POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
 
 # NOTABLE FEATURES
 
@@ -91,27 +154,9 @@ When piping unmake makefile lists through xargs, we recommend adding a `--print0
 
 See [WARNINGS.md](WARNINGS.md) for more information.
 
-# INSTALLATION
+# RESOURCES
 
-See [INSTALL.md](INSTALL.md).
-
-## Recommended
-
-* a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
-* [GNU](https://www.gnu.org/)/[BSD](https://en.wikipedia.org/wiki/Berkeley_Software_Distribution) [findutils](https://en.wikipedia.org/wiki/Find_(Unix))
-* POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
-
-# MORE EXAMPLES
-
-Some projects using `unmake` to safeguard their makefiles:
-
-* [buttery](https://github.com/mcandre/buttery), a GIF looper
-* [crit](https://github.com/mcandre/crit), a Rust cross-compiler
-* [factorio](https://github.com/mcandre/factorio), a Go cross-compiler
-* [octane](https://github.com/mcandre/octane), a MIDI forwarder
-* [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
-
-# SEE ALSO
+Prior art, personal plugs, and tools for developing software.
 
 * [BSD make](https://man.freebsd.org/cgi/man.cgi?make(1)), a popular make implementation with BSD extensions
 * [cmake](https://cmake.org/), a make-adjacent build system with its own portability features
@@ -119,17 +164,12 @@ Some projects using `unmake` to safeguard their makefiles:
 * [Grunt](https://gruntjs.com/), Node.js task runners
 * [invoke](https://pypi.org/project/invoke/), a task runner for Python projects
 * [lake](https://luarocks.org/modules/steved/lake), a task runner for Lua projects
-* [linters](https://github.com/mcandre/linters), a wiki of common programming language linters and SAST tools
+* [mcandre/linters](https://github.com/mcandre/linters), a wiki of common programming language linters and SAST tools
 * [mage](https://magefile.org/), a task runner for Go projects
 * [ninja](https://ninja-build.org/), a fast build system without conditionals
 * [nmake](https://learn.microsoft.com/en-us/cpp/build/reference/nmake-reference?view=msvc-170), a make-adjacent build system for .NET projects
-* [periscope](https://github.com/mcandre/periscope), warns on unscoped NPM packages.
 * [Rake](https://ruby.github.io/rake/), a task runner for Ruby projects
 * [Shake](https://shakebuild.com/), a task runner for Haskell projects
 * [ShellCheck](https://www.shellcheck.net/), a linter for POSIX sh family shell scripts
-* [slick](https://github.com/mcandre/slick), a POSIX sh syntax validator
-* [stank](https://github.com/mcandre/stank), a collection of shell script linter utilities
-* [tinyrick](https://github.com/mcandre/tinyrick), a task runner for Rust projects
-* [todolint](https://github.com/mcandre/todolint), a SAST tool based on code comments
 
-Note that the GNU and BSD implementations of `make` support `-j [4]` options for accelerating workflows using parallelism. Strict *POSIX* compliance helps to ensure that makefiles are portable, able to run with GNU, BSD, and other make implementations.
+🙃

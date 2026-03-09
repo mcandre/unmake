@@ -1,19 +1,25 @@
+# DEVELOPMENT GUIDE
+
+unmake follows standard, cargo based operations for compiling and unit testing Rust code.
+
+For advanced operations, such as linting, managing multiplatform Docker images, and so on, we further supplement with some software industry tools.
+
 # BUILDTIME REQUIREMENTS
 
 * a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
-* [Docker](https://www.docker.com/) 20.10.12+
+* [awscli](https://aws.amazon.com/cli/)
+* [bash](https://www.gnu.org/software/bash/) 4+
+* [Docker](https://www.docker.com/)
+* POSIX compliant [findutils](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/find.html)
+* [jq](https://jqlang.org/)
 * POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
-* [rustup](https://rustup.rs/)
 * [Rust](https://www.rust-lang.org/en-US/)
 * Provision additional dev tools with `make -f install.mk`
 
 ## Recommended
 
-* a host capable of running musl/Linux containers (e.g. a GNU/Linux, musl/Linux, macOS, or Windows host)
-* [Docker First Aid Kit](https://github.com/mcandre/docker-first-aid-kit)
-* Apply `DOCKER_DEFAULT_PLATFORM` = `linux/amd64` environment variable
+* Apple Silicon macOS users may want to apply `DOCKER_DEFAULT_PLATFORM=linux/amd64`, in order to account for images commonly lacking `linux/arm64` buildx platforms
 * [ASDF](https://asdf-vm.com/) 0.18 (run `asdf reshim` after provisioning)
-* [direnv](https://direnv.net/) 2
 * [tree](https://en.wikipedia.org/wiki/Tree_(command))
 
 # INSTALL BINARIES FROM SOURCE
@@ -46,19 +52,43 @@ make lint
 make test
 ```
 
-# PORT
+# CROSSCOMPILE BINARIES
+
+```sh
+make crit
+```
+
+# ARCHIVE BINARIES
 
 ```sh
 make port
 ```
 
-# PUBLISH
+# PACKAGE BINARIES
+
+```sh
+make package
+```
+
+# UPLOAD BINARIES
+
+```sh
+make upload
+```
+
+# PUBLISH CRATE
 
 ```sh
 make publish
 ```
 
-# TEST DOCKER IMAGES
+# BUILD DOCKER IMAGES
+
+```sh
+make docker-build
+```
+
+# TEST PUSH DOCKER IMAGES
 
 ```sh
 make docker-test

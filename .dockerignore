@@ -1,9 +1,13 @@
 *.md
+*.mk
 .editorconfig
 .rubberstamp
-tuggy.toml
 fixtures/
+Cross.toml
+crit.toml
+rockhopper.toml
 .crit/
+.rockhopper/
 .github/
 .git/
 # Created by https://www.toptal.com/developers/gitignore/api/rust

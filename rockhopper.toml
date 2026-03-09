@@ -1,0 +1,86 @@
+# log_level = "debug"
+log_level = "quiet"
+
+[rocklet]
+name = "unmake"
+identifier = "com.github.mcandre.unmake"
+rev = "1"
+maintainer = "Andrew Pennebaker <n4jm4@pm.me>"
+manufacturer = "YelloSoft"
+summary = "a makefile linter"
+description = "unmake is a makefile linter emphasizing portability. We target the POSIX make standard."
+copyright = "Copyright (C) 2023 Andrew Pennebaker"
+license = "0BSD"
+url = "https://github.com/mcandre/unmake"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-alpine-linux"
+rocklet.oci_arch = "linux/amd64"
+dest."usr/bin" = ".crit/bin/unmake/x86_64-unknown-linux-musl"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-alpine-linux"
+rocklet.oci_arch = "linux/arm64"
+dest."usr/bin" = ".crit/bin/unmake/aarch64-unknown-linux-musl"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-fedora"
+rocklet.oci_arch = "linux/amd64"
+dest."usr/bin" = ".crit/bin/unmake/x86_64-unknown-linux-musl"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-fedora"
+rocklet.oci_arch = "linux/arm64"
+dest."usr/bin" = ".crit/bin/unmake/aarch64-unknown-linux-musl"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-freebsd"
+rocklet.origin = "local/unmake"
+rocklet.oci_arch = "linux/amd64"
+rocklet.os_arch = "freebsd:*:amd64"
+dest."usr/local/bin" = ".crit/bin/unmake/x86_64-unknown-freebsd"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-macos"
+rocklet.oci_arch = "linux/amd64"
+rocklet.os_arch = "x86_64"
+dest."usr/local/bin" = ".crit/bin/unmake/x86_64-apple-darwin"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-macos"
+rocklet.oci_arch = "linux/arm64"
+rocklet.os_arch = "arm64"
+dest."usr/local/bin" = ".crit/bin/unmake/aarch64-apple-darwin"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-netbsd"
+rocklet.oci_arch = "linux/amd64"
+rocklet.os_arch = "x86_64"
+rocklet.pkg_os_version = "10.1"
+# byte estimate, including dependencies
+rocklet.pkg_size_all = "1000000"
+dest."bin" = ".crit/bin/unmake/x86_64-unknown-netbsd"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-ubuntu"
+rocklet.oci_arch = "linux/amd64"
+dest."usr/bin" = ".crit/bin/unmake/x86_64-unknown-linux-musl"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-ubuntu"
+rocklet.oci_arch = "linux/arm64"
+dest."usr/bin" = ".crit/bin/unmake/aarch64-unknown-linux-musl"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-windows"
+rocklet.oci_arch = "linux/amd64"
+rocklet.os_arch = "x64"
+rocklet.msi_upgrade_code = "BAD8E7DC-437E-4510-B3E9-6AB7F7A2B3B3"
+dest."bin" = ".crit/bin/unmake/x86_64-pc-windows-msvc"
+
+[[pkg]]
+image = "n4jm4/rockhopper:0.0.21-windows"
+rocklet.oci_arch = "linux/arm64"
+rocklet.os_arch = "arm64"
+rocklet.msi_upgrade_code = "BAD8E7DC-437E-4510-B3E9-6AB7F7A2B3B3"
+dest."bin" = ".crit/bin/unmake/aarch64-pc-windows-msvc"

@@ -6,9 +6,10 @@
 	build \
 	cargo-check \
 	clean \
-	clean-archive \
 	clean-cargo \
+	clean-crit \
 	clean-example \
+	clean-packages \
 	clean-ports \
 	clippy \
 	crit \
@@ -18,20 +19,23 @@
 	docker-test \
 	install \
 	lint \
+	package \
 	port \
 	publish \
 	rustfmt \
 	test \
-	uninstall
+	uninstall \
+	upload
 .IGNORE: \
 	clean \
-	clean-archive \
 	clean-cargo \
+	clean-crit \
 	clean-example \
+	clean-packages \
 	clean-ports
 
-VERSION=0.0.25
-BANNER=unmake-$(VERSION)
+VERSION!=cargo metadata --format-version 1 --no-deps | jq -r ".packages[0].version"
+BANNER=unmake
 
 all: build
 
@@ -45,24 +49,27 @@ cargo-check:
 	cargo check
 
 clean: \
-	clean-archive \
 	clean-cargo \
+	clean-crit \
 	clean-example \
 	clean-ports
 
-clean-archive:
-	rm .crit/bin/$(BANNER).tgz
-
 clean-cargo:
 	cargo clean
+
+clean-crit:
+	crit -c
 
 clean-example:
 	rm -f example/Cargo.lock
 	rm -rf example/target
 	rm -rf example/.crit
 
+clean-packages:
+	rm -rf .rockhopper
+
 clean-ports:
-	crit -c
+	rm -rf .crit/bin/unmake-ports
 
 clippy:
 	cargo clippy
@@ -74,14 +81,13 @@ doc:
 	cargo doc
 
 docker-build:
-	tuggy -t n4jm4/unmake:$(VERSION) --load
+	docker buildx bake all --var "VERSION=$(VERSION)"
 
 docker-push:
-	tuggy -t n4jm4/unmake:$(VERSION) -a n4jm4/unmake --push
+	docker buildx bake production --var "VERSION=$(VERSION)" --push
 
 docker-test:
-	tuggy -t n4jm4/unmake:test --load
-	tuggy -t n4jm4/unmake:test --push
+	docker buildx bake test --var "VERSION=$(VERSION)" --push
 
 install:
 	cargo install --force --path .
@@ -92,8 +98,11 @@ lint: \
 	doc \
 	rustfmt
 
-port: crit
-	chandler -C .crit/bin -czf "$(BANNER).tgz" "$(BANNER)"
+package:
+	rockhopper -r "version=$(VERSION)"
+
+port:
+	./port -C .crit/bin -a unmake $(BANNER)
 
 publish:
 	cargo publish
@@ -105,4 +114,7 @@ test:
 	cargo test
 
 uninstall:
-	cargo uninstall crit
+	cargo uninstall unmake
+
+upload:
+	./upload

@@ -1,45 +1,121 @@
 # INSTALL
 
-We support several installation methods.
+In addition to OS packages, unmake also supports alternative installation methods.
 
-# PRECOMPILED BINARIES
+# INSTALL (CARGO)
 
-https://github.com/mcandre/unmake/releases
+unmake is packaged as a Rust crate.
 
-## Requirements
+```sh
+cargo install unmake
+```
 
-(None)
+## Prerequisites
 
-## Instructions
+* [cargo](https://doc.rust-lang.org/cargo/)
 
-1. Download release archive.
-2. Extract archive.
-3. Select executables for your target platform.
-4. Copy executabless to a convenient location, e.g. `$HOME/bin`.
-5. Ensure location is registered in `$PATH`.
+# INSTALL (DOCKER)
 
-# DOCKER
-
-## Requirements
-
-* [Docker](https://www.docker.com/) 28.0.1+
-
-## Instructions
+unmake is packaged as a [Docker Hub](https://hub.docker.com/r/n4jm4/unmake) image.
 
 ```sh
 docker pull n4jm4/unmake
 ```
 
-# BUILD FROM SOURCE
+## Prerequisites
 
-## Requirements
+* [Docker](https://www.docker.com/)
 
-* [Rust](https://www.rust-lang.org/en-US/) 1.92.0+
+# INSTALL (CURL)
 
-## Instructions
+unmake supports curl based installs.
 
 ```sh
+curl -L https://raw.githubusercontent.com/mcandre/unmake/refs/heads/main/install-unmake | sh
+```
+
+## Postinstall
+
+Ensure `$HOME/.local/bin` is registered with your shell's `PATH` environment variable.
+
+## Uninstall
+
+```sh
+curl -L https://raw.githubusercontent.com/mcandre/unmake/refs/heads/main/uninstall-unmake | sh
+```
+
+## System Requirements
+
+### Bitness
+
+64
+
+### Hosts
+
+* FreeBSD (Intel)
+* Illumos (Intel)
+* Linux (ARM, Intel)
+* macOS (ARM, Intel)
+* NetBSD (Intel)
+* WSL (ARM, Intel)
+
+### Prerequisites
+
+* [bash](https://www.gnu.org/software/bash/) 4+
+* [curl](https://curl.se/)
+
+# INSTALL (PRECOMPILED BINARIES)
+
+Precompiled binaries may be installed manually.
+
+## Install
+
+1. Download a [tarball](https://github.com/mcandre/unmake/releases) corresponding to your environment's architecture and OS.
+2. Extract executables into a selected directory.
+
+   Examples:
+
+   * `~/.local/bin` (XDG compliant per-user)
+   * `/usr/local/bin` (XDG compliant global)
+   * `~/bin` (BSD)
+   * `~\AppData\Local` (native Windows)
+
+## Postinstall
+
+Ensure the selected directory is registered with your shell's `PATH` environment variable.
+
+## Uninstall
+
+Remove the application executables from the selected directory.
+
+## System Requirements
+
+### Bitness
+
+64
+
+### Hosts
+
+* FreeBSD (Intel)
+* Illumos (Intel)
+* Linux (ARM, Intel)
+* macOS (ARM, Intel)
+* NetBSD (Intel)
+* Windows (ARM, Intel)
+
+# INSTALL (COMPILE FROM SOURCE)
+
+unmake may be compiled from source.
+
+```sh
+git clone https://github.com/mcandre/unmake.git
+cd unmake
 cargo install --force --path .
 ```
 
-For more details on developing unmake itself, see [DEVELOPMENT.md](DEVELOPMENT.md).
+## Prerequisites
+
+* [cargo](https://doc.rust-lang.org/cargo/)
+* [git](https://git-scm.com/)
+
+For more details on developing unmake itself, see our [development guide](DEVELOPMENT.md).
