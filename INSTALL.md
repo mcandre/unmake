@@ -50,7 +50,7 @@ curl -L https://raw.githubusercontent.com/mcandre/unmake/refs/heads/main/uninsta
 
 64
 
-### Hosts
+### Operating Systems
 
 * FreeBSD (Intel)
 * Illumos (Intel)
@@ -94,7 +94,7 @@ Remove the application executables from the selected directory.
 
 64
 
-### Hosts
+### Operating Systems
 
 * FreeBSD (Intel)
 * Illumos (Intel)

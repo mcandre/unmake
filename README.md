@@ -38,7 +38,7 @@ See [makefile](makefile) for a live example of a portable dev environment provis
 <table>
   <thead>
     <tr>
-      <th>Host</th>
+      <th>OS</th>
       <th colspan=2>Package</th>
     </tr>
   </thead>
