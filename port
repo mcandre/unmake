@@ -10,6 +10,10 @@ usage() {
     printf -- "-h\t\tShow usage menu\n"
 }
 
+JUNK=(
+    .DS_Store
+    Thumbs.db
+)
 DIR='.'
 APP=''
 
@@ -62,6 +66,12 @@ PORTS="$DIR/$APP-ports"
 mkdir -p "$PORTS"
 PORTS_ABS="$(readlink -f "$PORTS")"
 
+declare -a TAR_EXCLUDES
+
+for J in "${JUNK[@]}"; do
+    TAR_EXCLUDES+=("--exclude=$J")
+done
+
 find "$SOURCE_ABS" -type d -depth 1 -print0 | while IFS= read -r -d '' D; do
     D="${D#"$SOURCE_ABS"/}"
     MODE='--mode=0755'
@@ -71,7 +81,7 @@ find "$SOURCE_ABS" -type d -depth 1 -print0 | while IFS= read -r -d '' D; do
     fi
 
     cd "$SOURCE_ABS/$D"
-    gtar "$MODE" -czf "$PORTS_ABS/$APP-$D.tgz" -- *
+    gtar "$MODE" -czf "$PORTS_ABS/$APP-$D.tgz" "${TAR_EXCLUDES[@]}" -- *
     cd "$SOURCE_ABS"
 done
 
