@@ -10,13 +10,23 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2018"
+edition = "2021"
 name = "peg-macros"
-version = "0.8.1"
+version = "0.8.5"
 authors = ["Kevin Mehall <km@kevinmehall.net>"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "Procedural macros for rust-peg. To use rust-peg, see the `peg` crate."
+readme = false
 license = "MIT"
 repository = "https://github.com/kevinmehall/rust-peg"
+
+[features]
+trace = []
 
 [lib]
 name = "peg_macros"
@@ -30,13 +40,10 @@ test = false
 bench = false
 
 [dependencies.peg-runtime]
-version = "= 0.8.1"
+version = "= 0.8.5"
 
 [dependencies.proc-macro2]
 version = "1.0.24"
 
 [dependencies.quote]
 version = "1.0"
-
-[features]
-trace = []

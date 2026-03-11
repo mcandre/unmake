@@ -50,9 +50,9 @@ fn test_reqopt() {
     let short_args = vec!["-t".to_string(), "20".to_string()];
     match opts.parse(&short_args) {
         Ok(ref m) => {
-            assert!((m.opt_present("test")));
+            assert!(m.opt_present("test"));
             assert_eq!(m.opt_str("test").unwrap(), "20");
-            assert!((m.opt_present("t")));
+            assert!(m.opt_present("t"));
             assert_eq!(m.opt_str("t").unwrap(), "20");
         }
         _ => {
@@ -111,7 +111,7 @@ fn test_optopt() {
         Ok(ref m) => {
             assert!(m.opt_present("test"));
             assert_eq!(m.opt_str("test").unwrap(), "20");
-            assert!((m.opt_present("t")));
+            assert!(m.opt_present("t"));
             assert_eq!(m.opt_str("t").unwrap(), "20");
         }
         _ => panic!(),
@@ -119,9 +119,9 @@ fn test_optopt() {
     let short_args = vec!["-t".to_string(), "20".to_string()];
     match opts.parse(&short_args) {
         Ok(ref m) => {
-            assert!((m.opt_present("test")));
+            assert!(m.opt_present("test"));
             assert_eq!(m.opt_str("test").unwrap(), "20");
-            assert!((m.opt_present("t")));
+            assert!(m.opt_present("t"));
             assert_eq!(m.opt_str("t").unwrap(), "20");
         }
         _ => panic!(),
@@ -207,12 +207,24 @@ fn test_optflag_missing() {
 }
 
 #[test]
-fn test_opt_end() {
+fn test_free_trailing_missing() {
+    let args = vec![] as Vec<String>;
+    match Options::new().parse(&args) {
+        Ok(ref m) => {
+            assert_eq!(m.free_trailing_start(), None);
+        }
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn test_free_trailing() {
     let args = vec!["--".to_owned(), "-t".to_owned()];
     match Options::new().optflag("t", "test", "testing").parse(&args) {
         Ok(ref m) => {
             assert!(!m.opt_present("test"));
             assert!(!m.opt_present("t"));
+            assert_eq!(m.free_trailing_start(), Some(0));
             assert_eq!(m.free.len(), 1);
             assert_eq!(m.free[0], "-t");
         }
@@ -221,13 +233,26 @@ fn test_opt_end() {
 }
 
 #[test]
-fn test_opt_only_end() {
+fn test_free_trailing_only() {
     let args = vec!["--".to_owned()];
     match Options::new().optflag("t", "test", "testing").parse(&args) {
         Ok(ref m) => {
             assert!(!m.opt_present("test"));
             assert!(!m.opt_present("t"));
+            assert_eq!(m.free_trailing_start(), None);
             assert_eq!(m.free.len(), 0);
+        }
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn test_free_trailing_args() {
+    let args = vec!["pre".to_owned(), "--".to_owned(), "post".to_owned()];
+    match Options::new().parse(&args) {
+        Ok(ref m) => {
+            assert_eq!(m.free_trailing_start(), Some(1));
+            assert_eq!(m.free.len(), 2);
         }
         _ => panic!(),
     }
@@ -418,9 +443,9 @@ fn test_optmulti() {
     opts.optmulti("t", "test", "testing", "TEST");
     match opts.parse(&long_args) {
         Ok(ref m) => {
-            assert!((m.opt_present("test")));
+            assert!(m.opt_present("test"));
             assert_eq!(m.opt_str("test").unwrap(), "20");
-            assert!((m.opt_present("t")));
+            assert!(m.opt_present("t"));
             assert_eq!(m.opt_str("t").unwrap(), "20");
         }
         _ => panic!(),
@@ -428,9 +453,9 @@ fn test_optmulti() {
     let short_args = vec!["-t".to_string(), "20".to_string()];
     match opts.parse(&short_args) {
         Ok(ref m) => {
-            assert!((m.opt_present("test")));
+            assert!(m.opt_present("test"));
             assert_eq!(m.opt_str("test").unwrap(), "20");
-            assert!((m.opt_present("t")));
+            assert!(m.opt_present("t"));
             assert_eq!(m.opt_str("t").unwrap(), "20");
         }
         _ => panic!(),
@@ -551,16 +576,16 @@ fn test_combined() {
             assert!(m.free[1] == "free1");
             assert_eq!(m.opt_str("s").unwrap(), "20");
             assert!(m.free[2] == "free2");
-            assert!((m.opt_present("flag")));
+            assert!(m.opt_present("flag"));
             assert_eq!(m.opt_str("long").unwrap(), "30");
-            assert!((m.opt_present("f")));
+            assert!(m.opt_present("f"));
             let pair = m.opt_strs("m");
             assert!(pair[0] == "40");
             assert!(pair[1] == "50");
             let pair = m.opt_strs("n");
             assert!(pair[0] == "-A B");
             assert!(pair[1] == "-60 70");
-            assert!((!m.opt_present("notpresent")));
+            assert!(!m.opt_present("notpresent"));
         }
         _ => panic!(),
     }
@@ -626,6 +651,7 @@ fn test_multi() {
     opts.optopt("e", "", "encrypt", "ENCRYPT");
     opts.optopt("", "encrypt", "encrypt", "ENCRYPT");
     opts.optopt("f", "", "flag", "FLAG");
+    let no_opts: &[&str] = &[];
 
     let args_single = vec!["-e".to_string(), "foo".to_string()];
     let matches_single = &match opts.parse(&args_single) {
@@ -638,6 +664,12 @@ fn test_multi() {
     assert!(!matches_single.opts_present(&["encrypt".to_string()]));
     assert!(!matches_single.opts_present(&["thing".to_string()]));
     assert!(!matches_single.opts_present(&[]));
+
+    assert!(matches_single.opts_present_any(&["e"]));
+    assert!(matches_single.opts_present_any(&["encrypt", "e"]));
+    assert!(matches_single.opts_present_any(&["e", "encrypt"]));
+    assert!(!matches_single.opts_present_any(&["encrypt"]));
+    assert!(!matches_single.opts_present_any(no_opts));
 
     assert_eq!(matches_single.opts_str(&["e".to_string()]).unwrap(), "foo");
     assert_eq!(
@@ -653,11 +685,23 @@ fn test_multi() {
         "foo"
     );
 
+    assert_eq!(matches_single.opts_str_first(&["e"]).unwrap(), "foo");
+    assert_eq!(
+        matches_single.opts_str_first(&["e", "encrypt"]).unwrap(),
+        "foo"
+    );
+    assert_eq!(
+        matches_single.opts_str_first(&["encrypt", "e"]).unwrap(),
+        "foo"
+    );
+    assert_eq!(matches_single.opts_str_first(&["encrypt"]), None);
+    assert_eq!(matches_single.opts_str_first(no_opts), None);
+
     let args_both = vec![
         "-e".to_string(),
         "foo".to_string(),
         "--encrypt".to_string(),
-        "foo".to_string(),
+        "bar".to_string(),
     ];
     let matches_both = &match opts.parse(&args_both) {
         Ok(m) => m,
@@ -671,10 +715,17 @@ fn test_multi() {
     assert!(!matches_both.opts_present(&["thing".to_string()]));
     assert!(!matches_both.opts_present(&[]));
 
+    assert!(matches_both.opts_present_any(&["e"]));
+    assert!(matches_both.opts_present_any(&["encrypt"]));
+    assert!(matches_both.opts_present_any(&["encrypt", "e"]));
+    assert!(matches_both.opts_present_any(&["e", "encrypt"]));
+    assert!(!matches_both.opts_present_any(&["f"]));
+    assert!(!matches_both.opts_present_any(no_opts));
+
     assert_eq!(matches_both.opts_str(&["e".to_string()]).unwrap(), "foo");
     assert_eq!(
         matches_both.opts_str(&["encrypt".to_string()]).unwrap(),
-        "foo"
+        "bar"
     );
     assert_eq!(
         matches_both
@@ -686,8 +737,21 @@ fn test_multi() {
         matches_both
             .opts_str(&["encrypt".to_string(), "e".to_string()])
             .unwrap(),
+        "bar"
+    );
+
+    assert_eq!(matches_both.opts_str_first(&["e"]).unwrap(), "foo");
+    assert_eq!(matches_both.opts_str_first(&["encrypt"]).unwrap(), "bar");
+    assert_eq!(
+        matches_both.opts_str_first(&["e", "encrypt"]).unwrap(),
         "foo"
     );
+    assert_eq!(
+        matches_both.opts_str_first(&["encrypt", "e"]).unwrap(),
+        "bar"
+    );
+    assert_eq!(matches_both.opts_str_first(&["f"]), None);
+    assert_eq!(matches_both.opts_str_first(no_opts), None);
 }
 
 #[test]
@@ -824,6 +888,7 @@ Options:
 }
 
 #[test]
+#[cfg(feature = "unicode")]
 fn test_usage_description_multibyte_handling() {
     let mut opts = Options::new();
     opts.optflag(
@@ -855,6 +920,7 @@ Options:
 }
 
 #[test]
+#[cfg(feature = "unicode")]
 fn test_usage_description_newline_handling() {
     let mut opts = Options::new();
     opts.optflag(
@@ -886,6 +952,7 @@ Options:
 }
 
 #[test]
+#[cfg(feature = "unicode")]
 fn test_usage_multiwidth() {
     let mut opts = Options::new();
     opts.optflag("a", "apple", "apple description");

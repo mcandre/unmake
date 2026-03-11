@@ -40,6 +40,7 @@ pub struct Rule {
     pub params: Vec<RuleParam>,
     pub expr: SpannedExpr,
     pub ret_type: Option<TokenStream>,
+    pub where_clause: Option<TokenStream>,
     pub doc: Option<TokenStream>,
     pub visibility: Option<TokenStream>,
     pub cache: Option<Cache>,
@@ -73,8 +74,9 @@ pub struct SpannedExpr {
 pub enum Expr {
     LiteralExpr(Literal),
     PatternExpr(Group),
-    RuleExpr(Ident, Vec<RuleArg>),
+    RuleExpr(Ident, Option<TokenStream>, Vec<RuleArg>),
     MethodExpr(Ident, TokenStream),
+    CustomExpr(Group),
     ChoiceExpr(Vec<SpannedExpr>),
     OptionalExpr(Box<SpannedExpr>),
     Repeat { inner: Box<SpannedExpr>, bound: BoundedRepeat, sep: Option<Box<SpannedExpr>> },
@@ -84,7 +86,7 @@ pub enum Expr {
     MatchStrExpr(Box<SpannedExpr>),
     PositionExpr,
     QuietExpr(Box<SpannedExpr>),
-    FailExpr(Literal),
+    FailExpr(Group),
     PrecedenceExpr {
         levels: Vec<PrecedenceLevel>,
     },

@@ -8,6 +8,8 @@ use crate::mac::Macro;
 use crate::path::{Path, QSelf};
 use crate::punctuated::Punctuated;
 use crate::token;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use proc_macro2::TokenStream;
 
 ast_enum_of_structs! {
@@ -46,7 +48,7 @@ ast_enum_of_structs! {
         /// A parenthesized type equivalent to the inner type.
         Paren(TypeParen),
 
-        /// A path like `std::slice::Iter`, optionally qualified with a
+        /// A path like `core::slice::Iter`, optionally qualified with a
         /// self-type as in `<Vec<T> as SomeTrait>::Associated`.
         Path(TypePath),
 
@@ -168,7 +170,7 @@ ast_struct! {
 }
 
 ast_struct! {
-    /// A path like `std::slice::Iter`, optionally qualified with a
+    /// A path like `core::slice::Iter`, optionally qualified with a
     /// self-type as in `<Vec<T> as SomeTrait>::Associated`.
     #[cfg_attr(docsrs, doc(cfg(any(feature = "full", feature = "derive"))))]
     pub struct TypePath {
@@ -290,6 +292,8 @@ pub(crate) mod parsing {
         TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
     };
     use crate::verbatim;
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
     use proc_macro2::Span;
 
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
@@ -350,7 +354,7 @@ pub(crate) mod parsing {
                         Path::parse_rest(input, &mut ty.path, false)?;
                         return Ok(Type::Path(ty));
                     } else {
-                        group.elem = Box::new(Type::Path(ty));
+                        *group.elem = Type::Path(ty);
                     }
                 }
             }
@@ -404,11 +408,11 @@ pub(crate) mod parsing {
                             bounds.push_punct(plus);
                             bounds.push_value({
                                 let allow_precise_capture = false;
-                                let allow_tilde_const = false;
+                                let allow_const = false;
                                 TypeParamBound::parse_single(
                                     input,
                                     allow_precise_capture,
-                                    allow_tilde_const,
+                                    allow_const,
                                 )?
                             });
                         }
@@ -480,11 +484,11 @@ pub(crate) mod parsing {
                                 bounds.push_punct(plus);
                                 bounds.push_value({
                                     let allow_precise_capture = false;
-                                    let allow_tilde_const = false;
+                                    let allow_const = false;
                                     TypeParamBound::parse_single(
                                         input,
                                         allow_precise_capture,
-                                        allow_tilde_const,
+                                        allow_const,
                                     )?
                                 });
                             }
@@ -551,12 +555,8 @@ pub(crate) mod parsing {
                         }
                         bounds.push_value({
                             let allow_precise_capture = false;
-                            let allow_tilde_const = false;
-                            TypeParamBound::parse_single(
-                                input,
-                                allow_precise_capture,
-                                allow_tilde_const,
-                            )?
+                            let allow_const = false;
+                            TypeParamBound::parse_single(input, allow_precise_capture, allow_const)?
                         });
                     }
                 }
@@ -572,14 +572,14 @@ pub(crate) mod parsing {
             let dyn_span = dyn_token.span;
             let star_token: Option<Token![*]> = input.parse()?;
             let bounds = TypeTraitObject::parse_bounds(dyn_span, input, allow_plus)?;
-            return Ok(if star_token.is_some() {
+            Ok(if star_token.is_some() {
                 Type::Verbatim(verbatim::between(&begin, input))
             } else {
                 Type::TraitObject(TypeTraitObject {
                     dyn_token: Some(dyn_token),
                     bounds,
                 })
-            });
+            })
         } else if lookahead.peek(token::Bracket) {
             let content;
             let bracket_token = bracketed!(content in input);
@@ -849,12 +849,12 @@ pub(crate) mod parsing {
             allow_plus: bool,
         ) -> Result<Punctuated<TypeParamBound, Token![+]>> {
             let allow_precise_capture = false;
-            let allow_tilde_const = false;
+            let allow_const = false;
             let bounds = TypeParamBound::parse_multiple(
                 input,
                 allow_plus,
                 allow_precise_capture,
-                allow_tilde_const,
+                allow_const,
             )?;
             let mut last_lifetime_span = None;
             let mut at_least_one_trait = false;
@@ -899,12 +899,12 @@ pub(crate) mod parsing {
         pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
             let impl_token: Token![impl] = input.parse()?;
             let allow_precise_capture = true;
-            let allow_tilde_const = false;
+            let allow_const = true;
             let bounds = TypeParamBound::parse_multiple(
                 input,
                 allow_plus,
                 allow_precise_capture,
-                allow_tilde_const,
+                allow_const,
             )?;
             let mut last_nontrait_span = None;
             let mut at_least_one_trait = false;
@@ -929,7 +929,7 @@ pub(crate) mod parsing {
                         }
                     }
                     TypeParamBound::Verbatim(_) => {
-                        // ~const Trait
+                        // `[const] Trait`
                         at_least_one_trait = true;
                         break;
                     }
@@ -1084,7 +1084,7 @@ mod printing {
         TypeTraitObject, TypeTuple,
     };
     use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt};
+    use quote::{ToTokens, TokenStreamExt as _};
 
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     impl ToTokens for TypeSlice {

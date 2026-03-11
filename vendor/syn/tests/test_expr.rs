@@ -13,8 +13,11 @@
 
 #[macro_use]
 mod macros;
+#[macro_use]
+mod snapshot;
 
 mod common;
+mod debug;
 
 use crate::common::visit::{AsIfPrinted, FlattenParens};
 use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream};
@@ -425,6 +428,53 @@ fn test_range_precedence() {
 }
 
 #[test]
+fn test_range_attrs() {
+    // Attributes are not allowed on range expressions starting with `..`
+    syn::parse_str::<Expr>("#[allow()] ..").unwrap_err();
+    syn::parse_str::<Expr>("#[allow()] .. hi").unwrap_err();
+
+    snapshot!("#[allow()] lo .. hi" as Expr, @r#"
+    Expr::Range {
+        start: Some(Expr::Path {
+            attrs: [
+                Attribute {
+                    style: AttrStyle::Outer,
+                    meta: Meta::List {
+                        path: Path {
+                            segments: [
+                                PathSegment {
+                                    ident: "allow",
+                                },
+                            ],
+                        },
+                        delimiter: MacroDelimiter::Paren,
+                        tokens: TokenStream(``),
+                    },
+                },
+            ],
+            path: Path {
+                segments: [
+                    PathSegment {
+                        ident: "lo",
+                    },
+                ],
+            },
+        }),
+        limits: RangeLimits::HalfOpen,
+        end: Some(Expr::Path {
+            path: Path {
+                segments: [
+                    PathSegment {
+                        ident: "hi",
+                    },
+                ],
+            },
+        }),
+    }
+    "#);
+}
+
+#[test]
 fn test_ranges_bailout() {
     syn::parse_str::<Expr>(".. ?").unwrap_err();
     syn::parse_str::<Expr>(".. .field").unwrap_err();
@@ -830,6 +880,11 @@ fn test_fixup() {
         quote! { (1 < 2) == (3 < 4) },
         quote! { { (let _ = ()) } },
         quote! { (#[attr] thing).field },
+        quote! { #[attr] (1 + 1) },
+        quote! { #[attr] (x = 1) },
+        quote! { #[attr] (x += 1) },
+        quote! { #[attr] (1 as T) },
+        quote! { (return #[attr] (x + ..)).field },
         quote! { (self.f)() },
         quote! { (return)..=return },
         quote! { 1 + (return)..=1 + return },
@@ -838,7 +893,7 @@ fn test_fixup() {
         let original: Expr = syn::parse2(tokens).unwrap();
 
         let mut flat = original.clone();
-        FlattenParens.visit_expr_mut(&mut flat);
+        FlattenParens::combine_attrs().visit_expr_mut(&mut flat);
         let reconstructed: Expr = match syn::parse2(flat.to_token_stream()) {
             Ok(reconstructed) => reconstructed,
             Err(err) => panic!("failed to parse `{}`: {}", flat.to_token_stream(), err),
@@ -848,9 +903,9 @@ fn test_fixup() {
             original == reconstructed,
             "original: {}\n{:#?}\nreconstructed: {}\n{:#?}",
             original.to_token_stream(),
-            crate::macros::debug::Lite(&original),
+            crate::debug::Lite(&original),
             reconstructed.to_token_stream(),
-            crate::macros::debug::Lite(&reconstructed),
+            crate::debug::Lite(&reconstructed),
         );
     }
 }
@@ -1611,25 +1666,25 @@ fn test_permutations() -> ExitCode {
             fail!(
                 "failed to parse: {}\n{:#?}",
                 tokens,
-                crate::macros::debug::Lite(&original),
+                crate::debug::Lite(&original),
             );
         };
         AsIfPrinted.visit_expr_mut(&mut original);
-        FlattenParens.visit_expr_mut(&mut parsed);
+        FlattenParens::combine_attrs().visit_expr_mut(&mut parsed);
         if original != parsed {
             fail!(
                 "before: {}\n{:#?}\nafter: {}\n{:#?}",
                 tokens,
-                crate::macros::debug::Lite(&original),
+                crate::debug::Lite(&original),
                 parsed.to_token_stream(),
-                crate::macros::debug::Lite(&parsed),
+                crate::debug::Lite(&parsed),
             );
         }
         let mut tokens_no_paren = tokens.clone();
         FlattenParens::visit_token_stream_mut(&mut tokens_no_paren);
         if tokens.to_string() != tokens_no_paren.to_string() {
             if let Ok(mut parsed2) = syn::parse2::<Expr>(tokens_no_paren) {
-                FlattenParens.visit_expr_mut(&mut parsed2);
+                FlattenParens::combine_attrs().visit_expr_mut(&mut parsed2);
                 if original == parsed2 {
                     fail!("redundant parens: {}", tokens);
                 }

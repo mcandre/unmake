@@ -30,6 +30,7 @@
 /// # Example
 ///
 /// ```
+/// use core::iter;
 /// use proc_macro2::{TokenStream, TokenTree};
 /// use syn::parse::{Parse, ParseStream, Peek, Result};
 /// use syn::punctuated::Punctuated;
@@ -64,7 +65,7 @@
 ///     let mut tokens = TokenStream::new();
 ///     while !input.is_empty() && !input.peek(end) {
 ///         let next: TokenTree = input.parse()?;
-///         tokens.extend(Some(next));
+///         tokens.extend(iter::once(next));
 ///     }
 ///     Ok(tokens)
 /// }

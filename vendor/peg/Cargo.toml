@@ -10,10 +10,17 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2018"
+edition = "2021"
+rust-version = "1.68.0"
 name = "peg"
-version = "0.8.1"
+version = "0.8.5"
 authors = ["Kevin Mehall <km@kevinmehall.net>"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "A simple Parsing Expression Grammar (PEG) parser generator."
 readme = "README.md"
 keywords = [
@@ -26,19 +33,29 @@ categories = ["parsing"]
 license = "MIT"
 repository = "https://github.com/kevinmehall/rust-peg"
 
+[features]
+default = ["std"]
+std = ["peg-runtime/std"]
+trace = ["peg-macros/trace"]
+unstable = ["peg-runtime/unstable"]
+
+[lib]
+name = "peg"
+path = "src/lib.rs"
+
 [[test]]
 name = "trybuild"
 path = "tests/trybuild.rs"
 harness = false
 
 [dependencies.peg-macros]
-version = "= 0.8.1"
+version = "= 0.8.5"
 
 [dependencies.peg-runtime]
-version = "= 0.8.1"
+version = "= 0.8.5"
 
 [dev-dependencies.trybuild]
-version = "1.0"
+version = "1.0.80"
 
-[features]
-trace = ["peg-macros/trace"]
+[dev-dependencies.version_check]
+version = "0.9"

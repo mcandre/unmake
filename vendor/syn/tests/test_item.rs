@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 #![allow(
     clippy::elidable_lifetime_names,
     clippy::needless_lifetimes,
@@ -5,7 +6,9 @@
 )]
 
 #[macro_use]
-mod macros;
+mod snapshot;
+
+mod debug;
 
 use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 use quote::quote;
@@ -51,8 +54,6 @@ fn test_macro_variable_attr() {
 
 #[test]
 fn test_negative_impl() {
-    // Rustc parses all of the following.
-
     #[cfg(any())]
     impl ! {}
     let tokens = quote! {
@@ -65,18 +66,11 @@ fn test_negative_impl() {
     }
     "#);
 
-    #[cfg(any())]
-    #[rustfmt::skip]
-    impl !Trait {}
     let tokens = quote! {
         impl !Trait {}
     };
-    snapshot!(tokens as Item, @r#"
-    Item::Impl {
-        generics: Generics,
-        self_ty: Type::Verbatim(`! Trait`),
-    }
-    "#);
+    let err = syn::parse2::<Item>(tokens).unwrap_err();
+    assert_eq!(err.to_string(), "inherent impls cannot be negative");
 
     #[cfg(any())]
     impl !Trait for T {}
@@ -105,19 +99,6 @@ fn test_negative_impl() {
                 ],
             },
         },
-    }
-    "#);
-
-    #[cfg(any())]
-    #[rustfmt::skip]
-    impl !! {}
-    let tokens = quote! {
-        impl !! {}
-    };
-    snapshot!(tokens as Item, @r#"
-    Item::Impl {
-        generics: Generics,
-        self_ty: Type::Verbatim(`! !`),
     }
     "#);
 }
@@ -333,4 +314,57 @@ fn test_impl_trait_trailing_plus() {
         },
     }
     "#);
+}
+
+// Regression test for issue https://github.com/dtolnay/syn/issues/1967
+#[test]
+fn test_nested_receiver_classification() {
+    let tokens = quote! {
+        fn foo(
+            self: foo<{ fn foo(
+                self: foo<{ fn foo(
+                    self: foo<{ fn foo(
+                        self: foo<{ fn foo(
+                            self: foo<{ fn foo(
+                                self: foo<{ fn foo(
+                                    self: foo<{ fn foo(
+                                        self: foo<{ fn foo(
+                                            self: foo<{ fn foo(
+                                                self: foo<{ fn foo(
+                                                    self: foo<{ fn foo(
+                                                        self: foo<{ fn foo(
+                                                            self: foo<{ fn foo(
+                                                                self: foo<{ fn foo(
+                                                                    self: foo<{ fn foo(
+                                                                        self: foo<{ fn foo(
+                                                                            self: foo<{ fn foo(
+                                                                                self: foo<{ fn foo(
+                                                                                    self: foo<{ fn foo(
+                                                                                        self: foo<{ fn foo(
+                                                                                            self: foo<{ fn foo(
+                                                                                            )}>
+                                                                                        )}>
+                                                                                    )}>
+                                                                                )}>
+                                                                            )}>
+                                                                        )}>
+                                                                    )}>
+                                                                )}>
+                                                            )}>
+                                                        )}>
+                                                    )}>
+                                                )}>
+                                            )}>
+                                        )}>
+                                    )}>
+                                )}>
+                            )}>
+                        )}>
+                    )}>
+                )}>
+            )}>
+        ) {}
+    };
+
+    let _ = syn::parse2::<syn::File>(tokens);
 }

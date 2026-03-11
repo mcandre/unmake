@@ -1,0 +1,18 @@
+[package]
+name = "die"
+version = "0.2.0"
+authors = ["moparisthebest <admin@moparisthebest.com>"]
+
+description = "Handle errors and exit in command line programs easily."
+repository  = "https://code.moparisthebest.com/moparisthebest/die"
+keywords    = ["die", "stderr", "cmd", "cmdline", "exit"]
+
+license = "MIT/Apache-2.0"
+readme = "README.md"
+
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "LICENSE-*",
+    "*.md",
+]

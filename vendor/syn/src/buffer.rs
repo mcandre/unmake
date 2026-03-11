@@ -5,12 +5,15 @@
 // Syn, and caution should be used when editing it. The public-facing interface
 // is 100% safe but the implementation is fragile internally.
 
+use crate::ext::TokenStreamExt as _;
 use crate::Lifetime;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::cmp::Ordering;
+use core::marker::PhantomData;
+use core::ptr;
 use proc_macro2::extra::DelimSpan;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use std::cmp::Ordering;
-use std::marker::PhantomData;
-use std::ptr;
 
 /// Internal type which is used instead of `TokenTree` to represent a token tree
 /// within a `TokenBuffer`.
@@ -159,7 +162,7 @@ impl<'a> Cursor<'a> {
     /// If the cursor is looking at an `Entry::Group`, the bumped cursor will
     /// point at the first token in the group (with the same scope end).
     unsafe fn bump_ignore_group(self) -> Cursor<'a> {
-        unsafe { Cursor::create(self.ptr.offset(1), self.scope) }
+        unsafe { Cursor::create(self.ptr.add(1), self.scope) }
     }
 
     /// While the cursor is looking at a `None`-delimited group, move it to look
@@ -285,13 +288,13 @@ impl<'a> Cursor<'a> {
     /// Copies all remaining tokens visible from this cursor into a
     /// `TokenStream`.
     pub fn token_stream(self) -> TokenStream {
-        let mut tts = Vec::new();
+        let mut tokens = TokenStream::new();
         let mut cursor = self;
         while let Some((tt, rest)) = cursor.token_tree() {
-            tts.push(tt);
+            tokens.append(tt);
             cursor = rest;
         }
-        tts.into_iter().collect()
+        tokens
     }
 
     /// If the cursor is pointing at a `TokenTree`, returns it along with a
@@ -338,7 +341,7 @@ impl<'a> Cursor<'a> {
     #[cfg(any(feature = "full", feature = "derive"))]
     pub(crate) fn prev_span(mut self) -> Span {
         if start_of_buffer(self) < self.ptr {
-            self.ptr = unsafe { self.ptr.offset(-1) };
+            self.ptr = unsafe { self.ptr.sub(1) };
         }
         self.span()
     }

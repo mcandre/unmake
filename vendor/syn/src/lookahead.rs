@@ -3,8 +3,11 @@ use crate::error::{self, Error};
 use crate::sealed::lookahead::Sealed;
 use crate::span::IntoSpans;
 use crate::token::{CustomToken, Token};
+use alloc::format;
+use alloc::vec::Vec;
+use core::cell::RefCell;
+use core::fmt::{self, Display};
 use proc_macro2::{Delimiter, Span};
-use std::cell::RefCell;
 
 /// Support for checking the next token in a stream to decide how to parse.
 ///
@@ -139,11 +142,26 @@ impl<'a> Lookahead1<'a> {
                 error::new_at(self.scope, self.cursor, message)
             }
             _ => {
-                let join = comparisons.join(", ");
-                let message = format!("expected one of: {}", join);
+                let message = format!("expected one of: {}", CommaSeparated(&comparisons));
                 error::new_at(self.scope, self.cursor, message)
             }
         }
+    }
+}
+
+struct CommaSeparated<'a>(&'a [&'a str]);
+
+impl<'a> Display for CommaSeparated<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut first = true;
+        for &s in self.0 {
+            if !first {
+                f.write_str(", ")?;
+            }
+            f.write_str(s)?;
+            first = false;
+        }
+        Ok(())
     }
 }
 

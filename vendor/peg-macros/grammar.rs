@@ -6,13 +6,13 @@ pub mod peg {
     type PositionRepr = <Input as ::peg::Parse>::PositionRepr;
     #[allow(unused_parens)]
     struct ParseState<'input> {
-        _phantom: ::std::marker::PhantomData<(&'input ())>,
+        _phantom: ::core::marker::PhantomData<(&'input ())>,
         primary_cache: ::std::collections::HashMap<usize, ::peg::RuleResult<SpannedExpr>>,
     }
     impl<'input> ParseState<'input> {
         fn new() -> ParseState<'input> {
             ParseState {
-                _phantom: ::std::marker::PhantomData,
+                _phantom: ::core::marker::PhantomData,
                 primary_cache: ::std::collections::HashMap::new(),
             }
         }
@@ -23,7 +23,7 @@ pub mod peg {
     use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream};
     pub fn peg_grammar<'input>(
         __input: &'input Input,
-    ) -> ::std::result::Result<Grammar, ::peg::error::ParseError<PositionRepr>> {
+    ) -> ::core::result::Result<Grammar, ::peg::error::ParseError<PositionRepr>> {
         #![allow(non_snake_case, unused)]
         let mut __err_state = ::peg::error::ErrorState::new(::peg::Parse::start(__input));
         let mut __state = ParseState::new();
@@ -50,11 +50,12 @@ pub mod peg {
             &mut __err_state,
             ::peg::Parse::start(__input),
         ) {
-            ::peg::RuleResult::<Grammar>::Matched(__pos, __value) => {
+            ::peg::RuleResult::Matched(__pos, __value) => {
                 if ::peg::Parse::is_eof(__input, __pos) {
                     panic!(
                         "Parser is nondeterministic: succeeded when reparsing for error position"
                     );
+                    return Ok(__value);
                 } else {
                     __err_state.mark_failure(__pos, "EOF");
                 }
@@ -205,14 +206,36 @@ pub mod peg {
                 };
                 match __seq_res {
                     ::peg::RuleResult::Matched(__pos, p) => {
-                        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, ">") {
+                        let __seq_res = match match ::peg::ParseLiteral::parse_string_literal(
+                            __input, __pos, ",",
+                        ) {
                             ::peg::RuleResult::Matched(__pos, __val) => {
-                                ::peg::RuleResult::Matched(__pos, (|| p)())
+                                ::peg::RuleResult::Matched(__pos, __val)
                             }
                             ::peg::RuleResult::Failed => {
-                                __err_state.mark_failure(__pos, "\">\"");
+                                __err_state.mark_failure(__pos, "\",\"");
                                 ::peg::RuleResult::Failed
                             }
+                        } {
+                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                ::peg::RuleResult::Matched(__newpos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
+                        };
+                        match __seq_res {
+                            ::peg::RuleResult::Matched(__pos, _) => {
+                                match ::peg::ParseLiteral::parse_string_literal(__input, __pos, ">")
+                                {
+                                    ::peg::RuleResult::Matched(__pos, __val) => {
+                                        ::peg::RuleResult::Matched(__pos, (|| p)())
+                                    }
+                                    ::peg::RuleResult::Failed => {
+                                        __err_state.mark_failure(__pos, "\">\"");
+                                        ::peg::RuleResult::Failed
+                                    }
+                                }
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
                         }
                     }
                     ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
@@ -445,7 +468,7 @@ pub mod peg {
                                                                     header,
                                                                 ) => {
                                                                     let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "->") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = { let str_start = __pos ; match match __parse_rust_type (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , :: peg :: ParseSlice :: parse_slice (__input , str_start , __newpos)) } , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , t) => { :: peg :: RuleResult :: Matched (__pos , (|| { t }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"->\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , __value) => { :: peg :: RuleResult :: Matched (__newpos , Some (__value)) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , None) } , } ;
-                                                                    match __seq_res { :: peg :: RuleResult :: Matched (__pos , ret_type) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "=") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_expression (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , expr) => { { let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ";") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\";\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , (|| { Rule { span , doc , name : header . 0 , ty_params : header . 1 , params : header . 2 , expr , ret_type , visibility , no_eof , cache } }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"=\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                                    match __seq_res { :: peg :: RuleResult :: Matched (__pos , ret_type) => { { let __seq_res = match { let str_start = __pos ; match match __parse_rust_where_clause (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , :: peg :: ParseSlice :: parse_slice (__input , str_start , __newpos)) } , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } { :: peg :: RuleResult :: Matched (__newpos , __value) => { :: peg :: RuleResult :: Matched (__newpos , Some (__value)) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , None) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , where_clause) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "=") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_expression (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , expr) => { { let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ";") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\";\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , (|| { Rule { span , doc , name : header . 0 , ty_params : header . 1 , params : header . 2 , expr , ret_type , where_clause , visibility , no_eof , cache } }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"=\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
                                                                 }
                                                                 ::peg::RuleResult::Failed => {
                                                                     ::peg::RuleResult::Failed
@@ -746,15 +769,85 @@ pub mod peg {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
         match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "(") {
             ::peg::RuleResult::Matched(__pos, __val) => {
-                let __seq_res = {
-                    let mut __repeat_pos = __pos;
-                    let mut __repeat_value = vec![];
-                    loop {
-                        let __pos = __repeat_pos;
-                        let __pos = if __repeat_value.is_empty() {
-                            __pos
+                let __seq_res = match {
+                    let __seq_res = {
+                        let mut __repeat_pos = __pos;
+                        let mut __repeat_value = vec![];
+                        loop {
+                            let __pos = __repeat_pos;
+                            let __pos = if __repeat_value.is_empty() {
+                                __pos
+                            } else {
+                                let __sep_res = match ::peg::ParseLiteral::parse_string_literal(
+                                    __input, __pos, ",",
+                                ) {
+                                    ::peg::RuleResult::Matched(__pos, __val) => {
+                                        ::peg::RuleResult::Matched(__pos, __val)
+                                    }
+                                    ::peg::RuleResult::Failed => {
+                                        __err_state.mark_failure(__pos, "\",\"");
+                                        ::peg::RuleResult::Failed
+                                    }
+                                };
+                                match __sep_res {
+                                    ::peg::RuleResult::Matched(__newpos, _) => __newpos,
+                                    ::peg::RuleResult::Failed => break,
+                                }
+                            };
+                            let __step_res = {
+                                let __seq_res = __parse_IDENT(__input, __state, __err_state, __pos);
+                                match __seq_res {
+                                    ::peg::RuleResult::Matched(__pos, name) => {
+                                        match ::peg::ParseLiteral::parse_string_literal(
+                                            __input, __pos, ":",
+                                        ) {
+                                            ::peg::RuleResult::Matched(__pos, __val) => {
+                                                let __seq_res = __parse_rule_param_ty(
+                                                    __input,
+                                                    __state,
+                                                    __err_state,
+                                                    __pos,
+                                                );
+                                                match __seq_res {
+                                                    ::peg::RuleResult::Matched(__pos, ty) => {
+                                                        ::peg::RuleResult::Matched(
+                                                            __pos,
+                                                            (|| RuleParam { name, ty })(),
+                                                        )
+                                                    }
+                                                    ::peg::RuleResult::Failed => {
+                                                        ::peg::RuleResult::Failed
+                                                    }
+                                                }
+                                            }
+                                            ::peg::RuleResult::Failed => {
+                                                __err_state.mark_failure(__pos, "\":\"");
+                                                ::peg::RuleResult::Failed
+                                            }
+                                        }
+                                    }
+                                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                }
+                            };
+                            match __step_res {
+                                ::peg::RuleResult::Matched(__newpos, __value) => {
+                                    __repeat_pos = __newpos;
+                                    __repeat_value.push(__value);
+                                }
+                                ::peg::RuleResult::Failed => {
+                                    break;
+                                }
+                            }
+                        }
+                        if __repeat_value.len() >= 1 {
+                            ::peg::RuleResult::Matched(__repeat_pos, __repeat_value)
                         } else {
-                            let __sep_res = match ::peg::ParseLiteral::parse_string_literal(
+                            ::peg::RuleResult::Failed
+                        }
+                    };
+                    match __seq_res {
+                        ::peg::RuleResult::Matched(__pos, x) => {
+                            let __seq_res = match match ::peg::ParseLiteral::parse_string_literal(
                                 __input, __pos, ",",
                             ) {
                                 ::peg::RuleResult::Matched(__pos, __val) => {
@@ -764,64 +857,32 @@ pub mod peg {
                                     __err_state.mark_failure(__pos, "\",\"");
                                     ::peg::RuleResult::Failed
                                 }
+                            } {
+                                ::peg::RuleResult::Matched(__newpos, _) => {
+                                    ::peg::RuleResult::Matched(__newpos, ())
+                                }
+                                ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
                             };
-                            match __sep_res {
-                                ::peg::RuleResult::Matched(__newpos, _) => __newpos,
-                                ::peg::RuleResult::Failed => break,
-                            }
-                        };
-                        let __step_res = {
-                            let __seq_res = __parse_IDENT(__input, __state, __err_state, __pos);
                             match __seq_res {
-                                ::peg::RuleResult::Matched(__pos, name) => {
-                                    match ::peg::ParseLiteral::parse_string_literal(
-                                        __input, __pos, ":",
-                                    ) {
-                                        ::peg::RuleResult::Matched(__pos, __val) => {
-                                            let __seq_res = __parse_rule_param_ty(
-                                                __input,
-                                                __state,
-                                                __err_state,
-                                                __pos,
-                                            );
-                                            match __seq_res {
-                                                ::peg::RuleResult::Matched(__pos, ty) => {
-                                                    ::peg::RuleResult::Matched(
-                                                        __pos,
-                                                        (|| RuleParam { name, ty })(),
-                                                    )
-                                                }
-                                                ::peg::RuleResult::Failed => {
-                                                    ::peg::RuleResult::Failed
-                                                }
-                                            }
-                                        }
-                                        ::peg::RuleResult::Failed => {
-                                            __err_state.mark_failure(__pos, "\":\"");
-                                            ::peg::RuleResult::Failed
-                                        }
-                                    }
+                                ::peg::RuleResult::Matched(__pos, _) => {
+                                    ::peg::RuleResult::Matched(__pos, (|| x)())
                                 }
                                 ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
                             }
-                        };
-                        match __step_res {
-                            ::peg::RuleResult::Matched(__newpos, __value) => {
-                                __repeat_pos = __newpos;
-                                __repeat_value.push(__value);
-                            }
-                            ::peg::RuleResult::Failed => {
-                                break;
-                            }
                         }
+                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
                     }
-                    ::peg::RuleResult::Matched(__repeat_pos, __repeat_value)
+                } {
+                    ::peg::RuleResult::Matched(__newpos, __value) => {
+                        ::peg::RuleResult::Matched(__newpos, Some(__value))
+                    }
+                    ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, None),
                 };
                 match __seq_res {
                     ::peg::RuleResult::Matched(__pos, params) => {
                         match ::peg::ParseLiteral::parse_string_literal(__input, __pos, ")") {
                             ::peg::RuleResult::Matched(__pos, __val) => {
-                                ::peg::RuleResult::Matched(__pos, (|| params)())
+                                ::peg::RuleResult::Matched(__pos, (|| params.unwrap_or_default())())
                             }
                             ::peg::RuleResult::Failed => {
                                 __err_state.mark_failure(__pos, "\")\"");
@@ -969,53 +1030,30 @@ pub mod peg {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
         match {
             let str_start = __pos;
-            match {
-                let __choice_res =
-                    match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "pub") {
-                        ::peg::RuleResult::Matched(__pos, __val) => {
-                            let __seq_res = match match __parse_PAREN_GROUP(
-                                __input,
-                                __state,
-                                __err_state,
-                                __pos,
-                            ) {
-                                ::peg::RuleResult::Matched(pos, _) => {
-                                    ::peg::RuleResult::Matched(pos, ())
-                                }
-                                ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
-                            } {
-                                ::peg::RuleResult::Matched(__newpos, _) => {
-                                    ::peg::RuleResult::Matched(__newpos, ())
-                                }
-                                ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
-                            };
-                            match __seq_res {
-                                ::peg::RuleResult::Matched(__pos, _) => {
-                                    ::peg::RuleResult::Matched(__pos, ())
-                                }
-                                ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+            match match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "pub") {
+                ::peg::RuleResult::Matched(__pos, __val) => {
+                    let __seq_res =
+                        match match __parse_PAREN_GROUP(__input, __state, __err_state, __pos) {
+                            ::peg::RuleResult::Matched(pos, _) => {
+                                ::peg::RuleResult::Matched(pos, ())
                             }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                        } {
+                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                ::peg::RuleResult::Matched(__newpos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
+                        };
+                    match __seq_res {
+                        ::peg::RuleResult::Matched(__pos, _) => {
+                            ::peg::RuleResult::Matched(__pos, ())
                         }
-                        ::peg::RuleResult::Failed => {
-                            __err_state.mark_failure(__pos, "\"pub\"");
-                            ::peg::RuleResult::Failed
-                        }
-                    };
-                match __choice_res {
-                    ::peg::RuleResult::Matched(__pos, __value) => {
-                        ::peg::RuleResult::Matched(__pos, __value)
+                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
                     }
-                    ::peg::RuleResult::Failed => {
-                        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "crate") {
-                            ::peg::RuleResult::Matched(__pos, __val) => {
-                                ::peg::RuleResult::Matched(__pos, __val)
-                            }
-                            ::peg::RuleResult::Failed => {
-                                __err_state.mark_failure(__pos, "\"crate\"");
-                                ::peg::RuleResult::Failed
-                            }
-                        }
-                    }
+                }
+                ::peg::RuleResult::Failed => {
+                    __err_state.mark_failure(__pos, "\"pub\"");
+                    ::peg::RuleResult::Failed
                 }
             } {
                 ::peg::RuleResult::Matched(__newpos, _) => ::peg::RuleResult::Matched(
@@ -1080,7 +1118,7 @@ pub mod peg {
                                             ::peg::RuleResult::Matched(__pos, __value)
                                         }
                                         ::peg::RuleResult::Failed => {
-                                            let __choice_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "::") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "{") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = { let mut __repeat_pos = __pos ; let mut __repeat_value = vec ! () ; loop { let __pos = __repeat_pos ; let __pos = if __repeat_value . is_empty () { __pos } else { let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ; match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , } } ; let __step_res = { let __seq_res = match __parse_IDENT (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { { let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "as") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_IDENT (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"as\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } } } if __repeat_value . len () >= 1 { :: peg :: RuleResult :: Matched (__repeat_pos , ()) } else { :: peg :: RuleResult :: Failed } } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "}") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"}\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"{\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"::\"") ; :: peg :: RuleResult :: Failed } } ;
+                                            let __choice_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "::") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "{") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = { let __seq_res = { let mut __repeat_pos = __pos ; let mut __repeat_value = vec ! () ; loop { let __pos = __repeat_pos ; let __pos = if __repeat_value . is_empty () { __pos } else { let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ; match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , } } ; let __step_res = { let __seq_res = match __parse_IDENT (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { { let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "as") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_IDENT (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"as\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } } } if __repeat_value . len () >= 1 { :: peg :: RuleResult :: Matched (__repeat_pos , ()) } else { :: peg :: RuleResult :: Failed } } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { { let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "}") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"}\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"{\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"::\"") ; :: peg :: RuleResult :: Failed } } ;
                                             match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "as") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_IDENT (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"as\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } }
                                         }
                                     }
@@ -1319,16 +1357,65 @@ pub mod peg {
                                 __input, __pos, "dyn",
                             ) {
                                 ::peg::RuleResult::Matched(__pos, __val) => {
-                                    let __seq_res = match __parse_rust_type(
-                                        __input,
-                                        __state,
-                                        __err_state,
-                                        __pos,
-                                    ) {
-                                        ::peg::RuleResult::Matched(pos, _) => {
-                                            ::peg::RuleResult::Matched(pos, ())
+                                    let __seq_res = {
+                                        let mut __repeat_pos = __pos;
+                                        let mut __repeat_value = vec![];
+                                        loop {
+                                            let __pos = __repeat_pos;
+                                            let __pos = if __repeat_value.is_empty() {
+                                                __pos
+                                            } else {
+                                                let __sep_res =
+                                                    match ::peg::ParseLiteral::parse_string_literal(
+                                                        __input, __pos, "+",
+                                                    ) {
+                                                        ::peg::RuleResult::Matched(
+                                                            __pos,
+                                                            __val,
+                                                        ) => {
+                                                            ::peg::RuleResult::Matched(__pos, __val)
+                                                        }
+                                                        ::peg::RuleResult::Failed => {
+                                                            __err_state
+                                                                .mark_failure(__pos, "\"+\"");
+                                                            ::peg::RuleResult::Failed
+                                                        }
+                                                    };
+                                                match __sep_res {
+                                                    ::peg::RuleResult::Matched(__newpos, _) => {
+                                                        __newpos
+                                                    }
+                                                    ::peg::RuleResult::Failed => break,
+                                                }
+                                            };
+                                            let __step_res = match __parse_rust_ty_param_bound(
+                                                __input,
+                                                __state,
+                                                __err_state,
+                                                __pos,
+                                            ) {
+                                                ::peg::RuleResult::Matched(pos, _) => {
+                                                    ::peg::RuleResult::Matched(pos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            };
+                                            match __step_res {
+                                                ::peg::RuleResult::Matched(__newpos, __value) => {
+                                                    __repeat_pos = __newpos;
+                                                    __repeat_value.push(__value);
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    break;
+                                                }
+                                            }
                                         }
-                                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                        if __repeat_value.len() >= 1 {
+                                            ::peg::RuleResult::Matched(__repeat_pos, ())
+                                        } else {
+                                            ::peg::RuleResult::Failed
+                                        }
                                     };
                                     match __seq_res {
                                         ::peg::RuleResult::Matched(__pos, _) => {
@@ -1352,16 +1439,57 @@ pub mod peg {
                                             __input, __pos, "impl",
                                         ) {
                                             ::peg::RuleResult::Matched(__pos, __val) => {
-                                                let __seq_res = match __parse_rust_type(
-                                                    __input,
-                                                    __state,
-                                                    __err_state,
-                                                    __pos,
-                                                ) {
-                                                    ::peg::RuleResult::Matched(pos, _) => {
-                                                        ::peg::RuleResult::Matched(pos, ())
+                                                let __seq_res = {
+                                                    let mut __repeat_pos = __pos;
+                                                    let mut __repeat_value = vec![];
+                                                    loop {
+                                                        let __pos = __repeat_pos;
+                                                        let __pos = if __repeat_value.is_empty() {
+                                                            __pos
+                                                        } else {
+                                                            let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "+") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"+\"") ; :: peg :: RuleResult :: Failed } } ;
+                                                            match __sep_res {
+                                                                ::peg::RuleResult::Matched(
+                                                                    __newpos,
+                                                                    _,
+                                                                ) => __newpos,
+                                                                ::peg::RuleResult::Failed => break,
+                                                            }
+                                                        };
+                                                        let __step_res =
+                                                            match __parse_rust_ty_param_bound(
+                                                                __input,
+                                                                __state,
+                                                                __err_state,
+                                                                __pos,
+                                                            ) {
+                                                                ::peg::RuleResult::Matched(
+                                                                    pos,
+                                                                    _,
+                                                                ) => ::peg::RuleResult::Matched(
+                                                                    pos,
+                                                                    (),
+                                                                ),
+                                                                ::peg::RuleResult::Failed => {
+                                                                    ::peg::RuleResult::Failed
+                                                                }
+                                                            };
+                                                        match __step_res {
+                                                            ::peg::RuleResult::Matched(
+                                                                __newpos,
+                                                                __value,
+                                                            ) => {
+                                                                __repeat_pos = __newpos;
+                                                                __repeat_value.push(__value);
+                                                            }
+                                                            ::peg::RuleResult::Failed => {
+                                                                break;
+                                                            }
+                                                        }
                                                     }
-                                                    ::peg::RuleResult::Failed => {
+                                                    if __repeat_value.len() >= 1 {
+                                                        ::peg::RuleResult::Matched(__repeat_pos, ())
+                                                    } else {
                                                         ::peg::RuleResult::Failed
                                                     }
                                                 };
@@ -1389,38 +1517,58 @@ pub mod peg {
                                                     __input, __pos, "(",
                                                 ) {
                                                     ::peg::RuleResult::Matched(__pos, __val) => {
-                                                        let __seq_res = {
-                                                            let mut __repeat_pos = __pos;
-                                                            let mut __repeat_value = vec![];
-                                                            loop {
-                                                                let __pos = __repeat_pos;
-                                                                let __pos = if __repeat_value
-                                                                    .is_empty()
-                                                                {
-                                                                    __pos
-                                                                } else {
-                                                                    let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ;
-                                                                    match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , }
-                                                                };
-                                                                let __step_res = match __parse_rust_type (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ;
-                                                                match __step_res {
+                                                        let __seq_res = match {
+                                                            let __seq_res = {
+                                                                let mut __repeat_pos = __pos;
+                                                                let mut __repeat_value = vec![];
+                                                                loop {
+                                                                    let __pos = __repeat_pos;
+                                                                    let __pos = if __repeat_value
+                                                                        .is_empty()
+                                                                    {
+                                                                        __pos
+                                                                    } else {
+                                                                        let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ;
+                                                                        match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , }
+                                                                    };
+                                                                    let __step_res = match __parse_rust_type (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ;
+                                                                    match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } }
+                                                                }
+                                                                if __repeat_value.len() >= 1 {
                                                                     ::peg::RuleResult::Matched(
-                                                                        __newpos,
-                                                                        __value,
-                                                                    ) => {
-                                                                        __repeat_pos = __newpos;
-                                                                        __repeat_value
-                                                                            .push(__value);
-                                                                    }
-                                                                    ::peg::RuleResult::Failed => {
-                                                                        break;
-                                                                    }
+                                                                        __repeat_pos,
+                                                                        (),
+                                                                    )
+                                                                } else {
+                                                                    ::peg::RuleResult::Failed
+                                                                }
+                                                            };
+                                                            match __seq_res {
+                                                                ::peg::RuleResult::Matched(
+                                                                    __pos,
+                                                                    _,
+                                                                ) => {
+                                                                    let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ;
+                                                                    match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                                }
+                                                                ::peg::RuleResult::Failed => {
+                                                                    ::peg::RuleResult::Failed
                                                                 }
                                                             }
+                                                        } {
                                                             ::peg::RuleResult::Matched(
-                                                                __repeat_pos,
+                                                                __newpos,
+                                                                _,
+                                                            ) => ::peg::RuleResult::Matched(
+                                                                __newpos,
                                                                 (),
-                                                            )
+                                                            ),
+                                                            ::peg::RuleResult::Failed => {
+                                                                ::peg::RuleResult::Matched(
+                                                                    __pos,
+                                                                    (),
+                                                                )
+                                                            }
                                                         };
                                                         match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
                                                     }
@@ -1434,14 +1582,41 @@ pub mod peg {
                                                     ::peg::RuleResult::Matched(__pos, __value)
                                                 }
                                                 ::peg::RuleResult::Failed => {
-                                                    match __parse_rust_ty_path(
-                                                        __input,
-                                                        __state,
-                                                        __err_state,
-                                                        __pos,
-                                                    ) {
-                                                        ::peg::RuleResult::Matched(pos, _) => {
-                                                            ::peg::RuleResult::Matched(pos, ())
+                                                    let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "<") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_rust_type (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { { let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "as") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_rust_ty_path (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"as\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ">") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\">\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"<\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ;
+                                                    match __seq_res {
+                                                        ::peg::RuleResult::Matched(__pos, _) => {
+                                                            let __seq_res =
+                                                                match __parse_rust_ty_path(
+                                                                    __input,
+                                                                    __state,
+                                                                    __err_state,
+                                                                    __pos,
+                                                                ) {
+                                                                    ::peg::RuleResult::Matched(
+                                                                        pos,
+                                                                        _,
+                                                                    ) => {
+                                                                        ::peg::RuleResult::Matched(
+                                                                            pos,
+                                                                            (),
+                                                                        )
+                                                                    }
+                                                                    ::peg::RuleResult::Failed => {
+                                                                        ::peg::RuleResult::Failed
+                                                                    }
+                                                                };
+                                                            match __seq_res {
+                                                                ::peg::RuleResult::Matched(
+                                                                    __pos,
+                                                                    _,
+                                                                ) => ::peg::RuleResult::Matched(
+                                                                    __pos,
+                                                                    (),
+                                                                ),
+                                                                ::peg::RuleResult::Failed => {
+                                                                    ::peg::RuleResult::Failed
+                                                                }
+                                                            }
                                                         }
                                                         ::peg::RuleResult::Failed => {
                                                             ::peg::RuleResult::Failed
@@ -1522,46 +1697,54 @@ pub mod peg {
                                             let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "::") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"::\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ;
                                             match __seq_res {
                                                 ::peg::RuleResult::Matched(__pos, _) => {
-                                                    match ::peg::ParseLiteral::parse_string_literal(
-                                                        __input, __pos, "<",
-                                                    ) {
-                                                        ::peg::RuleResult::Matched(
-                                                            __pos,
-                                                            __val,
-                                                        ) => {
-                                                            let __seq_res = {
-                                                                let mut __repeat_pos = __pos;
-                                                                let mut __repeat_value = vec![];
-                                                                loop {
-                                                                    let __pos = __repeat_pos;
-                                                                    let __pos = if __repeat_value
-                                                                        .is_empty()
-                                                                    {
-                                                                        __pos
-                                                                    } else {
-                                                                        let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ;
-                                                                        match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , }
-                                                                    };
-                                                                    let __step_res = {
-                                                                        let __choice_res = match __parse_LIFETIME (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ;
-                                                                        match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = match __parse_rust_type (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = match __parse_BRACE_GROUP (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => match __parse_LITERAL (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } } } }
-                                                                    };
-                                                                    match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } }
-                                                                }
-                                                                if __repeat_value.len() >= 1 {
-                                                                    ::peg::RuleResult::Matched(
-                                                                        __repeat_pos,
-                                                                        (),
-                                                                    )
-                                                                } else {
+                                                    let __seq_res = {
+                                                        let __choice_res =
+                                                            match __parse_rust_generic_args(
+                                                                __input,
+                                                                __state,
+                                                                __err_state,
+                                                                __pos,
+                                                            ) {
+                                                                ::peg::RuleResult::Matched(
+                                                                    pos,
+                                                                    _,
+                                                                ) => ::peg::RuleResult::Matched(
+                                                                    pos,
+                                                                    (),
+                                                                ),
+                                                                ::peg::RuleResult::Failed => {
                                                                     ::peg::RuleResult::Failed
                                                                 }
                                                             };
-                                                            match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ">") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\">\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                        match __choice_res {
+                                                            ::peg::RuleResult::Matched(
+                                                                __pos,
+                                                                __value,
+                                                            ) => ::peg::RuleResult::Matched(
+                                                                __pos, __value,
+                                                            ),
+                                                            ::peg::RuleResult::Failed => {
+                                                                let __seq_res = match __parse_PAREN_GROUP (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ;
+                                                                match __seq_res {
+                                                                    ::peg::RuleResult::Matched(
+                                                                        __pos,
+                                                                        _,
+                                                                    ) => {
+                                                                        let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "->") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_rust_type (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"->\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ;
+                                                                        match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                                    }
+                                                                    ::peg::RuleResult::Failed => {
+                                                                        ::peg::RuleResult::Failed
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    };
+                                                    match __seq_res {
+                                                        ::peg::RuleResult::Matched(__pos, _) => {
+                                                            ::peg::RuleResult::Matched(__pos, ())
                                                         }
                                                         ::peg::RuleResult::Failed => {
-                                                            __err_state
-                                                                .mark_failure(__pos, "\"<\"");
                                                             ::peg::RuleResult::Failed
                                                         }
                                                     }
@@ -1690,14 +1873,36 @@ pub mod peg {
                 };
                 match __seq_res {
                     ::peg::RuleResult::Matched(__pos, p) => {
-                        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, ">") {
+                        let __seq_res = match match ::peg::ParseLiteral::parse_string_literal(
+                            __input, __pos, ",",
+                        ) {
                             ::peg::RuleResult::Matched(__pos, __val) => {
-                                ::peg::RuleResult::Matched(__pos, (|| p)())
+                                ::peg::RuleResult::Matched(__pos, __val)
                             }
                             ::peg::RuleResult::Failed => {
-                                __err_state.mark_failure(__pos, "\">\"");
+                                __err_state.mark_failure(__pos, "\",\"");
                                 ::peg::RuleResult::Failed
                             }
+                        } {
+                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                ::peg::RuleResult::Matched(__newpos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
+                        };
+                        match __seq_res {
+                            ::peg::RuleResult::Matched(__pos, _) => {
+                                match ::peg::ParseLiteral::parse_string_literal(__input, __pos, ">")
+                                {
+                                    ::peg::RuleResult::Matched(__pos, __val) => {
+                                        ::peg::RuleResult::Matched(__pos, (|| p)())
+                                    }
+                                    ::peg::RuleResult::Failed => {
+                                        __err_state.mark_failure(__pos, "\">\"");
+                                        ::peg::RuleResult::Failed
+                                    }
+                                }
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
                         }
                     }
                     ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
@@ -1705,6 +1910,293 @@ pub mod peg {
             }
             ::peg::RuleResult::Failed => {
                 __err_state.mark_failure(__pos, "\"<\"");
+                ::peg::RuleResult::Failed
+            }
+        }
+    }
+    fn __parse_rust_where_clause<'input>(
+        __input: &'input Input,
+        __state: &mut ParseState<'input>,
+        __err_state: &mut ::peg::error::ErrorState,
+        __pos: usize,
+    ) -> ::peg::RuleResult<()> {
+        #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
+        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "where") {
+            ::peg::RuleResult::Matched(__pos, __val) => {
+                let __seq_res = {
+                    let mut __repeat_pos = __pos;
+                    let mut __repeat_value = vec![];
+                    loop {
+                        let __pos = __repeat_pos;
+                        let __pos = if __repeat_value.is_empty() {
+                            __pos
+                        } else {
+                            let __sep_res = match ::peg::ParseLiteral::parse_string_literal(
+                                __input, __pos, ",",
+                            ) {
+                                ::peg::RuleResult::Matched(__pos, __val) => {
+                                    ::peg::RuleResult::Matched(__pos, __val)
+                                }
+                                ::peg::RuleResult::Failed => {
+                                    __err_state.mark_failure(__pos, "\",\"");
+                                    ::peg::RuleResult::Failed
+                                }
+                            };
+                            match __sep_res {
+                                ::peg::RuleResult::Matched(__newpos, _) => __newpos,
+                                ::peg::RuleResult::Failed => break,
+                            }
+                        };
+                        let __step_res = {
+                            let __choice_res = {
+                                let __seq_res =
+                                    match __parse_LIFETIME(__input, __state, __err_state, __pos) {
+                                        ::peg::RuleResult::Matched(pos, _) => {
+                                            ::peg::RuleResult::Matched(pos, ())
+                                        }
+                                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                    };
+                                match __seq_res {
+                                    ::peg::RuleResult::Matched(__pos, _) => {
+                                        let __seq_res =
+                                            match match ::peg::ParseLiteral::parse_string_literal(
+                                                __input, __pos, ":",
+                                            ) {
+                                                ::peg::RuleResult::Matched(__pos, __val) => {
+                                                    let __seq_res = {
+                                                        let mut __repeat_pos = __pos;
+                                                        let mut __repeat_value = vec![];
+                                                        loop {
+                                                            let __pos = __repeat_pos;
+                                                            let __pos = if __repeat_value.is_empty()
+                                                            {
+                                                                __pos
+                                                            } else {
+                                                                let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "+") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"+\"") ; :: peg :: RuleResult :: Failed } } ;
+                                                                match __sep_res {
+                                                                    ::peg::RuleResult::Matched(
+                                                                        __newpos,
+                                                                        _,
+                                                                    ) => __newpos,
+                                                                    ::peg::RuleResult::Failed => {
+                                                                        break
+                                                                    }
+                                                                }
+                                                            };
+                                                            let __step_res = match __parse_LIFETIME(
+                                                                __input,
+                                                                __state,
+                                                                __err_state,
+                                                                __pos,
+                                                            ) {
+                                                                ::peg::RuleResult::Matched(
+                                                                    pos,
+                                                                    _,
+                                                                ) => ::peg::RuleResult::Matched(
+                                                                    pos,
+                                                                    (),
+                                                                ),
+                                                                ::peg::RuleResult::Failed => {
+                                                                    ::peg::RuleResult::Failed
+                                                                }
+                                                            };
+                                                            match __step_res {
+                                                                ::peg::RuleResult::Matched(
+                                                                    __newpos,
+                                                                    __value,
+                                                                ) => {
+                                                                    __repeat_pos = __newpos;
+                                                                    __repeat_value.push(__value);
+                                                                }
+                                                                ::peg::RuleResult::Failed => {
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                        if __repeat_value.len() >= 1 {
+                                                            ::peg::RuleResult::Matched(
+                                                                __repeat_pos,
+                                                                (),
+                                                            )
+                                                        } else {
+                                                            ::peg::RuleResult::Failed
+                                                        }
+                                                    };
+                                                    match __seq_res {
+                                                        ::peg::RuleResult::Matched(__pos, _) => {
+                                                            ::peg::RuleResult::Matched(__pos, ())
+                                                        }
+                                                        ::peg::RuleResult::Failed => {
+                                                            ::peg::RuleResult::Failed
+                                                        }
+                                                    }
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    __err_state.mark_failure(__pos, "\":\"");
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            } {
+                                                ::peg::RuleResult::Matched(__newpos, _) => {
+                                                    ::peg::RuleResult::Matched(__newpos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Matched(__pos, ())
+                                                }
+                                            };
+                                        match __seq_res {
+                                            ::peg::RuleResult::Matched(__pos, _) => {
+                                                ::peg::RuleResult::Matched(__pos, ())
+                                            }
+                                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                        }
+                                    }
+                                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                }
+                            };
+                            match __choice_res {
+                                ::peg::RuleResult::Matched(__pos, __value) => {
+                                    ::peg::RuleResult::Matched(__pos, __value)
+                                }
+                                ::peg::RuleResult::Failed => {
+                                    let __seq_res = match match __parse_rust_for_lifetimes(
+                                        __input,
+                                        __state,
+                                        __err_state,
+                                        __pos,
+                                    ) {
+                                        ::peg::RuleResult::Matched(pos, _) => {
+                                            ::peg::RuleResult::Matched(pos, ())
+                                        }
+                                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                    } {
+                                        ::peg::RuleResult::Matched(__newpos, _) => {
+                                            ::peg::RuleResult::Matched(__newpos, ())
+                                        }
+                                        ::peg::RuleResult::Failed => {
+                                            ::peg::RuleResult::Matched(__pos, ())
+                                        }
+                                    };
+                                    match __seq_res {
+                                        ::peg::RuleResult::Matched(__pos, _) => {
+                                            let __seq_res = match __parse_rust_type(
+                                                __input,
+                                                __state,
+                                                __err_state,
+                                                __pos,
+                                            ) {
+                                                ::peg::RuleResult::Matched(pos, _) => {
+                                                    ::peg::RuleResult::Matched(pos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            };
+                                            match __seq_res {
+                                                ::peg::RuleResult::Matched(__pos, _) => {
+                                                    match ::peg::ParseLiteral::parse_string_literal(
+                                                        __input, __pos, ":",
+                                                    ) {
+                                                        ::peg::RuleResult::Matched(
+                                                            __pos,
+                                                            __val,
+                                                        ) => {
+                                                            let __seq_res = {
+                                                                let mut __repeat_pos = __pos;
+                                                                let mut __repeat_value = vec![];
+                                                                loop {
+                                                                    let __pos = __repeat_pos;
+                                                                    let __pos = if __repeat_value
+                                                                        .is_empty()
+                                                                    {
+                                                                        __pos
+                                                                    } else {
+                                                                        let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "+") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"+\"") ; :: peg :: RuleResult :: Failed } } ;
+                                                                        match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , }
+                                                                    };
+                                                                    let __step_res = match __parse_rust_ty_param_bound (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ;
+                                                                    match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } }
+                                                                }
+                                                                if __repeat_value.len() >= 1 {
+                                                                    ::peg::RuleResult::Matched(
+                                                                        __repeat_pos,
+                                                                        (),
+                                                                    )
+                                                                } else {
+                                                                    ::peg::RuleResult::Failed
+                                                                }
+                                                            };
+                                                            match __seq_res {
+                                                                ::peg::RuleResult::Matched(
+                                                                    __pos,
+                                                                    _,
+                                                                ) => ::peg::RuleResult::Matched(
+                                                                    __pos,
+                                                                    (),
+                                                                ),
+                                                                ::peg::RuleResult::Failed => {
+                                                                    ::peg::RuleResult::Failed
+                                                                }
+                                                            }
+                                                        }
+                                                        ::peg::RuleResult::Failed => {
+                                                            __err_state
+                                                                .mark_failure(__pos, "\":\"");
+                                                            ::peg::RuleResult::Failed
+                                                        }
+                                                    }
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            }
+                                        }
+                                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                    }
+                                }
+                            }
+                        };
+                        match __step_res {
+                            ::peg::RuleResult::Matched(__newpos, __value) => {
+                                __repeat_pos = __newpos;
+                                __repeat_value.push(__value);
+                            }
+                            ::peg::RuleResult::Failed => {
+                                break;
+                            }
+                        }
+                    }
+                    ::peg::RuleResult::Matched(__repeat_pos, ())
+                };
+                match __seq_res {
+                    ::peg::RuleResult::Matched(__pos, _) => {
+                        let __seq_res = match match ::peg::ParseLiteral::parse_string_literal(
+                            __input, __pos, ",",
+                        ) {
+                            ::peg::RuleResult::Matched(__pos, __val) => {
+                                ::peg::RuleResult::Matched(__pos, __val)
+                            }
+                            ::peg::RuleResult::Failed => {
+                                __err_state.mark_failure(__pos, "\",\"");
+                                ::peg::RuleResult::Failed
+                            }
+                        } {
+                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                ::peg::RuleResult::Matched(__newpos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
+                        };
+                        match __seq_res {
+                            ::peg::RuleResult::Matched(__pos, _) => {
+                                ::peg::RuleResult::Matched(__pos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                        }
+                    }
+                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                }
+            }
+            ::peg::RuleResult::Failed => {
+                __err_state.mark_failure(__pos, "\"where\"");
                 ::peg::RuleResult::Failed
             }
         }
@@ -1853,52 +2345,17 @@ pub mod peg {
                                                     ::peg::RuleResult::Failed => break,
                                                 }
                                             };
-                                            let __step_res = {
-                                                let __choice_res = match __parse_LIFETIME(
-                                                    __input,
-                                                    __state,
-                                                    __err_state,
-                                                    __pos,
-                                                ) {
-                                                    ::peg::RuleResult::Matched(pos, _) => {
-                                                        ::peg::RuleResult::Matched(pos, ())
-                                                    }
-                                                    ::peg::RuleResult::Failed => {
-                                                        ::peg::RuleResult::Failed
-                                                    }
-                                                };
-                                                match __choice_res {
-                                                    ::peg::RuleResult::Matched(__pos, __value) => {
-                                                        ::peg::RuleResult::Matched(__pos, __value)
-                                                    }
-                                                    ::peg::RuleResult::Failed => {
-                                                        let __seq_res = match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "?") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"?\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , ()) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , ()) } , } ;
-                                                        match __seq_res {
-                                                            ::peg::RuleResult::Matched(
-                                                                __pos,
-                                                                _,
-                                                            ) => {
-                                                                let __seq_res = match __parse_rust_ty_path (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ;
-                                                                match __seq_res {
-                                                                    ::peg::RuleResult::Matched(
-                                                                        __pos,
-                                                                        _,
-                                                                    ) => {
-                                                                        ::peg::RuleResult::Matched(
-                                                                            __pos,
-                                                                            (),
-                                                                        )
-                                                                    }
-                                                                    ::peg::RuleResult::Failed => {
-                                                                        ::peg::RuleResult::Failed
-                                                                    }
-                                                                }
-                                                            }
-                                                            ::peg::RuleResult::Failed => {
-                                                                ::peg::RuleResult::Failed
-                                                            }
-                                                        }
-                                                    }
+                                            let __step_res = match __parse_rust_ty_param_bound(
+                                                __input,
+                                                __state,
+                                                __err_state,
+                                                __pos,
+                                            ) {
+                                                ::peg::RuleResult::Matched(pos, _) => {
+                                                    ::peg::RuleResult::Matched(pos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
                                                 }
                                             };
                                             match __step_res {
@@ -1944,6 +2401,351 @@ pub mod peg {
                         ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
                     }
                 }
+            }
+        }
+    }
+    fn __parse_rust_for_lifetimes<'input>(
+        __input: &'input Input,
+        __state: &mut ParseState<'input>,
+        __err_state: &mut ::peg::error::ErrorState,
+        __pos: usize,
+    ) -> ::peg::RuleResult<()> {
+        #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
+        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "for") {
+            ::peg::RuleResult::Matched(__pos, __val) => {
+                let __seq_res = match __parse_rust_ty_params(__input, __state, __err_state, __pos) {
+                    ::peg::RuleResult::Matched(pos, _) => ::peg::RuleResult::Matched(pos, ()),
+                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                };
+                match __seq_res {
+                    ::peg::RuleResult::Matched(__pos, _) => ::peg::RuleResult::Matched(__pos, ()),
+                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                }
+            }
+            ::peg::RuleResult::Failed => {
+                __err_state.mark_failure(__pos, "\"for\"");
+                ::peg::RuleResult::Failed
+            }
+        }
+    }
+    fn __parse_rust_ty_param_bound<'input>(
+        __input: &'input Input,
+        __state: &mut ParseState<'input>,
+        __err_state: &mut ::peg::error::ErrorState,
+        __pos: usize,
+    ) -> ::peg::RuleResult<()> {
+        #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
+        {
+            let __choice_res = match __parse_LIFETIME(__input, __state, __err_state, __pos) {
+                ::peg::RuleResult::Matched(pos, _) => ::peg::RuleResult::Matched(pos, ()),
+                ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+            };
+            match __choice_res {
+                ::peg::RuleResult::Matched(__pos, __value) => {
+                    ::peg::RuleResult::Matched(__pos, __value)
+                }
+                ::peg::RuleResult::Failed => {
+                    let __choice_res = {
+                        let __seq_res = match match ::peg::ParseLiteral::parse_string_literal(
+                            __input, __pos, "?",
+                        ) {
+                            ::peg::RuleResult::Matched(__pos, __val) => {
+                                ::peg::RuleResult::Matched(__pos, __val)
+                            }
+                            ::peg::RuleResult::Failed => {
+                                __err_state.mark_failure(__pos, "\"?\"");
+                                ::peg::RuleResult::Failed
+                            }
+                        } {
+                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                ::peg::RuleResult::Matched(__newpos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
+                        };
+                        match __seq_res {
+                            ::peg::RuleResult::Matched(__pos, _) => {
+                                let __seq_res = match match __parse_rust_for_lifetimes(
+                                    __input,
+                                    __state,
+                                    __err_state,
+                                    __pos,
+                                ) {
+                                    ::peg::RuleResult::Matched(pos, _) => {
+                                        ::peg::RuleResult::Matched(pos, ())
+                                    }
+                                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                } {
+                                    ::peg::RuleResult::Matched(__newpos, _) => {
+                                        ::peg::RuleResult::Matched(__newpos, ())
+                                    }
+                                    ::peg::RuleResult::Failed => {
+                                        ::peg::RuleResult::Matched(__pos, ())
+                                    }
+                                };
+                                match __seq_res {
+                                    ::peg::RuleResult::Matched(__pos, _) => {
+                                        let __seq_res = match __parse_rust_ty_path(
+                                            __input,
+                                            __state,
+                                            __err_state,
+                                            __pos,
+                                        ) {
+                                            ::peg::RuleResult::Matched(pos, _) => {
+                                                ::peg::RuleResult::Matched(pos, ())
+                                            }
+                                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                        };
+                                        match __seq_res {
+                                            ::peg::RuleResult::Matched(__pos, _) => {
+                                                ::peg::RuleResult::Matched(__pos, ())
+                                            }
+                                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                        }
+                                    }
+                                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                }
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                        }
+                    };
+                    match __choice_res {
+                        ::peg::RuleResult::Matched(__pos, __value) => {
+                            ::peg::RuleResult::Matched(__pos, __value)
+                        }
+                        ::peg::RuleResult::Failed => {
+                            match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "(") {
+                                ::peg::RuleResult::Matched(__pos, __val) => {
+                                    let __seq_res =
+                                        match match ::peg::ParseLiteral::parse_string_literal(
+                                            __input, __pos, "?",
+                                        ) {
+                                            ::peg::RuleResult::Matched(__pos, __val) => {
+                                                ::peg::RuleResult::Matched(__pos, __val)
+                                            }
+                                            ::peg::RuleResult::Failed => {
+                                                __err_state.mark_failure(__pos, "\"?\"");
+                                                ::peg::RuleResult::Failed
+                                            }
+                                        } {
+                                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                                ::peg::RuleResult::Matched(__newpos, ())
+                                            }
+                                            ::peg::RuleResult::Failed => {
+                                                ::peg::RuleResult::Matched(__pos, ())
+                                            }
+                                        };
+                                    match __seq_res {
+                                        ::peg::RuleResult::Matched(__pos, _) => {
+                                            let __seq_res = match match __parse_rust_for_lifetimes(
+                                                __input,
+                                                __state,
+                                                __err_state,
+                                                __pos,
+                                            ) {
+                                                ::peg::RuleResult::Matched(pos, _) => {
+                                                    ::peg::RuleResult::Matched(pos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            } {
+                                                ::peg::RuleResult::Matched(__newpos, _) => {
+                                                    ::peg::RuleResult::Matched(__newpos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Matched(__pos, ())
+                                                }
+                                            };
+                                            match __seq_res {
+                                                ::peg::RuleResult::Matched(__pos, _) => {
+                                                    let __seq_res = match __parse_rust_ty_path(
+                                                        __input,
+                                                        __state,
+                                                        __err_state,
+                                                        __pos,
+                                                    ) {
+                                                        ::peg::RuleResult::Matched(pos, _) => {
+                                                            ::peg::RuleResult::Matched(pos, ())
+                                                        }
+                                                        ::peg::RuleResult::Failed => {
+                                                            ::peg::RuleResult::Failed
+                                                        }
+                                                    };
+                                                    match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            }
+                                        }
+                                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                    }
+                                }
+                                ::peg::RuleResult::Failed => {
+                                    __err_state.mark_failure(__pos, "\"(\"");
+                                    ::peg::RuleResult::Failed
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn __parse_rust_generic_args<'input>(
+        __input: &'input Input,
+        __state: &mut ParseState<'input>,
+        __err_state: &mut ::peg::error::ErrorState,
+        __pos: usize,
+    ) -> ::peg::RuleResult<()> {
+        #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
+        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "<") {
+            ::peg::RuleResult::Matched(__pos, __val) => {
+                let __seq_res = {
+                    let mut __repeat_pos = __pos;
+                    let mut __repeat_value = vec![];
+                    loop {
+                        let __pos = __repeat_pos;
+                        let __pos = if __repeat_value.is_empty() {
+                            __pos
+                        } else {
+                            let __sep_res = match ::peg::ParseLiteral::parse_string_literal(
+                                __input, __pos, ",",
+                            ) {
+                                ::peg::RuleResult::Matched(__pos, __val) => {
+                                    ::peg::RuleResult::Matched(__pos, __val)
+                                }
+                                ::peg::RuleResult::Failed => {
+                                    __err_state.mark_failure(__pos, "\",\"");
+                                    ::peg::RuleResult::Failed
+                                }
+                            };
+                            match __sep_res {
+                                ::peg::RuleResult::Matched(__newpos, _) => __newpos,
+                                ::peg::RuleResult::Failed => break,
+                            }
+                        };
+                        let __step_res = {
+                            let __choice_res =
+                                match __parse_LIFETIME(__input, __state, __err_state, __pos) {
+                                    ::peg::RuleResult::Matched(pos, _) => {
+                                        ::peg::RuleResult::Matched(pos, ())
+                                    }
+                                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                };
+                            match __choice_res {
+                                ::peg::RuleResult::Matched(__pos, __value) => {
+                                    ::peg::RuleResult::Matched(__pos, __value)
+                                }
+                                ::peg::RuleResult::Failed => {
+                                    let __choice_res = match __parse_rust_type(
+                                        __input,
+                                        __state,
+                                        __err_state,
+                                        __pos,
+                                    ) {
+                                        ::peg::RuleResult::Matched(pos, _) => {
+                                            ::peg::RuleResult::Matched(pos, ())
+                                        }
+                                        ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                                    };
+                                    match __choice_res {
+                                        ::peg::RuleResult::Matched(__pos, __value) => {
+                                            ::peg::RuleResult::Matched(__pos, __value)
+                                        }
+                                        ::peg::RuleResult::Failed => {
+                                            let __choice_res = match __parse_BRACE_GROUP(
+                                                __input,
+                                                __state,
+                                                __err_state,
+                                                __pos,
+                                            ) {
+                                                ::peg::RuleResult::Matched(pos, _) => {
+                                                    ::peg::RuleResult::Matched(pos, ())
+                                                }
+                                                ::peg::RuleResult::Failed => {
+                                                    ::peg::RuleResult::Failed
+                                                }
+                                            };
+                                            match __choice_res {
+                                                ::peg::RuleResult::Matched(__pos, __value) => {
+                                                    ::peg::RuleResult::Matched(__pos, __value)
+                                                }
+                                                ::peg::RuleResult::Failed => match __parse_LITERAL(
+                                                    __input,
+                                                    __state,
+                                                    __err_state,
+                                                    __pos,
+                                                ) {
+                                                    ::peg::RuleResult::Matched(pos, _) => {
+                                                        ::peg::RuleResult::Matched(pos, ())
+                                                    }
+                                                    ::peg::RuleResult::Failed => {
+                                                        ::peg::RuleResult::Failed
+                                                    }
+                                                },
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
+                        match __step_res {
+                            ::peg::RuleResult::Matched(__newpos, __value) => {
+                                __repeat_pos = __newpos;
+                                __repeat_value.push(__value);
+                            }
+                            ::peg::RuleResult::Failed => {
+                                break;
+                            }
+                        }
+                    }
+                    if __repeat_value.len() >= 1 {
+                        ::peg::RuleResult::Matched(__repeat_pos, ())
+                    } else {
+                        ::peg::RuleResult::Failed
+                    }
+                };
+                match __seq_res {
+                    ::peg::RuleResult::Matched(__pos, _) => {
+                        let __seq_res = match match ::peg::ParseLiteral::parse_string_literal(
+                            __input, __pos, ",",
+                        ) {
+                            ::peg::RuleResult::Matched(__pos, __val) => {
+                                ::peg::RuleResult::Matched(__pos, __val)
+                            }
+                            ::peg::RuleResult::Failed => {
+                                __err_state.mark_failure(__pos, "\",\"");
+                                ::peg::RuleResult::Failed
+                            }
+                        } {
+                            ::peg::RuleResult::Matched(__newpos, _) => {
+                                ::peg::RuleResult::Matched(__newpos, ())
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Matched(__pos, ()),
+                        };
+                        match __seq_res {
+                            ::peg::RuleResult::Matched(__pos, _) => {
+                                match ::peg::ParseLiteral::parse_string_literal(__input, __pos, ">")
+                                {
+                                    ::peg::RuleResult::Matched(__pos, __val) => {
+                                        ::peg::RuleResult::Matched(__pos, ())
+                                    }
+                                    ::peg::RuleResult::Failed => {
+                                        __err_state.mark_failure(__pos, "\">\"");
+                                        ::peg::RuleResult::Failed
+                                    }
+                                }
+                            }
+                            ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                        }
+                    }
+                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                }
+            }
+            ::peg::RuleResult::Failed => {
+                __err_state.mark_failure(__pos, "\"<\"");
+                ::peg::RuleResult::Failed
             }
         }
     }
@@ -2777,7 +3579,7 @@ pub mod peg {
                                     let __choice_res = {
                                         let __seq_res =
                                             __parse_sp(__input, __state, __err_state, __pos);
-                                        match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "expected") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "!") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_LITERAL (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , s) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { FailExpr (s) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"!\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"expected\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                        match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "expected") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "!") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_PAREN_GROUP (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , s) => { :: peg :: RuleResult :: Matched (__pos , (|| { FailExpr (s) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"!\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"expected\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
                                     };
                                     match __choice_res {
                                         ::peg::RuleResult::Matched(__pos, __value) => {
@@ -2843,6 +3645,7 @@ pub mod peg {
                                                                             (|| {
                                                                                 RuleExpr(
                                                                                     name,
+                                                                                    None,
                                                                                     Vec::new(),
                                                                                 )
                                                                                 .at(sp)
@@ -2888,7 +3691,18 @@ pub mod peg {
                                                                     __err_state,
                                                                     __pos,
                                                                 );
-                                                                match __seq_res { :: peg :: RuleResult :: Matched (__pos , name) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = { let mut __repeat_pos = __pos ; let mut __repeat_value = vec ! () ; loop { let __pos = __repeat_pos ; let __pos = if __repeat_value . is_empty () { __pos } else { let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ; match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , } } ; let __step_res = __parse_rule_arg (__input , __state , __err_state , __pos) ; match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } } } :: peg :: RuleResult :: Matched (__repeat_pos , __repeat_value) } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , args) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { RuleExpr (name , args) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                                match __seq_res {
+                                                                    ::peg::RuleResult::Matched(
+                                                                        __pos,
+                                                                        name,
+                                                                    ) => {
+                                                                        let __seq_res = match { let str_start = __pos ; match match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "::") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = match __parse_rust_generic_args (__input , __state , __err_state , __pos) { :: peg :: RuleResult :: Matched (pos , _) => :: peg :: RuleResult :: Matched (pos , ()) , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , _) => { :: peg :: RuleResult :: Matched (__pos , ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"::\"") ; :: peg :: RuleResult :: Failed } } { :: peg :: RuleResult :: Matched (__newpos , _) => { :: peg :: RuleResult :: Matched (__newpos , :: peg :: ParseSlice :: parse_slice (__input , str_start , __newpos)) } , :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } { :: peg :: RuleResult :: Matched (__newpos , __value) => { :: peg :: RuleResult :: Matched (__newpos , Some (__value)) } , :: peg :: RuleResult :: Failed => { :: peg :: RuleResult :: Matched (__pos , None) } , } ;
+                                                                        match __seq_res { :: peg :: RuleResult :: Matched (__pos , generics) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = { let mut __repeat_pos = __pos ; let mut __repeat_value = vec ! () ; loop { let __pos = __repeat_pos ; let __pos = if __repeat_value . is_empty () { __pos } else { let __sep_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ",") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , __val) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\",\"") ; :: peg :: RuleResult :: Failed } } ; match __sep_res { :: peg :: RuleResult :: Matched (__newpos , _) => { __newpos } , :: peg :: RuleResult :: Failed => break , } } ; let __step_res = __parse_rule_arg (__input , __state , __err_state , __pos) ; match __step_res { :: peg :: RuleResult :: Matched (__newpos , __value) => { __repeat_pos = __newpos ; __repeat_value . push (__value) ; } , :: peg :: RuleResult :: Failed => { break ; } } } :: peg :: RuleResult :: Matched (__repeat_pos , __repeat_value) } ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , args) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { RuleExpr (name , generics , args) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
+                                                                    }
+                                                                    ::peg::RuleResult::Failed => {
+                                                                        ::peg::RuleResult::Failed
+                                                                    }
+                                                                }
                                                             }
                                                             ::peg::RuleResult::Failed => {
                                                                 ::peg::RuleResult::Failed
@@ -2946,7 +3760,7 @@ pub mod peg {
                                                                         );
                                                                         match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { { let __seq_res = __parse_BRACKET_GROUP (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , p) => { :: peg :: RuleResult :: Matched (__pos , (|| { PatternExpr (p) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , }
                                                                     };
-                                                                    match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "@") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { MarkerExpr (true) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"@\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "@") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { MarkerExpr (false) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"@\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "##") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_IDENT (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , method) => { { let __seq_res = __parse_PAREN_GROUP (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , args) => { :: peg :: RuleResult :: Matched (__pos , (|| { MethodExpr (method , args . stream ()) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"##\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_expression (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , expression) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { expression }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } } } } } } } }
+                                                                    match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "@") { :: peg :: RuleResult :: Matched (__pos , __val) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { MarkerExpr (true) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"@\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "@") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { MarkerExpr (false) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"@\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "##") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_IDENT (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , method) => { { let __seq_res = __parse_PAREN_GROUP (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , args) => { :: peg :: RuleResult :: Matched (__pos , (|| { MethodExpr (method , args . stream ()) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"##\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => { let __choice_res = { let __seq_res = __parse_sp (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , sp) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "#") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_BRACE_GROUP (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , code) => { :: peg :: RuleResult :: Matched (__pos , (|| { CustomExpr (code) . at (sp) }) ()) } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"#\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } ; match __choice_res { :: peg :: RuleResult :: Matched (__pos , __value) => :: peg :: RuleResult :: Matched (__pos , __value) , :: peg :: RuleResult :: Failed => match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , "(") { :: peg :: RuleResult :: Matched (__pos , __val) => { { let __seq_res = __parse_expression (__input , __state , __err_state , __pos) ; match __seq_res { :: peg :: RuleResult :: Matched (__pos , expression) => { match :: peg :: ParseLiteral :: parse_string_literal (__input , __pos , ")") { :: peg :: RuleResult :: Matched (__pos , __val) => { :: peg :: RuleResult :: Matched (__pos , (|| { expression }) ()) } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\")\"") ; :: peg :: RuleResult :: Failed } } } :: peg :: RuleResult :: Failed => :: peg :: RuleResult :: Failed , } } } :: peg :: RuleResult :: Failed => { __err_state . mark_failure (__pos , "\"(\"") ; :: peg :: RuleResult :: Failed } } } } } } } } } } }
                                                                 }
                                                             }
                                                         }
@@ -3009,7 +3823,11 @@ pub mod peg {
                             let mut __repeat_value = vec![];
                             loop {
                                 let __pos = __repeat_pos;
-                                let __step_res = __input.eat_until(__pos, ',');
+                                let __step_res = ::peg::call_custom_closure(
+                                    (|input, pos| input.eat_until(pos, ',')),
+                                    __input,
+                                    __pos,
+                                );
                                 match __step_res {
                                     ::peg::RuleResult::Matched(__newpos, __value) => {
                                         __repeat_pos = __newpos;
@@ -3145,7 +3963,7 @@ pub mod peg {
         __pos: usize,
     ) -> ::peg::RuleResult<Span> {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
-        __input.next_span(__pos)
+        ::peg::call_custom_closure((|input, pos| input.next_span(pos)), __input, __pos)
     }
     fn __parse_KEYWORD<'input>(
         __input: &'input Input,
@@ -3171,12 +3989,12 @@ pub mod peg {
                 }
                 ::peg::RuleResult::Failed => {
                     let __choice_res =
-                        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "crate") {
+                        match ::peg::ParseLiteral::parse_string_literal(__input, __pos, "rule") {
                             ::peg::RuleResult::Matched(__pos, __val) => {
                                 ::peg::RuleResult::Matched(__pos, __val)
                             }
                             ::peg::RuleResult::Failed => {
-                                __err_state.mark_failure(__pos, "\"crate\"");
+                                __err_state.mark_failure(__pos, "\"rule\"");
                                 ::peg::RuleResult::Failed
                             }
                         };
@@ -3186,13 +4004,13 @@ pub mod peg {
                         }
                         ::peg::RuleResult::Failed => {
                             let __choice_res = match ::peg::ParseLiteral::parse_string_literal(
-                                __input, __pos, "rule",
+                                __input, __pos, "use",
                             ) {
                                 ::peg::RuleResult::Matched(__pos, __val) => {
                                     ::peg::RuleResult::Matched(__pos, __val)
                                 }
                                 ::peg::RuleResult::Failed => {
-                                    __err_state.mark_failure(__pos, "\"rule\"");
+                                    __err_state.mark_failure(__pos, "\"use\"");
                                     ::peg::RuleResult::Failed
                                 }
                             };
@@ -3203,13 +4021,13 @@ pub mod peg {
                                 ::peg::RuleResult::Failed => {
                                     let __choice_res =
                                         match ::peg::ParseLiteral::parse_string_literal(
-                                            __input, __pos, "use",
+                                            __input, __pos, "type",
                                         ) {
                                             ::peg::RuleResult::Matched(__pos, __val) => {
                                                 ::peg::RuleResult::Matched(__pos, __val)
                                             }
                                             ::peg::RuleResult::Failed => {
-                                                __err_state.mark_failure(__pos, "\"use\"");
+                                                __err_state.mark_failure(__pos, "\"type\"");
                                                 ::peg::RuleResult::Failed
                                             }
                                         };
@@ -3219,13 +4037,13 @@ pub mod peg {
                                         }
                                         ::peg::RuleResult::Failed => {
                                             match ::peg::ParseLiteral::parse_string_literal(
-                                                __input, __pos, "type",
+                                                __input, __pos, "where",
                                             ) {
                                                 ::peg::RuleResult::Matched(__pos, __val) => {
                                                     ::peg::RuleResult::Matched(__pos, __val)
                                                 }
                                                 ::peg::RuleResult::Failed => {
-                                                    __err_state.mark_failure(__pos, "\"type\"");
+                                                    __err_state.mark_failure(__pos, "\"where\"");
                                                     ::peg::RuleResult::Failed
                                                 }
                                             }
@@ -3261,7 +4079,8 @@ pub mod peg {
             };
             match __seq_res {
                 ::peg::RuleResult::Matched(__pos, _) => {
-                    let __seq_res = __input.ident(__pos);
+                    let __seq_res =
+                        ::peg::call_custom_closure((|input, pos| input.ident(pos)), __input, __pos);
                     match __seq_res {
                         ::peg::RuleResult::Matched(__pos, i) => {
                             ::peg::RuleResult::Matched(__pos, (|| i)())
@@ -3280,7 +4099,7 @@ pub mod peg {
         __pos: usize,
     ) -> ::peg::RuleResult<Literal> {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
-        __input.literal(__pos)
+        ::peg::call_custom_closure((|input, pos| input.literal(pos)), __input, __pos)
     }
     fn __parse_PAREN_GROUP<'input>(
         __input: &'input Input,
@@ -3289,7 +4108,11 @@ pub mod peg {
         __pos: usize,
     ) -> ::peg::RuleResult<Group> {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
-        __input.group(__pos, Delimiter::Parenthesis)
+        ::peg::call_custom_closure(
+            (|input, pos| input.group(pos, Delimiter::Parenthesis)),
+            __input,
+            __pos,
+        )
     }
     fn __parse_BRACE_GROUP<'input>(
         __input: &'input Input,
@@ -3298,7 +4121,11 @@ pub mod peg {
         __pos: usize,
     ) -> ::peg::RuleResult<Group> {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
-        __input.group(__pos, Delimiter::Brace)
+        ::peg::call_custom_closure(
+            (|input, pos| input.group(pos, Delimiter::Brace)),
+            __input,
+            __pos,
+        )
     }
     fn __parse_BRACKET_GROUP<'input>(
         __input: &'input Input,
@@ -3307,7 +4134,11 @@ pub mod peg {
         __pos: usize,
     ) -> ::peg::RuleResult<Group> {
         #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
-        __input.group(__pos, Delimiter::Bracket)
+        ::peg::call_custom_closure(
+            (|input, pos| input.group(pos, Delimiter::Bracket)),
+            __input,
+            __pos,
+        )
     }
     fn __parse_LIFETIME<'input>(
         __input: &'input Input,
