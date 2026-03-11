@@ -2,7 +2,7 @@
 
 unmake follows standard, cargo based operations for compiling and unit testing Rust code.
 
-For advanced operations, such as linting, managing multiplatform Docker images, and so on, we further supplement with some software industry tools.
+For advanced operations, such as linting, we further supplement with some software industry tools.
 
 # BUILDTIME REQUIREMENTS
 
