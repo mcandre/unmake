@@ -40,7 +40,7 @@ uname_arch_to_rust_arch() {
         aarch64 | arm64)
             echo 'aarch64'
             ;;
-        x86_64)
+        amd64 | i86pc | x86_64)
             echo 'x86_64'
             ;;
         *)
