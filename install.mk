@@ -8,7 +8,7 @@ all:
 		cargo-cache \
 		cargo-edit \
 		crit@0.0.17 \
-		rockhopper@0.0.21
+		rockhopper@0.0.22
 	cargo install --force \
 		cross \
 			--git https://github.com/cross-rs/cross \
