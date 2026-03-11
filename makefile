@@ -66,7 +66,7 @@ clean-example:
 	rm -rf example/.crit
 
 clean-packages:
-	rm -rf .rockhopper
+	rockhopper -c
 
 clean-ports:
 	rm -rf .crit/bin/unmake-ports
