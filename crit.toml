@@ -1,9 +1,6 @@
 # debug = true
 
-#
 # Linux Portability
-#
-
 rustflags."musl" = "-C target-feature=+crt-static"
 
 exclusion_targets = [
