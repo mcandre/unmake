@@ -1,6 +1,6 @@
 # SYNTAX
 
-`unmake` follows a relatively stiff reading of the POSIX `make` standard. POSIX discipline helps to maintain a higher degree of portability for makefiles, across many different operating environments.
+unmake follows a relatively stiff reading of the POSIX `make` standard. POSIX discipline helps to maintain a higher degree of portability for makefiles, across many different operating environments.
 
 # EXAMPLE
 

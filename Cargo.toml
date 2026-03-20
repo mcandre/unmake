@@ -8,7 +8,19 @@ license = "0BSD"
 repository = "https://github.com/mcandre/unmake"
 documentation = "https://docs.rs/unmake/latest/unmake/"
 exclude = [
+     "*.mk",
+     ".crit",
+     ".editorconfig",
+     ".github",
+     ".rockhopper",
+     ".rubberstamp",
+     ".tool-versions",
+     "Cross.toml",
+     "crit.toml",
      "fixtures",
+     "makefile",
+     "rockhopper.toml",
+     "upload",
 ]
 
 [dependencies]

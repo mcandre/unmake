@@ -1,8 +1,8 @@
 # WARNINGS
 
-`unmake` offers various checks to optimize your makefiles.
+unmake offers various checks to optimize your makefiles.
 
-Note that `unmake` does not evaluate makefiles, and therefore ignores quirks arising from macro expansions.
+Note that unmake does not evaluate makefiles, and therefore ignores quirks arising from macro expansions.
 
 Most warnings feature line numbers with an approximate location of the issue in the makefile.
 
@@ -45,7 +45,7 @@ You may write logical target declarations as whitespace delimited prerequisites 
 
 As well, aggregate targets like `port: cross-compile archive`, that do not have any commands, are usually not actual filenames themselves. Aggregate, commandless targets are also logical targets. Which means that they should also have an entry as a prerequisite in a `.PHONY:` special rule. However, make sometimes infers target trees based on common C filename patterns. So we cannot reliably warn on potentially `.PHONY` worthy empty-command targets until a complete inferred rule system is implemented.
 
-Due to the variance in artifact names, `unmake` cannot automate checking for all possible targets deserving `.PHONY` declarations. Neither `make` nor `unmake` knows this application-specific information. The makefile maintainer should supply this information, and configure any needed `.PHONY` declarations accordingly.
+Due to the variance in artifact names, unmake cannot automate checking for all possible targets deserving `.PHONY` declarations. Neither `make` nor unmake knows this application-specific information. The makefile maintainer should supply this information, and configure any needed `.PHONY` declarations accordingly.
 
 makefile authors may use variables in `.PHONY` prerequisites:
 
@@ -1130,7 +1130,7 @@ make implementations that use `SHELL`, tend to set useful defaults. Overriding t
 
 Some implementations do not define `SHELL`. Assigning a value `SHELL` can create an misleading, non-portable impression of makefile behavior.
 
-Due to `unmake` not evaluating macro expansions, expansion of the `SHELL` macro is not implemented as an automatic check.
+Due to unmake not evaluating macro expansions, expansion of the `SHELL` macro is not implemented as an automatic check.
 
 Some ancient platforms may present `SHELL` with a `cmd[.exe]` interpreter. But even Windows Command Prompt, the Chocolatey GNU make interpreter tends to default to a POSIX compliant `sh` interpreter suitable for use with makefile commands.
 

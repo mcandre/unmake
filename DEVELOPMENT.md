@@ -1,106 +1,95 @@
-# DEVELOPMENT GUIDE
+# DEVELOPMENT
 
-unmake follows standard, cargo based operations for compiling and unit testing Rust code.
+We follow standard, `cargo` based operations for compiling and unit testing Rust code.
 
 For advanced operations, such as linting, we further supplement with some software industry tools.
 
-# BUILDTIME REQUIREMENTS
+# DEV ENVIRONMENT
+
+## Prerequisites
 
 * a UNIX-like environment (e.g. [WSL](https://learn.microsoft.com/en-us/windows/wsl/))
 * [awscli](https://aws.amazon.com/cli/)
 * [bash](https://www.gnu.org/software/bash/) 4+
 * [Docker](https://www.docker.com/)
-* POSIX compliant [findutils](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/find.html)
 * [jq](https://jqlang.org/)
-* POSIX compliant [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
+* [make](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/make.html)
 * [Rust](https://www.rust-lang.org/en-US/)
 * Provision additional dev tools with `make -f install.mk`
 
 ## Recommended
 
-* Apple Silicon macOS users may want to apply `DOCKER_DEFAULT_PLATFORM=linux/amd64`, in order to account for images commonly lacking `linux/arm64` buildx platforms
-* [ASDF](https://asdf-vm.com/) 0.18 (run `asdf reshim` after provisioning)
-* [tree](https://en.wikipedia.org/wiki/Tree_(command))
+* [asdf](https://asdf-vm.com/)
 
-# INSTALL BINARIES FROM SOURCE
+## Postinstall
+
+Register `~/.cargo/bin` to `PATH` environment variable.
+
+# TASKS
+
+We automate engineering tasks.
+
+## Build
+
+```sh
+make
+```
+
+## Install
 
 ```sh
 make install
 ```
 
-# UNINSTALL BINARIES
+## Uninstall
 
 ```sh
 make uninstall
 ```
 
-# SECURITY AUDIT
+## Security Audit
 
 ```sh
 make audit
 ```
 
-# LINT
+## Lint
 
 ```sh
 make lint
 ```
 
-# TEST
+## Test
 
 ```sh
 make test
 ```
 
-# CROSSCOMPILE BINARIES
+## Crosscompile Binaries
 
 ```sh
 make crit
 ```
 
-# ARCHIVE BINARIES
-
-```sh
-make port
-```
-
-# PACKAGE BINARIES
+## Package Binaries
 
 ```sh
 make package
 ```
 
-# UPLOAD BINARIES
+## Upload Packages
 
 ```sh
 make upload
 ```
 
-# PUBLISH CRATE
+## Publish Crate
 
 ```sh
 make publish
 ```
 
-# BUILD DOCKER IMAGES
-
-```sh
-make docker-build
-```
-
-# TEST PUSH DOCKER IMAGES
-
-```sh
-make docker-test
-```
-
-# PUSH DOCKER IMAGES
-
-```sh
-make docker-push
-```
-
-# CLEAN
+## Clean Workspace
 
 ```sh
 make clean

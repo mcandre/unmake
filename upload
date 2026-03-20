@@ -2,9 +2,11 @@
 unset IFS
 set -eufo pipefail
 
-BUCKET='s3://unmake'
+APP='unmake'
+
+BUCKET="s3://$APP"
 VERSION="$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[0].version")"
-DEST="$BUCKET/unmake-$VERSION/"
+DEST="$BUCKET/$APP-$VERSION/"
 ARTIFACTS='.rockhopper/artifacts'
 
 # Accelerate connection timeouts
