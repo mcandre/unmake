@@ -37,13 +37,13 @@ warning: ./missing-posix.mk:1: STRICT_POSIX: lead makefiles with the ".POSIX:" c
   <tbody>
     <tr>
       <td>macOS 26 Tahoe+</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/macos/unmake-x86_64-0.0.26-1.pkg">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/macos/unmake-arm64-0.0.26-1.pkg">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.27/macos/unmake-x86_64-0.0.27-1.pkg">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.27/macos/unmake-arm64-0.0.27-1.pkg">ARM</a></td>
     </tr>
     <tr>
       <td>Ubuntu 24.04 Noble+ / WSL 2+</td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/ubuntu/unmake_0.0.26-1_amd64.deb">Intel</a></td>
-      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.26/ubuntu/unmake_0.0.26-1_arm64.deb">ARM</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.27/ubuntu/unmake_0.0.27-1_amd64.deb">Intel</a></td>
+      <td><a href="https://pub-a96ed3474b8e4de8ae61496c32ab08b6.r2.dev/unmake-0.0.27/ubuntu/unmake_0.0.27-1_arm64.deb">ARM</a></td>
     </tr>
   </tbody>
 </table>
