@@ -14,23 +14,23 @@ license = "0BSD"
 url = "https://github.com/mcandre/unmake"
 
 [[pkg]]
-image = "n4jm4/rockhopper:0.0.23-macos"
+image = "n4jm4/rockhopper:0.0.25-macos"
 rocklet.oci_arch = "linux/amd64"
 rocklet.os_arch = "x86_64"
 dest."usr/local/bin" = ".crit/bin/unmake/x86_64-apple-darwin"
 
 [[pkg]]
-image = "n4jm4/rockhopper:0.0.23-macos"
+image = "n4jm4/rockhopper:0.0.25-macos"
 rocklet.oci_arch = "linux/arm64"
 rocklet.os_arch = "arm64"
 dest."usr/local/bin" = ".crit/bin/unmake/aarch64-apple-darwin"
 
 [[pkg]]
-image = "n4jm4/rockhopper:0.0.23-ubuntu"
+image = "n4jm4/rockhopper:0.0.25-ubuntu"
 rocklet.oci_arch = "linux/amd64"
 dest."usr/bin" = ".crit/bin/unmake/x86_64-unknown-linux-musl"
 
 [[pkg]]
-image = "n4jm4/rockhopper:0.0.23-ubuntu"
+image = "n4jm4/rockhopper:0.0.25-ubuntu"
 rocklet.oci_arch = "linux/arm64"
 dest."usr/bin" = ".crit/bin/unmake/aarch64-unknown-linux-musl"

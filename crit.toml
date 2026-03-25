@@ -1,32 +1,125 @@
 # debug = true
 
-# Linux Portability
+banner = "unmake"
+
+# Linux portability
 rustflags."musl" = "-C target-feature=+crt-static"
 
-exclusion_targets = [
-    "android",
-    "arm",
-    "cuda",
-    "emscripten",
-    "fortanix",
-    "freebsd",
-    "fuchsia",
-    "gnu",
-    "i586",
-    "i686",
-    "illumos",
-    "ios",
-    "loongarch",
-    "netbsd",
-    "none-eabi",
-    "ohos",
-    "pc-solaris",
+#
+# Targets
+# rustup target list
+#
+
+# Skip missing/broken cross images
+# Skip 32-bit chipsets
+# Skip fringe platforms
+arch = [
+    "aarch64",
+    # "arm",
+    # "arm64ec",
+    # "armv5te",
+    # "armv7",
+    # "armv7a",
+    # "armv7r",
+    # "armv8r",
+    # "i586",
+    # "i686",
+    # "loongarch64",
+    # "nvptx64",
+    # "powerpc",
+    # "powerpc64",
+    # "powerpc64le",
+    # "riscv32i",
+    # "riscv32im",
+    # "riscv32imac",
+    # "riscv32imafc",
+    # "riscv32imc",
+    # "riscv64gc",
+    # "riscv64imac",
+    # "s390x",
+    # "sparc64",
+    # "sparcv9",
+    # "thumbv6m",
+    # "thumbv7em",
+    # "thumbv7m",
+    # "thumbv7neon",
+    # "thumbv8m.base",
+    # "thumbv8m.main",
+    # "wasm32",
+    # "wasm32v1",
+    "x86_64",
+]
+
+# Skip missing/broken cross images
+# Skip bare metal
+# Skip fringe platforms
+vendor = [
+    "apple",
+    # "fortanix",
+    "linux",
+    # "nvidia",
+    # "pc",
+    # "sun",
+    "unknown",
+    # "wasip1",
+    # "wasip2",
+    # "none",
+]
+
+# Skip missing/broken cross images
+# Skip bare metal
+# Skip mobile SDKs
+# Skip fringe platforms
+os = [
+    "",
+    # "android",
+    # "androideabi",
+    # "cuda",
+    "darwin",
+    # "eabi",
+    # "eabihf",
+    # "emscripten",
+    # "freebsd",
+    # "fuchsia",
+    # "illumos",
+    # "ios",
+    "linux",
+    # "netbsd",
+    # "none",
+    # "redox",
+    # "solaris",
+    # "threads",
+    # "uefi",
+    # "unknown",
+    # "windows",
+]
+
+# Skip missing/broken cross images
+# Skip fringe platforms
+# Skip less portable GNU platforms
+abi = [
+    "",
+    # "elf",
+    # "gnu",
+    # "gnueabi",
+    # "gnueabihf",
+    # "gnullvm",
+    # "gnux32",
+    # "macabi",
+    # "msvc",
+    "musl",
+    # "musleabi",
+    # "musleabihf",
+    # "ohos",
+    # "sgx",
+    # "sim",
+    # "softfloat",
+]
+
+# Skip missing/broken cross images
+target_excludes = [
+    "i686-pc-windows-gnu",
     "powerpc64le-unknown-linux-musl",
-    "redox",
     "riscv64gc-unknown-linux-musl",
-    "sparcv9-sun-solaris",
-    "uefi",
-    "unknown-none",
-    "wasm",
-    "windows",
+    "wasm32-unknown-unknown",
 ]
