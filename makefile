@@ -13,11 +13,13 @@
 	clippy \
 	crit \
 	doc \
+	govulncheck \
 	install \
 	lint \
 	package \
 	publish \
 	rustfmt \
+	shellcheck \
 	test \
 	uninstall \
 	upload
@@ -33,11 +35,13 @@ BANNER=unmake
 
 all: build
 
-audit:
-	cargo audit
+audit: cargo-audit govulncheck
 
 build:
 	cargo build --release
+
+cargo-audit:
+	cargo audit
 
 cargo-check:
 	cargo check
@@ -70,6 +74,9 @@ crit:
 doc:
 	cargo doc
 
+govulncheck:
+	govulncheck -scan package ./...
+
 install:
 	cargo install --force --path .
 
@@ -77,7 +84,8 @@ lint: \
 	cargo-check \
 	clippy \
 	doc \
-	rustfmt
+	rustfmt \
+	shellcheck
 
 package:
 	rockhopper -r "version=$(VERSION)"
@@ -87,6 +95,10 @@ publish:
 
 rustfmt:
 	cargo fmt
+
+shellcheck:
+	stank -print0 . | \
+		xargs -0 -n 1 shellcheck
 
 test:
 	cargo test

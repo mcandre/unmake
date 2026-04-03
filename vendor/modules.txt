@@ -1,0 +1,17 @@
+# github.com/magefile/mage v1.16.1
+## explicit; go 1.12
+github.com/magefile/mage/mg
+github.com/magefile/mage/sh
+# github.com/mcandre/mx v0.0.47
+## explicit; go 1.26.1
+github.com/mcandre/mx
+# github.com/mcandre/stank v0.0.44
+## explicit; go 1.26.1
+github.com/mcandre/stank
+github.com/mcandre/stank/cmd/funk
+github.com/mcandre/stank/cmd/stank
+github.com/mcandre/stank/cmd/stink
+# mvdan.cc/sh/v3 v3.13.0
+## explicit; go 1.25.0
+mvdan.cc/sh/v3/fileutil
+mvdan.cc/sh/v3/syntax

@@ -18,9 +18,12 @@ exclude = [
      "Cross.toml",
      "crit.toml",
      "fixtures",
+     "go.mod",
+     "go.sum",
      "makefile",
      "rockhopper.toml",
      "upload",
+     "vendor",
 ]
 
 [dependencies]
