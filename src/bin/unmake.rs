@@ -140,11 +140,8 @@ fn main() {
                 .current_dir(dir)
                 .output()
                 .die(
-                    &format!(
-                        "error: unable to run build tool: {}",
-                        &metadata.build_system
-                    )
-                    .to_string(),
+                    &format!("error: unable to run build tool: {}", metadata.build_system)
+                        .to_string(),
                 );
 
             if !dry_run_output.status.success() {
@@ -155,7 +152,7 @@ fn main() {
                     String::from_utf8(dry_run_output.stdout).unwrap_or(
                         format!(
                             "error: unable to decode {} stdout stream",
-                            &metadata.build_system
+                            metadata.build_system
                         )
                         .to_string()
                     )
@@ -165,7 +162,7 @@ fn main() {
                     String::from_utf8(dry_run_output.stderr).unwrap_or(
                         format!(
                             "error: unable to decode {} stderr stream",
-                            &metadata.build_system
+                            metadata.build_system
                         )
                         .to_string()
                     )
@@ -240,7 +237,7 @@ fn main() {
         }
     }
 
-    ws.sort_by(|a, b| a.line.cmp(&b.line));
+    ws.sort_by_key(|e| e.line);
 
     for w in ws {
         println!("{}", w);

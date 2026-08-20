@@ -20,7 +20,7 @@ jobs:
       RUBBERSTAMP_GH_REPO: "${{ github.repository }}"
       SSH_KEY: "${{ secrets.SSH_KEY }}"
     steps:
-    - uses: "actions/checkout@v4"
+    - uses: "actions/checkout@v7"
     - name: "provision git"
       run: |
         sudo apt update

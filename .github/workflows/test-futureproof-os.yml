@@ -15,13 +15,13 @@ jobs:
   Test-Futureproof-OS:
     runs-on: "ubuntu-24.04"
     steps:
-    - uses: "actions/checkout@v4"
-    - uses: "actions/setup-go@v5"
+    - uses: "actions/checkout@v7"
+    - uses: "actions/setup-go@v7"
       with:
-        go-version: "1.26.1"
+        go-version: "1.27.0"
     - uses: "dtolnay/rust-toolchain@stable"
       with:
-        toolchain: "1.92.0"
+        toolchain: "1.97.1"
     - name: "provision dev tools"
       run: "make -f install.mk"
     - run: "make test"
