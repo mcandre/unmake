@@ -13,6 +13,10 @@ on: # yamllint disable-line rule:truthy
   # Once a month
   - cron: "0 0 1 * *"
   workflow_dispatch:
+permissions:
+  contents: "read"
+  issues: "write"
+  pull-requests: "write"
 jobs:
   Rubberstamp:
     runs-on: "ubuntu-24.04"
