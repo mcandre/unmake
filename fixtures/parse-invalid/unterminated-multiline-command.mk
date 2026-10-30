@@ -1,2 +1,2 @@
 all:
-	apt install -y \
+	apt-get install -y \
