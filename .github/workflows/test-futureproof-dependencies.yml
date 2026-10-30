@@ -17,7 +17,7 @@ permissions:
   pull-requests: "write"
 jobs:
   Test-Futureproof-Dependencies:
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-24.04"
     steps:
     - uses: "actions/checkout@v7"
     - uses: "actions/setup-go@v7"
