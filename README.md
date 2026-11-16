@@ -1,6 +1,6 @@
 # unmake: POSIX makefile linter
 
-[![CloudFlare R2 install media downloads](https://img.shields.io/badge/Packages-F38020?logo=Cloudflare&logoColor=white)](#download) [![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/unmake?label=crate%20downloads)](https://crates.io/crates/unmake) [![docs.rs](https://img.shields.io/docsrs/unmake)](https://docs.rs/unmake/latest/unmake/) [![Test](https://github.com/mcandre/unmake/actions/workflows/test.yml/badge.svg)](https://github.com/mcandre/unmake/actions/workflows/test.yml) [![license](https://img.shields.io/badge/license-BSD-0)](LICENSE.md)
+[![CloudFlare R2 Downloads](https://badgen.net/static/download/Packages/f38020?icon=cloudflare)](#download) [![Crate Downloads](https://badgen.net/crates/d/unmake?label=crate+downloads&icon=rust)](https://crates.io/crates/unmake) [![API Docs](https://badgen.net/static/docs/API/3eca2a?icon=docs.rs)](https://docs.rs/unmake/latest/unmake/) [![CI/CD](https://badgen.net/github/checks/mcandre/unmake?icon=github)](https://github.com/mcandre/unmake/actions) [![License](https://badgen.net/static/license/BSD/ab2b29?icon=freebsd)](LICENSE.md)
 
 ```text
                    _
