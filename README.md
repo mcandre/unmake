@@ -1,6 +1,6 @@
 # unmake: POSIX makefile linter
 
-[![CloudFlare R2 Downloads](https://badgen.net/static/download/Packages/f38020?icon=cloudflare)](#download) [![Crate Downloads](https://badgen.net/crates/d/unmake?label=crate+downloads&icon=rust)](https://crates.io/crates/unmake) [![API Docs](https://badgen.net/static/docs/API/3eca2a?icon=docs.rs)](https://docs.rs/unmake/latest/unmake/) [![CI/CD](https://badgen.net/github/checks/mcandre/unmake?icon=github)](https://github.com/mcandre/unmake/actions) [![License](https://badgen.net/static/license/BSD/ab2b29?icon=freebsd)](LICENSE.md)
+[![CloudFlare R2 Downloads](https://badgen.net/static/download/Packages/f38020?icon=cloudflare)](#download) [![Crate Downloads](https://badgen.net/crates/d/unmake?label=crate+downloads&icon=rust)](https://crates.io/crates/unmake) [![API Docs](https://badgen.net/static/docs/API/3eca2a?icon=docs.rs)](https://docs.rs/unmake/latest/unmake/) [![CI/CD](https://badgen.net/github/checks/mcandre/unmake?icon=github)](https://github.com/mcandre/unmake/actions) [![License](https://badgen.net/static/license/BSD/ab2b29?icon=freebsd)](LICENSE.md) [![AI](https://badgen.net/static/ai/Gemini|hint?color=886fbf&icon=google-gemini)](AI-DECLARATION.md)
 
 ```text
                    _
