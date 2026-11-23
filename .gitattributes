@@ -1,2 +1,8 @@
+*.md linguist-vendored
+*.mk linguist-vendored
+makefile linguist-vendored
+*.go linguist-vendored
+go.* linguist-vendored
+upload linguist-vendored
 vendor/** linguist-vendored
 vendor-rust/** linguist-vendored
